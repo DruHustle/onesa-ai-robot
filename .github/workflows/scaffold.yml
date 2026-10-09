@@ -1,0 +1,16 @@
+name: Robot scaffold checks
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  scaffold-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate documented independent application boundaries
+        run: |
+          test -f onesa-ai-robot-frontend/README.md
+          test -f onesa-ai-robot-backend/README.md
+          test -f onesa-ai-robot-frontend/.env.example
+          test -f onesa-ai-robot-backend/.env.example
+      - run: echo 'Scaffold only. Application build, test and deployment remain unimplemented.'
