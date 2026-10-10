@@ -1,4 +1,4 @@
-name: Robot candidate packaging (implementation required)
+name: Robot candidate packaging (simulation only)
 on:
   workflow_dispatch:
     inputs:
@@ -23,14 +23,14 @@ jobs:
             echo 'Application not implemented. No candidate can be packaged.'
             exit 1
           fi
-      - name: Require exact-revision scaffold and publication checks
+      - name: Require exact-revision software and publication checks
         uses: actions/github-script@v7
         with:
           script: |
             const checks = await github.paginate(github.rest.checks.listForRef, {
               ...context.repo, ref: context.sha, per_page: 100
             });
-            for (const name of ['scaffold-check', 'publication-hygiene']) {
+            for (const name of ['backend', 'frontend', 'containers (frontend)', 'containers (backend)', 'publication-hygiene']) {
               const check = checks.filter(item => item.name === name).sort((a, b) => b.id - a.id)[0];
               if (!check || check.conclusion !== 'success') core.setFailed(`Required successful check missing: ${name}`);
             }
@@ -45,4 +45,4 @@ jobs:
           name: robot-${{ inputs.application }}-${{ github.sha }}
           path: candidate.tar
           retention-days: 7
-# Template only: add required application tests and production approval before activation.
+# Packaging never authorizes public promotion or physical operation.

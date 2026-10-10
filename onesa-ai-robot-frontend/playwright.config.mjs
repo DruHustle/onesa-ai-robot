@@ -1,0 +1,2 @@
+import {defineConfig,devices} from '@playwright/test';
+export default defineConfig({testDir:'tests/browser',workers:1,retries:0,reporter:[['list'],['json',{outputFile:'test-results/results.json'}]],use:{baseURL:process.env.ROBOT_BROWSER_URL || 'http://localhost:3431'},projects:[{name:'chromium',use:{...devices['Desktop Chrome']}},{name:'firefox',use:{...devices['Desktop Firefox']}},{name:'webkit',use:{...devices['Desktop Safari']}}]});

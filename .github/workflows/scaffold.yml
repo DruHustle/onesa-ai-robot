@@ -1,16 +1,63 @@
-name: Robot scaffold checks
+name: Robot software verification
 on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: read
 jobs:
-  scaffold-check:
+  backend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Validate documented independent application boundaries
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install --require-hashes -r requirements-dev.lock
+        working-directory: onesa-ai-robot-backend
+      - run: python -m ruff check robot_api tests && python -m ruff format --check robot_api tests && python -m pytest -q
+        working-directory: onesa-ai-robot-backend
+      - run: python -m pip_audit -r requirements.lock --disable-pip --no-deps
+        working-directory: onesa-ai-robot-backend
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install --require-hashes -r onesa-ai-robot-backend/requirements.lock
+      - run: npm ci --ignore-scripts && npm run build && npm run typecheck && npm test && npm audit --audit-level=high
+        working-directory: onesa-ai-robot-frontend
+      - run: python scripts/check-contracts.py
+      - run: npx playwright install --with-deps chromium firefox webkit
+        working-directory: onesa-ai-robot-frontend
+      - name: Synthetic cross-browser operator acceptance
+        env:
+          ROBOT_DATABASE_PATH: /tmp/robot-browser-test.sqlite3
+          ROBOT_PUBLIC_ORIGIN: http://localhost:3431
         run: |
-          test -f onesa-ai-robot-frontend/README.md
-          test -f onesa-ai-robot-backend/README.md
-          test -f onesa-ai-robot-frontend/.env.example
-          test -f onesa-ai-robot-backend/.env.example
-      - run: echo 'Scaffold only. Application build, test and deployment remain unimplemented.'
+          export ROBOT_OPERATOR_PASSWORD_HASH=$(cd onesa-ai-robot-backend && python -c "from robot_api.security import password_hash; print(password_hash('browser-test-operator-only'))")
+          (cd onesa-ai-robot-backend && sh start.sh) > /tmp/robot-backend-test.log 2>&1 &
+          backend_pid=$!
+          (cd onesa-ai-robot-frontend && npm start) > /tmp/robot-frontend-test.log 2>&1 &
+          frontend_pid=$!
+          trap 'kill "$backend_pid" "$frontend_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do curl -fsS http://localhost:3431/api/v1/ready > /dev/null && break || sleep 1; done
+          npm --prefix onesa-ai-robot-frontend run test:e2e
+  containers:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        application: [frontend, backend]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t onesa-robot-runtime:ci ./onesa-ai-robot-${{ matrix.application }}
+      - name: Actual backend startup and shutdown
+        if: matrix.application == 'backend'
+        run: python3 scripts/test-container-startup.py onesa-robot-runtime:ci
+      - name: Runtime security gate
+        run: |
+          mkdir -p data/security
+          chmod 700 data/security
+          docker save onesa-robot-runtime:ci -o data/security/runtime.tar
+          docker run --rm --user "$(id -u):$(id -g)" -e TRIVY_CACHE_DIR=/tmp/trivy-cache -v "$PWD/data/security:/reports" aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa image --scanners vuln,secret --format json --output /reports/runtime.json --input /reports/runtime.tar
+          python3 scripts/image_gate.py data/security/runtime.json
