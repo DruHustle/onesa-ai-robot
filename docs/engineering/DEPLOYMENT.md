@@ -17,3 +17,12 @@ secrets should use a secret manager; rollback must preserve state and disable ac
 The scaffold CI is not a robot validation or deployment pipeline. `release-candidate.yml` is a manual packaging template that fails closed without the
 selected application Dockerfile. It does not deploy or publish. Add application test
 gates and qualify targets before activation.
+
+
+## Intended hostname — 2026-10-10
+
+The owner selected `robot.onesa.eu` for the future operator interface. This is a
+planned address, not a live deployment. Reserve it in the domain plan; attach DNS
+only once an implemented and qualified frontend has a confirmed hosting target.
+The gateway remains independently deployable and authenticated; selecting the
+hostname does not implement or authorize hardware control.
