@@ -1,8 +1,9 @@
 # Onesa AI Robot
 
 Independent Onesa UG robotics repository. This workspace started empty; this change
-prepares engineering governance and application boundaries. **No executable robot,
-frontend or backend implementation exists yet.** No hardware operation is authorized.
+prepares engineering governance and application boundaries. A static frontend theme
+preview is available; **no connected robot application or backend exists yet.**
+No hardware operation is authorized.
 
 | Directory | Intended application |
 | --- | --- |

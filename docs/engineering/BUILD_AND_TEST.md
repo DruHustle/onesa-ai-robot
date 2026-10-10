@@ -1,6 +1,8 @@
 # Build and test readiness
 
-Frontend: `onesa-ai-robot-frontend/` has documentation/configuration examples only.
+Frontend: `onesa-ai-robot-frontend/public/` contains a dependency-free static preview.
+Serve it using the frontend README instructions; there is no compilation step.
+Desktop/mobile rendering and overflow were checked locally at 1440px and 390px.
 Backend: `onesa-ai-robot-backend/` has documentation/configuration examples only.
 Both application builds/tests are **not applicable: not implemented**. Do not report
 this repository as an operational robot or independently deployable implementation.

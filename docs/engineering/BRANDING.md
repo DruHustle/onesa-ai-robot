@@ -14,3 +14,11 @@ page, favicon route or social preview exists yet. When the approved interface is
 implemented, serve these public paths and use `https://robot.onesa.eu` as its
 metadata base. Keep assets in this repository rather than importing sibling source.
 No generated reinterpretation, image edit or license assignment was made.
+
+## Shared homepage theme — 2026-10-10
+
+`public/index.html` and `public/theme.css` now provide a standalone static visual
+preview with the company navy/cyan palette, typography and orbit motif. Original
+image assets are preserved. The page serves the existing PNG favicon and explicitly
+labels missing connection, telemetry and controls; it remains noindex. Desktop and
+mobile browser checks passed. No connected robot runtime or hosted deployment exists.
