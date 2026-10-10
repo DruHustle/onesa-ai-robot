@@ -241,3 +241,31 @@ def test_isolated_online_backup_restores_history_without_execution_authority(con
         assert status["stopped"] and status["active_task"] is None
         task = client.get("/api/v1/tasks").json()["tasks"][0]
         assert task["state"] == "cancelled" and task["reason"] == "process_restart"
+
+
+def test_failed_watchdog_cannot_reset_or_authorize_tasks(api):
+    login(api)
+    reset(api)
+    created = api.post("/api/v1/tasks", json=proposal()).json()["id"]
+    api.portal.call(lambda: api.app.state.watch.cancel())
+    time.sleep(0.1)
+    assert api.get("/api/v1/ready").status_code == 503
+    assert api.post("/api/v1/reset", json={"password": PASSWORD}).status_code == 503
+    assert api.post("/api/v1/tasks", json=proposal()).status_code == 503
+    assert (
+        api.post(f"/api/v1/tasks/{created}/approve", json={"password": PASSWORD}).status_code == 503
+    )
+    # Stopping remains available even when the watchdog has failed.
+    assert api.post("/api/v1/stop").status_code == 200
+
+
+def test_confirmation_limits_and_config_errors_hide_hash(api):
+    login(api)
+    for _ in range(5):
+        assert api.post("/api/v1/reset", json={"password": "wrong"}).status_code == 403
+    assert api.post("/api/v1/reset", json={"password": PASSWORD}).status_code == 429
+    assert api.post("/api/v1/stop").status_code == 200
+    disclosed = "scrypt$invalid-private-test-only-material"
+    with pytest.raises(ValidationError) as caught:
+        Settings(operator_password_hash=disclosed)
+    assert disclosed not in str(caught.value)

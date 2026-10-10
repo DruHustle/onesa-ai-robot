@@ -8,3 +8,7 @@ operator approval, independent motion limits, cancellation, stop/reset, watchdog
 safe restart. Added generated versioned API types, ROS 2 preparatory messages,
 reproducible locks, non-root images and software/security/browser CI gates.
 Physical actuation and real model/ROS/hardware readiness remain unavailable.
+
+Watchdog loss also rejects reset/proposal/approval, password confirmations are
+rate-limited independently, startup validation hides secret inputs, and shutdown
+closes storage even after a watchdog failure.

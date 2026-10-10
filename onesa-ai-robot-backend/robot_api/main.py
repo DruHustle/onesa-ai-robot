@@ -19,9 +19,11 @@ from robot_api.security import token_hash, verify
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="ROBOT_", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_prefix="ROBOT_", extra="ignore", hide_input_in_errors=True
+    )
     public_origin: str = "http://localhost:3431"
-    operator_name: str = "operator"
+    operator_name: str = Field(default="operator", min_length=1, max_length=64)
     operator_password_hash: str
     database_path: Path = Path("storage/robot.sqlite3")
     actuation_enabled: bool = False
@@ -228,13 +230,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         try:
             yield
         finally:
-            task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await task
             try:
-                state.cancel("process_shutdown", stop=True)
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
             finally:
-                state.db.close()
+                try:
+                    state.cancel("process_shutdown", stop=True)
+                finally:
+                    state.db.close()
 
     app = FastAPI(
         title="Onesa Robot Simulation API",
@@ -269,8 +273,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         return response
 
-    def state(request: Request) -> State:
+    def state(request: Request, require_watchdog: bool = False) -> State:
+        if require_watchdog and request.app.state.watch.done():
+            raise HTTPException(503, "Safety watchdog unavailable")
         return request.app.state.sim
+
+    def confirm(sim: State, password: str) -> None:
+        failures = sim.failures["confirmation"]
+        while failures and failures[0] < time.monotonic() - 60:
+            failures.popleft()
+        if len(failures) >= 5:
+            raise HTTPException(429, "Confirmation attempts exceeded")
+        if not verify(password, config.operator_password_hash):
+            failures.append(time.monotonic())
+            raise HTTPException(403, "Operator confirmation required")
 
     def session(request: Request) -> Session:
         sim = state(request)
@@ -385,7 +401,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.post("/api/v1/tasks", status_code=201, response_model=TaskResponse)
     async def propose(value: Proposal, request: Request, operator: Operator):
-        sim = state(request)
+        sim = state(request, require_watchdog=True)
         if sim.stopped:
             raise HTTPException(409, "Reset the simulation stop state first")
         try:
@@ -409,9 +425,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.post("/api/v1/tasks/{task_id}/approve", response_model=TaskResponse)
     async def approve(task_id: str, value: Confirmation, request: Request, operator: Operator):
-        sim = state(request)
-        if not verify(value.password, config.operator_password_hash):
-            raise HTTPException(403, "Operator confirmation required")
+        sim = state(request, require_watchdog=True)
+        confirm(sim, value.password)
         if sim.stopped or sim.active:
             raise HTTPException(409, "Stopped or already running")
         row = sim.db.execute(
@@ -473,9 +488,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.post("/api/v1/reset", response_model=ActionResponse)
     async def reset(value: Confirmation, request: Request, operator: Operator):
-        if not verify(value.password, config.operator_password_hash):
-            raise HTTPException(403, "Operator confirmation required")
-        sim = state(request)
+        sim = state(request, require_watchdog=True)
+        confirm(sim, value.password)
         if sim.active:
             raise HTTPException(409, "Cancel the current task first")
         sim.db.execute("UPDATE safety SET stopped=0 WHERE id=1")
