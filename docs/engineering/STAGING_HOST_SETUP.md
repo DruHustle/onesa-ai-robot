@@ -1,5 +1,29 @@
 # Private Robot staging host setup
 
+## Owner-created Render targets
+
+The owner supplied `onesa-ai-robot-backend` (`srv-db5k88flk1mc73aa9110`,
+`https://onesa-ai-robot-backend.onrender.com`) and `onesa-ai-robot-backend_staging`
+(`srv-db5k9ft9fdbs73d622cg`,
+`https://onesa-ai-robot-backend-staging.onrender.com`). Do not create duplicate
+resources. Plan, region, repository/branch, protected ingress and persistent storage
+are not verified. Public readiness requests timed out; this does not prove whether
+the cause is startup, cold start or configuration. No provider writes or deployment
+were made, and these IDs do not qualify a production or physical release.
+
+For staging, the intended repository is `DruHustle/onesa-ai-robot`, reviewed branch
+`audit/robot-simulation-acceptance`, Docker root `onesa-ai-robot-backend`, Dockerfile
+`./Dockerfile`, context `.`, blank Docker Command override and Auto Deploy off.
+Confirm these before manually saving changes that might trigger deployment.
+The backend image listens on Render's `PORT`; health/readiness is `/api/v1/ready`.
+Do not select a paid instance/disk under the free-only policy. Render Free cannot
+provide the required durable SQLite volume. Keep hosted simulator acceptance blocked
+until an approved persistent target or separately reviewed persistence change exists.
+The source frontend is an independent Node server/proxy; a backend service alone
+does not deploy that interface or qualify the old public static preview.
+
+## Existing private persistent host
+
 Use an existing owner-approved machine with Docker and persistent disk for the
 software simulator. This adds no cloud compute subscription. Do not use Render
 Free for this SQLite gateway: its files are lost on restart/redeploy and it cannot

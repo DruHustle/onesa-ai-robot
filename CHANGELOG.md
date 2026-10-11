@@ -1,5 +1,7 @@
 # Changelog
 
+- Record owner-created Robot Render targets and their unverified state. Free-tier persistent-storage and hosted simulator acceptance remain blocked; no physical or public promotion is enabled.
+
 ## 2026-10-11 — Private staging host instructions
 
 Documented separate simulator containers, a dedicated private network with the
