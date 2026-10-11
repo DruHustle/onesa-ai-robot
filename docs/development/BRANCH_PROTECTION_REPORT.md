@@ -41,7 +41,7 @@ The ruleset bypass list is empty. No admin, deploy key or App receives permanent
 | `publication-hygiene` | [Job 114234025608](https://github.com/DruHustle/onesa-ai-robot/actions/runs/38059272368/job/114234025608) |
 
 
-These checks were observed on successful PR jobs and on main checks. PR workflows have no path filters, conditional required jobs or real-model/GPU/production/hardware dependency. Matrix security checks scan both runtime images where implemented; failing scans remain required. The platform TLS check uses isolated local containers, not a public production deployment. The robot checks cover only scaffold/publication hygiene, not actuation safety or implemented application tests.
+These checks were observed on successful PR jobs and on main checks. PR workflows have no path filters, conditional required jobs or real-model/GPU/production/hardware dependency. Matrix security checks scan both runtime images where implemented; failing scans remain required. The platform TLS check uses isolated local containers, not a public production deployment. Robot checks now cover authenticated software simulation, proxy/browser behavior and both runtime image security gates; physical actuation remains outside their scope.
 
 No workflow changes were needed for required check uniqueness.
 
@@ -61,7 +61,7 @@ Repository webhook listing returned empty. Vercel bot deployment evidence is pre
 
 No destructive main test was performed. No test PR was created because it cannot demonstrate protection enforcement under this plan. Existing passing PR CI demonstrates runnable checks, not enforced merge blocking. Pending/failing checks and successful authorized merging remain unverified until activation.
 
-Use [the GitHub Free operating plan](FREE_GITHUB_PLAN.md) now. The [activation/recovery procedure](branch-protection/ACTIVATION.md) is retained only for a future separately authorized change in eligibility; no paid activation is part of the selected plan. The repository-level settings task is blocked by GitHub eligibility; local governance changes are prepared on `security/main-branch-governance`, with earlier uncommitted work preserved. They are uncommitted and unpublished; no automatic merge or deployment is authorized.
+Use [the GitHub Free operating plan](FREE_GITHUB_PLAN.md) now. The [activation/recovery procedure](branch-protection/ACTIVATION.md) is retained only for a future separately authorized change in eligibility; no paid activation is part of the selected plan. The repository-level settings task is blocked by GitHub eligibility; local governance changes are prepared on `security/main-branch-governance`, with earlier uncommitted work preserved. These changes are being published on the reviewed candidate branch. This does not activate server protection or authorize automatic merging/production releases.
 
 ## Local validation
 
@@ -79,3 +79,7 @@ All 2 selected contexts match observed successful PR jobs and resolve uniquely i
 ## Sources
 
 [GitHub ruleset availability](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets) · [Ruleset REST API](https://docs.github.com/en/rest/repos/rules) · [Branch-protection REST API](https://docs.github.com/en/rest/branches/branch-protection).
+
+## 2026-10-11 candidate reconciliation
+
+The older scaffold check has been replaced by backend, frontend, containers (backend), containers (frontend) and publication-hygiene. All five were observed passing on candidate f6850fd; prepared payloads now match these actual checks. The historical API evidence records the earlier inspection and is not current check coverage. Protection remains unavailable under the selected plan.

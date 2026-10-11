@@ -3,7 +3,19 @@
     "strict": true,
     "checks": [
       {
-        "context": "scaffold-check",
+        "context": "backend",
+        "app_id": 15368
+      },
+      {
+        "context": "frontend",
+        "app_id": 15368
+      },
+      {
+        "context": "containers (backend)",
+        "app_id": 15368
+      },
+      {
+        "context": "containers (frontend)",
         "app_id": 15368
       },
       {

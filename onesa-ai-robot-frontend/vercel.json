@@ -1,0 +1,7 @@
+{
+  "framework": null,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "git": {"deploymentEnabled": false},
+  "headers": [{"source": "/(.*)", "headers": [{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"no-referrer"},{"key":"X-Frame-Options","value":"DENY"},{"key":"Content-Security-Policy","value":"default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"},{"key":"Permissions-Policy","value":"camera=(), microphone=(), geolocation=()"}]}]
+}

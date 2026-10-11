@@ -1,20 +1,32 @@
-# Robot frontend preview
+# Robot operator interface
 
-A dependency-free static visual preview uses the same navy, cyan, typography and
-orbit motif as the Onesa company homepage. It is not a connected robot application:
-authentication, telemetry, commands and safety qualification are not implemented.
-The page is marked noindex until a real release is approved.
+The existing Onesa branding and static HTML/CSS interface now connect to an
+independent authenticated software simulator through a fixed same-origin proxy.
+No browser storage retains passwords, session tokens or control keys.
 
-Preview locally from this frontend directory:
-
-```bash
-python3 -m http.server 3431 --bind 127.0.0.1 --directory public
+```sh
+npm ci --ignore-scripts
+npm run build
+npm run typecheck
+npm test
+ROBOT_API_URL=http://127.0.0.1:8431 npm start
 ```
 
-Open http://127.0.0.1:3431. No compilation or package installation is needed for
-this preview; `public/index.html` and `public/theme.css` are its source. A working
-robot runtime/backend and deployment contract remain pending. Do not expose a
-robot listener or represent the static status cards as live device measurements.
+Use Node 24. PORT defaults to 3431. `ROBOT_API_URL` is server-only and must be a
+credential-free HTTP(S) origin. Remote gateways require TLS. The proxy forwards only
+the Robot session cookie and needed Origin/CSRF/content headers; provider bypass
+headers/cookies are not forwarded. Backend `ROBOT_PUBLIC_ORIGIN` must match the
+browser origin exactly. The interface is a software simulation, never live telemetry.
 
-Owner-provided assets remain in `public/brand` and `public/social`; see
-[branding instructions](../docs/engineering/BRANDING.md).
+`npm run test:e2e` requires an isolated simulator, synthetic operator
+`browser-test-operator-only`, and matching installed Chromium/Firefox/WebKit binaries.
+The suite checks five viewport widths, keyboard entry, login/reset/proposal/approval/
+completion/stop/logout and automated WCAG rules. Manual accessibility acceptance
+remains separate. Do not use a real operator password or live hardware for tests.
+
+`docker build -t onesa-robot-interface:local .` builds a separate non-root Node image.
+The Vercel adapter reuses the same proxy boundary, but an actual Vercel build and
+protected staged deployment still need qualification. `git.deploymentEnabled=false`
+prevents automatic Git deployment; no public release is implied by a branch push.
+API schema/types are generated from the backend, checked with
+`python scripts/check-contracts.py` from the repository root using the backend venv.
