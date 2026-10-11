@@ -70,3 +70,7 @@ and sign-in and verifies that the new session remains authenticated.
 ## 2026-10-11 — Remote CI integration review
 
 Removed pip caching from the publication hygiene job because it installs no packages; GitHub runner cleanup otherwise fails when the cache directory is absent.
+
+## 2026-10-11 — Owner release configuration inspection
+
+Added an owner-only manual, read-only hosting diagnostic to verify the existing Robot production/staging targets and redacted variable presence. It cannot deploy or enable actuation; no provider credentials are exposed to PR jobs. Private Free production credential migration remains required.

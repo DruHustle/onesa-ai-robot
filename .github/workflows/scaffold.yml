@@ -8,7 +8,12 @@ name: Robot software verification
     branches:
     - main
     - staging
-  workflow_dispatch: null
+  workflow_dispatch:
+    inputs:
+      inspect_hosting:
+        description: Read only existing hosting metadata; never deploy
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -237,3 +242,25 @@ jobs:
         CI_SELECTION: ${{ toJSON(needs.changes.outputs) }}
         CI_RESULTS: ${{ toJSON(needs) }}
       run: python3 scripts/ci/summary.py
+  hosting-inspection:
+    if: github.event_name == 'workflow_dispatch' && inputs.inspect_hosting && github.event.repository.private == false &&
+      github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+      with:
+        python-version: '3.11'
+    - name: Read existing provider configuration without exposing values
+      env:
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      run: python3 scripts/inspect_hosting.py
