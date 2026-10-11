@@ -66,3 +66,7 @@ and sign-in and verifies that the new session remains authenticated.
   application portal so watchdog commits cannot overlap a caller-thread transaction.
 - Preserve all session, cancellation, restore and safety assertions; add a regression
   proving foreign-thread SQL is rejected while readiness remains available.
+
+## 2026-10-11 — Remote CI integration review
+
+Removed pip caching from the publication hygiene job because it installs no packages; GitHub runner cleanup otherwise fails when the cache directory is absent.
