@@ -1,5 +1,9 @@
 # Simulator deployment and recovery
 
+For exact owner steps on an existing private persistent Docker host, see
+[staging host setup](STAGING_HOST_SETUP.md). This does not create cloud resources
+or promote the existing public interface.
+
 Frontend/backend are independent release units. Existing public `robot.onesa.eu`
 serves a static preview; the new simulator has not been promoted to that domain.
 No new paid resource, production DNS change or physical control is authorized.

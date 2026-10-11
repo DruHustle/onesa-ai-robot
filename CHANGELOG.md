@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-11 — Private staging host instructions
+
+Documented separate simulator containers, a dedicated private network with the
+frontend's accepted backend alias, persistent non-root storage and private operator
+credentials on an existing host. Loopback-only exposure, restart/recovery acceptance
+and permanently disabled physical actuation remain explicit. No cloud deployment is
+inferred; Render Free's ephemeral storage is unsuitable for this SQLite gateway.
+
 ## 2026-10-11 — Authenticated software simulator candidate
 
 Preserved the Onesa visual identity and added separate FastAPI simulation and static
