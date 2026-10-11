@@ -200,6 +200,16 @@ Sources: [Render Free storage](https://render.com/docs/free),
 [GitHub environments](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments),
 [GitHub artifact integrity](https://docs.github.com/en/rest/actions/artifacts).
 
+## Optional Turso staging journal
+
+See [Turso staging](TURSO_STAGING.md). `STAGING_ROBOT_STORAGE_MODE=turso` and
+`STAGING_ROBOT_TURSO_DATABASE_URL` are nonsecret GitHub repository variables.
+Preflight binds Render's selected database origin and checks credential presence;
+smoke checks the exact expected runtime mode. The database token remains solely on
+Render, never a GitHub Actions secret or workflow input. Defaults preserve existing
+ephemeral staging. Production storage, operations, approvals and physical gates stay
+unchanged. A successful smoke run is not a Turso recovery/retention qualification.
+
 ## Local verification — 2026-10-11
 
 - Backend: 25 passing simulator/auth/watchdog/persistence/device/API-flow tests;

@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-10-11 — Turso staging task persistence
+
+- Add an explicit staging-only remote task journal over authenticated HTTPS, with
+  bounded nonblocking requests, parameter binding, redacted failures and fenced
+  single-writer ownership. Keep local SQLite and its application-thread ownership.
+- Restore task history, revoke process-local sessions, latch stop and cancel
+  unfinished work on restart. Cloud failure stops simulation and fails readiness;
+  recovery requires restart, without silent local fallback or command replay.
+- Bound readiness to recent background lease proof; anonymous probes cannot
+  exhaust the remote connection pool.
+- Persist accepted task events rather than writing telemetry at the 20 Hz tick rate.
+  Local watchdog/stop controls remain independent of cloud latency. Recheck approval
+  authority after storage acknowledgement; reject a reset raced by a newer stop.
+- Add isolated real-SQL/HTTP-protocol regression tests and exact staging-storage
+  bindings in the controlled release preflight/smoke workflow. Production and
+  physical-actuation guards remain intact. Actual hosted Turso verification pending.
+
 ## 2026-10-11 — Preserve audited applications with owner runner policy
 
 - Merge the owner-approved main policy without replacing current application fixes.

@@ -11,14 +11,19 @@ are not verified. Public readiness requests timed out; this does not prove wheth
 the cause is startup, cold start or configuration. No provider writes or deployment
 were made, and these IDs do not qualify a production or physical release.
 
+The new [Turso staging procedure](TURSO_STAGING.md) provides an alternative to
+local-file persistence on Render Free. Its local integration evidence does not
+establish a deployed revision or actual Turso connectivity. The private persistent
+host procedure below remains available for the default local SQLite mode.
+
 For staging, the intended repository is `DruHustle/onesa-ai-robot`, reviewed branch
 `audit/robot-simulation-acceptance`, Docker root `onesa-ai-robot-backend`, Dockerfile
 `./Dockerfile`, context `.`, blank Docker Command override and Auto Deploy off.
 Confirm these before manually saving changes that might trigger deployment.
 The backend image listens on Render's `PORT`; health/readiness is `/api/v1/ready`.
 Do not select a paid instance/disk under the free-only policy. Render Free cannot
-provide the required durable SQLite volume. Keep hosted simulator acceptance blocked
-until an approved persistent target or separately reviewed persistence change exists.
+provide the required durable SQLite volume. Keep hosted simulator acceptance pending until the selected local-volume or
+Turso journal configuration is deployed and verified, including safe restart.
 The source frontend is an independent Node server/proxy; a backend service alone
 does not deploy that interface or qualify the old public static preview.
 

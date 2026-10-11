@@ -14,11 +14,15 @@ services:
       - key: ROBOT_DEPLOYMENT_ENVIRONMENT
         value: staging
       - key: ROBOT_STORAGE_MODE
-        value: ephemeral-simulation
+        value: turso
       - key: ROBOT_ACTUATION_ENABLED
         value: "false"
       - key: ROBOT_DATABASE_PATH
         value: /app/storage/robot.sqlite3
+      - key: ROBOT_TURSO_DATABASE_URL
+        sync: false
+      - key: ROBOT_TURSO_AUTH_TOKEN
+        sync: false
       - key: ROBOT_PUBLIC_ORIGIN
         sync: false
       - key: ROBOT_OPERATOR_NAME

@@ -102,7 +102,8 @@ def run(url, environment):
         checks["backend_readiness"] = "PASS"
         require(
             ready.get("storage_mode")
-            == ("ephemeral-simulation" if environment == "Staging" else "persistent"),
+            == (os.environ.get("ROBOT_STORAGE_MODE", "ephemeral-simulation")
+                if environment == "Staging" else "persistent"),
             "Storage scope mismatch",
         )
         checks["storage_isolation"] = "PASS"

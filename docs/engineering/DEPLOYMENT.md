@@ -8,6 +8,10 @@ telemetry-only edge transport, monitoring and rollback are now documented in
 explicitly disposable simulation; durable cloud production remains blocked. The
 private persistent-host procedure below remains a separately controlled alternative.
 
+For remote durable task history on the existing Free Render staging service, see
+[Turso staging](TURSO_STAGING.md). This staging-only journal avoids reliance on
+Render's local filesystem. It does not satisfy or bypass production release gates.
+
 For exact owner steps on an existing private persistent Docker host, see
 [staging host setup](STAGING_HOST_SETUP.md). This does not create cloud resources
 or promote the existing public interface.

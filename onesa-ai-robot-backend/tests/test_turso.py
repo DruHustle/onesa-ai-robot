@@ -1,0 +1,287 @@
+"""Real simulator handlers and SQL behind an isolated fake Turso HTTP boundary."""
+
+import asyncio
+import json
+import sqlite3
+import time
+
+import httpx
+import pytest
+from fastapi.testclient import TestClient
+from pydantic import ValidationError
+
+from robot_api.main import Settings, create_app
+from robot_api.turso import LEASE, TABLE, TursoJournal
+from tests.test_simulation import HASH, PASSWORD, approve, login, proposal, reset
+
+URL = "libsql://synthetic-staging.example.turso.io"
+TOKEN = "placeholder"
+
+
+@pytest.fixture
+def remote(tmp_path, monkeypatch):
+    path = tmp_path / "cloud.sqlite3"
+    state = {"offline": False, "delay": 0.0, "calls": 0, "redirect": False, "malformed": False}
+
+    async def handler(request):
+        state["calls"] += 1
+        if state["delay"]:
+            await asyncio.sleep(state["delay"])
+        if state["offline"]:
+            return httpx.Response(403, json={"secret": TOKEN})
+        if state["redirect"]:
+            return httpx.Response(307, headers={"Location": "https://attacker.example"})
+        if state["malformed"]:
+            return httpx.Response(200, json={"results": []})
+        assert str(request.url) == "https://synthetic-staging.example.turso.io/v2/pipeline"
+        assert request.headers["Authorization"] == "Bearer " + TOKEN
+        body = json.loads(request.content)
+        assert body["requests"][1] == {"type": "close"}
+        statement = body["requests"][0]["stmt"]
+        args = []
+        for cell in statement["args"]:
+            kind = cell["type"]
+            args.append(int(cell["value"]) if kind == "integer" else cell.get("value"))
+        with sqlite3.connect(path) as db:
+            cursor = db.execute(statement["sql"], args)
+            columns = [col[0] for col in cursor.description or []]
+            rows = cursor.fetchall()
+
+        def encode(value):
+            if isinstance(value, int):
+                return {"type": "integer", "value": str(value)}
+            if isinstance(value, float):
+                return {"type": "float", "value": value}
+            return {"type": "text", "value": value}
+
+        return httpx.Response(
+            200,
+            json={
+                "results": [
+                    {
+                        "type": "ok",
+                        "response": {
+                            "type": "execute",
+                            "result": {
+                                "cols": [{"name": name} for name in columns],
+                                "rows": [[encode(value) for value in row] for row in rows],
+                            },
+                        },
+                    },
+                    {"type": "ok", "response": {"type": "close"}},
+                ]
+            },
+        )
+
+    original = TursoJournal.__init__
+
+    def initialize(self, url, token):
+        original(self, url, token)
+        self.client = httpx.AsyncClient(
+            transport=httpx.MockTransport(handler),
+            headers={"Authorization": "Bearer " + token.get_secret_value()},
+            follow_redirects=False,
+        )
+
+    monkeypatch.setattr(TursoJournal, "__init__", initialize)
+    return path, state
+
+
+def config(tmp_path):
+    return Settings(
+        operator_password_hash=HASH,
+        deployment_environment="staging",
+        storage_mode="turso",
+        turso_database_url=URL,
+        turso_auth_token=TOKEN,
+        database_path=tmp_path / "must-not-be-created.sqlite3",
+        heartbeat_seconds=1,
+    )
+
+
+def client(settings):
+    result = TestClient(create_app(settings))
+    result.headers["Origin"] = settings.public_origin
+    return result
+
+
+def test_durable_history_safe_restart_and_no_local_file(remote, tmp_path):
+    path, _ = remote
+    settings = config(tmp_path)
+    with client(settings) as first:
+        login(first)
+        reset(first)
+        task_id = approve(first, proposal(duration_seconds=5))
+        old_cookie = first.cookies.get("robot_session")
+        assert first.get("/api/v1/ready").json()["storage_mode"] == "turso"
+        with sqlite3.connect(path) as db:
+            assert db.execute(f"SELECT state FROM {TABLE} WHERE id=?", (task_id,)).fetchone() == (
+                "running",
+            )
+    with client(settings) as second:
+        second.cookies.set("robot_session", old_cookie)
+        assert second.get("/api/v1/status").status_code == 401
+        second.cookies.clear()
+        login(second)
+        assert second.get("/api/v1/status").json()["stopped"]
+        row = second.get("/api/v1/tasks").json()["tasks"][0]
+        assert row["id"] == task_id and row["state"] == "cancelled"
+        assert (
+            second.post(f"/api/v1/tasks/{task_id}/approve", json={"password": PASSWORD}).status_code
+            == 409
+        )
+    assert not settings.database_path.exists()
+
+
+def test_offline_write_stops_and_cannot_claim_success_or_recover_silently(remote, tmp_path):
+    _, network = remote
+    with client(config(tmp_path)) as api:
+        login(api)
+        reset(api)
+        network["offline"] = True
+        response = api.post("/api/v1/tasks", json=proposal())
+        assert response.status_code == 503 and TOKEN not in response.text
+        assert api.get("/api/v1/health").status_code == 200
+        status = api.get("/api/v1/status").json()
+        assert status["stopped"] and status["active_task"] is None
+        assert api.get("/api/v1/ready").status_code == 503
+        network["offline"] = False
+        assert api.post("/api/v1/reset", json={"password": PASSWORD}).status_code == 503
+
+
+def test_network_delay_does_not_block_watchdog_or_local_stop(remote, tmp_path):
+    _, network = remote
+    with client(config(tmp_path)) as api:
+        login(api)
+        reset(api)
+        approve(api, proposal(duration_seconds=5))
+        network["delay"] = 0.6
+        # A journal HTTP request yields while the independent watchdog keeps running.
+        for _ in range(2):
+            api.portal.call(api.app.state.sim.journal.probe)
+        status = api.get("/api/v1/status").json()
+        assert status["stopped"] and status["active_task"] is None
+        assert api.get("/api/v1/tasks").json()["tasks"][0]["reason"] == "operator_connection_lost"
+
+
+def test_rejects_second_writer_and_expired_lease(remote, tmp_path):
+    path, _ = remote
+    with client(config(tmp_path)) as first:
+        with pytest.raises(sqlite3.OperationalError, match="live owner"):
+            with client(config(tmp_path)):
+                pass
+        login(first)
+        reset(first)
+        with sqlite3.connect(path) as db:
+            db.execute(f"UPDATE {LEASE} SET expires=0")
+        assert first.post("/api/v1/tasks", json=proposal()).status_code == 503
+        assert first.get("/api/v1/status").json()["stopped"]
+
+
+@pytest.mark.parametrize("fault", ["offline", "redirect", "malformed"])
+def test_startup_fails_honestly_and_redacts_remote_errors(remote, tmp_path, fault):
+    _, network = remote
+    network[fault] = True
+    with pytest.raises(sqlite3.OperationalError) as error:
+        with client(config(tmp_path)):
+            pass
+    assert TOKEN not in str(error.value)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"turso_auth_token": ""},
+        {"deployment_environment": "production"},
+        {"turso_database_url": "libsql://attacker.example"},
+        {"turso_database_url": "libsql://name.turso.io/path"},
+        {"turso_database_url": "libsql://user:password@name.turso.io"},
+        {"storage_mode": "ephemeral-simulation"},
+    ],
+)
+def test_remote_settings_require_explicit_safe_staging(changes, tmp_path):
+    values = config(tmp_path).model_dump()
+    values.update(changes)
+    with pytest.raises(ValidationError):
+        Settings(**values)
+
+
+def test_stop_during_cloud_approval_cannot_grant_execution_authority(remote, tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+
+    _, network = remote
+    with client(config(tmp_path)) as api:
+        login(api)
+        reset(api)
+        value = proposal(duration_seconds=5)
+        task_id = api.post("/api/v1/tasks", json=value).json()["id"]
+        network["delay"] = 0.6
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(
+                api.post, f"/api/v1/tasks/{task_id}/approve", json={"password": PASSWORD}
+            )
+            # Wait for the actual local approval boundary, not a guessed scheduling delay.
+            for _ in range(100):
+                state = api.portal.call(
+                    lambda: api.app.state.sim.db.execute(
+                        "SELECT state FROM tasks WHERE id=?", (task_id,)
+                    ).fetchone()[0]
+                )
+                if state == "running":
+                    break
+                time.sleep(0.01)
+            assert state == "running"
+            assert api.app.state.sim.active is None
+            assert api.post("/api/v1/stop").status_code == 200
+            assert future.result(timeout=5).status_code == 409
+        assert api.get("/api/v1/status").json()["active_task"] is None
+        assert api.get("/api/v1/tasks").json()["tasks"][0]["state"] == "cancelled"
+
+
+def test_event_journal_does_not_write_each_watchdog_tick(remote, tmp_path):
+    path, _ = remote
+    with client(config(tmp_path)) as api:
+        login(api)
+        reset(api)
+        calls = 0
+        sim = api.app.state.sim
+        save = sim.journal.save
+
+        async def record(row):
+            nonlocal calls
+            calls += 1
+            await save(row)
+
+        sim.journal.save = record
+        task_id = approve(api, proposal(duration_seconds=5))
+        time.sleep(0.3)
+        assert calls == 2  # One proposal and one approval, not 20 Hz position writes.
+        assert api.post(f"/api/v1/tasks/{task_id}/cancel").status_code == 200
+        assert calls == 3
+        with sqlite3.connect(path) as db:
+            assert db.execute(f"SELECT state FROM {TABLE}").fetchone()[0] == "cancelled"
+
+
+def test_owner_lease_renewal_does_not_restore_an_expired_owner(remote, tmp_path):
+    path, _ = remote
+    with client(config(tmp_path)) as api:
+        sim = api.app.state.sim
+        api.portal.call(sim.refresh_journal_lease)
+        with sqlite3.connect(path) as db:
+            db.execute(f"UPDATE {LEASE} SET owner='replacement',expires=unixepoch()+30")
+        with pytest.raises(sqlite3.OperationalError, match="ownership expired"):
+            api.portal.call(sim.refresh_journal_lease)
+        assert api.get("/api/v1/ready").status_code == 503
+
+
+def test_anonymous_readiness_cannot_exhaust_database_pool(remote, tmp_path):
+    _, network = remote
+    with client(config(tmp_path)) as api:
+        calls = network["calls"]
+        for _ in range(20):
+            assert api.get("/api/v1/ready").status_code == 200
+        assert network["calls"] == calls
+        sim = api.app.state.sim
+        api.portal.call(lambda: setattr(sim, "journal_lease_confirmed_at", time.monotonic() - 16))
+        assert api.get("/api/v1/ready").status_code == 503
+        assert api.portal.call(lambda: sim.stopped)

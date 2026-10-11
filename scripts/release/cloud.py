@@ -61,6 +61,26 @@ def origin(value, suffix=None):
     return value.rstrip("/")
 
 
+def staging_storage(values):
+    mode = os.environ.get("ROBOT_STORAGE_MODE", "ephemeral-simulation")
+    require(mode in {"ephemeral-simulation", "turso"}, "Unknown staging storage mode")
+    require(values.get("ROBOT_STORAGE_MODE") == mode, "Staging storage binding mismatch")
+    if mode == "turso":
+        expected = os.environ.get("ROBOT_TURSO_DATABASE_URL", "")
+        parsed = urllib.parse.urlsplit(expected)
+        require(
+            parsed.scheme == "libsql" and parsed.hostname
+            and re.fullmatch(r"[a-z0-9][a-z0-9.-]*\.turso\.io", parsed.hostname)
+            and not parsed.username and not parsed.password and not parsed.port
+            and not parsed.query and not parsed.fragment and parsed.path in {"", "/"},
+            "Configure the reviewed staging Turso database origin",
+        )
+        require(values.get("ROBOT_TURSO_DATABASE_URL") == expected,
+                "Turso staging database identity mismatch")
+        require(bool(values.get("ROBOT_TURSO_AUTH_TOKEN")), "Turso runtime credential missing")
+    return mode
+
+
 def preflight(environment):
     require(environment in {"Staging", "Production"}, "Unknown environment")
     require(
@@ -120,10 +140,7 @@ def preflight(environment):
         require(
             details.get("plan") == "free", "Staging uses only an approved free service"
         )
-        require(
-            values.get("ROBOT_STORAGE_MODE") == "ephemeral-simulation",
-            "Label ephemeral staging",
-        )
+        staging_storage(values)
         require(
             os.environ.get("ROBOT_TEST_OPERATOR") == values.get("ROBOT_OPERATOR_NAME"),
             "Dedicated synthetic staging operator missing",
@@ -260,7 +277,8 @@ def receipt(environment, directory, browser):
         "render_deployment_id": render["deployment_id"],
         "vercel_deployment_id": vercel_id,
         "scope": "software-simulation-only",
-        "storage": "ephemeral-simulation" if environment == "Staging" else "persistent",
+        "storage": os.environ.get("ROBOT_STORAGE_MODE", "ephemeral-simulation")
+        if environment == "Staging" else "persistent",
         "physical_hardware_approved": False,
         "frontend_url": url,
         "operator_url": operator_url if environment == "Production" else url,

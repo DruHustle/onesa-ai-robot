@@ -40,6 +40,15 @@ behind the approved same-origin frontend/TLS boundary. No credential is a fronte
 public setting. Physical actuation=true always fails startup. No migration or test
 uses either sibling product's database.
 
+For durable remote task history on Render Free staging, use the staging-only
+`ROBOT_STORAGE_MODE=turso`, `ROBOT_TURSO_DATABASE_URL` and server-only
+`ROBOT_TURSO_AUTH_TOKEN` settings. See [Turso staging setup](../docs/engineering/TURSO_STAGING.md).
+Local SQLite remains the default. This is a remote task journal with an in-memory
+SQLite working store, not an embedded replica. Sessions and simulation authority
+remain process-local. It does not enable Turso in production or migrate an existing
+local database. The runtime HTTP client is the already hash-locked httpx 0.28.1
+(BSD-3-Clause); its existing transitive dependencies retain their pins/hashes.
+
 For disposable Render staging, explicitly set `ROBOT_DEPLOYMENT_ENVIRONMENT=staging`
 and `ROBOT_STORAGE_MODE=ephemeral-simulation`. Readiness reports that storage scope;
 production rejects it. Use the [cloud release guide](../docs/engineering/AUTOMATED_QUALIFICATION.md)
