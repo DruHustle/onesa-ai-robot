@@ -206,7 +206,7 @@ def preflight(environment):
         for item in envs.get("envs", [])
         if item.get("key") == "ROBOT_API_URL"
         and target in item.get("target", [])
-        and item.get("gitBranch") in {None, "main"}
+        and item.get("gitBranch") in ({"staging"} if environment == "Staging" else {None, "main"})
     ]
     require(
         len(matching) == 1

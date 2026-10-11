@@ -22,6 +22,7 @@ jobs:
       == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name
       == github.repository && github.event.workflow_run.head_sha == github.sha && github.event.workflow_run.conclusion ==
       'success'))
+    environment: Staging
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -64,11 +65,11 @@ jobs:
         ROBOT_STORAGE_MODE: ${{ vars.STAGING_ROBOT_STORAGE_MODE || 'ephemeral-simulation' }}
         ROBOT_TURSO_DATABASE_URL: ${{ vars.STAGING_ROBOT_TURSO_DATABASE_URL }}
         ROBOT_API_URL: ${{ vars.STAGING_ROBOT_API_URL }}
-      run: 'vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+      run: 'vercel pull --yes --environment=preview --git-branch=staging --token="$VERCEL_TOKEN"
 
         vercel build --token="$VERCEL_TOKEN"
 
-        vercel deploy --prebuilt --token="$VERCEL_TOKEN" --meta githubCommitSha="$GITHUB_SHA" --meta githubCommitRef=main
+        vercel deploy --prebuilt --token="$VERCEL_TOKEN" --meta githubCommitSha="$GITHUB_SHA" --meta githubCommitRef=staging
         > "$RUNNER_TEMP/robot-release/frontend-url.txt"
 
         '

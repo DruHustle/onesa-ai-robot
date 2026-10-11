@@ -4,10 +4,12 @@ name: Repository hygiene
     branches:
     - main
     - staging
+    - dev
   pull_request:
     branches:
     - main
     - staging
+    - dev
   workflow_dispatch: null
 permissions:
   contents: read
