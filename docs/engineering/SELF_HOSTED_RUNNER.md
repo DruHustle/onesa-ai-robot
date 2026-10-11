@@ -60,7 +60,8 @@ services and tool caches prevent accidental data/port conflicts. Docker membersh
 root-equivalent inside this VM: the three trusted repositories are not security boundaries
 against one another. Never register untrusted writers. Owner guards restrict private PRs.
 
-Before any private job's code runs, a root-owned started hook calls `visibility.py` using
+Private hooks/configuration are stored under root-owned `/usr/local/lib/onesa-ci/USER`,
+outside the runner-owned checkout and installation directory. Before any private job's code runs, a root-owned started hook calls `visibility.py` using
 a short-lived, repository-scoped `ONESA_CI_TOKEN` supplied by the workflow's read-only
 `github.token`; no personal credential is shared. It verifies actual API visibility and
 repository identity both before and after waiting for the lease. Public repositories,
@@ -148,3 +149,8 @@ DruHustle/onesa-ai-robot`; inspect `/actions/runs/RUN_ID/jobs` for runner names/
 candidate SHA. Older local-selected runs are not evidence for the current public policy.
 Rollback via a reviewed PR, preserving required checks/approvals; never restore public
 self-hosted access. Runner policy removal is independent of application rollback/state.
+
+## Hosted CI evidence — 2026-10-11
+
+Main-based policy candidate `08a4c0f` passed [PR scaffold validation](https://github.com/DruHustle/onesa-ai-robot/actions/runs/38136458315) and hygiene on hosted runners. This establishes scaffold coverage only. Separate implemented snapshot `899476a` [software CI](https://github.com/DruHustle/onesa-ai-robot/actions/runs/38136458386) passed all 18 Linux browser cases and both container/security jobs but failed one backend test (16 passed): `test_session_revocation_cancel_restart_and_expiry`, `sqlite3.OperationalError: cannot commit - no transaction is active` in `robot_api/main.py:203`. Application concurrency repair belongs to the audit session; no test was removed or bypassed. Final documentation/hook-location corrections require fresh scaffold checks before merge.
+GitHub currently reports no main branch protection (404) and no applicable branch rules ([]); this migration did not change enforcement settings. PR/check discipline and production approvals remain required.
