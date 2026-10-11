@@ -1,5 +1,7 @@
 # Onesa AI Robot
 
+> Current pipeline: [automated review, staging qualification and owner activation](docs/development/CI_CD_PIPELINE_REPORT.md). Prepared local changes are not live deployments; branch/PR optimization and automatic technical evidence supersede older manual-only details.
+
 > Current private-Free release policy: [safeguards and external owner authorization](docs/development/PRIVATE_FREE_SAFEGUARDS.md). Legacy JSON approval is retired; native protection requirements below apply only to a verified supported configuration.
 
 Independent Onesa UG robotics repository. The implemented release scope is an

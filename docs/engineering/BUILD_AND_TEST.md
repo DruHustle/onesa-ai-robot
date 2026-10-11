@@ -1,5 +1,7 @@
 # Independent software builds and tests
 
+> Current pipeline: [automated review, staging qualification and owner activation](../development/CI_CD_PIPELINE_REPORT.md). Prepared local changes are not live deployments; branch/PR optimization and automatic technical evidence supersede older manual-only details.
+
 Use the [frontend](../../onesa-ai-robot-frontend/README.md) and
 [backend](../../onesa-ai-robot-backend/README.md) commands. Node 24 and Python 3.11
 are qualified software runtimes. Both applications have independent Dockerfiles,

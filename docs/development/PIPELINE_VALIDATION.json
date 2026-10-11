@@ -1,0 +1,113 @@
+{
+  "scope": "Local checks; no live deployments or remote new-workflow run",
+  "pipeline": {
+    "release": {
+      "exit_code": 0,
+      "output": "........s..s.ss.s...s..s.....................\n----------------------------------------------------------------------\nRan 45 tests in 0.153s\n\nOK (skipped=7)\n"
+    },
+    "pipeline": {
+      "exit_code": 0,
+      "output": "src/index.ts(2,3): error TS2322: mismatch.................\n----------------------------------------------------------------------\nRan 17 tests in 0.340s\n\nOK\n"
+    },
+    "security": {
+      "exit_code": 0,
+      "output": "Zizmor: 0 blocking and 4 advisory findings\nGitleaks: 0 finding(s)\n"
+    },
+    "hygiene": {
+      "exit_code": 0,
+      "output": "Publication hygiene: 0 finding(s); manual review still required.\n"
+    }
+  },
+  "application": [
+    {
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "onesa-ai-robot-backend/robot_api",
+        "onesa-ai-robot-backend/tests"
+      ],
+      "exit_code": 0,
+      "output_tail": "All checks passed!\n"
+    },
+    {
+      "cwd": "onesa-ai-robot/onesa-ai-robot-backend",
+      "command": [
+        "../.venv/bin/python",
+        "-m",
+        "mypy",
+        "robot_api"
+      ],
+      "exit_code": 0,
+      "output_tail": "Success: no issues found in 5 source files\n"
+    },
+    {
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "-q",
+        "onesa-ai-robot-backend/tests"
+      ],
+      "exit_code": 0,
+      "output_tail": ".........................                                                [100%]\n=============================== warnings summary ===============================\n.venv/lib/python3.11/site-packages/fastapi/testclient.py:1\n  /Users/andrewgotora/Software Development/GitHub/onesa-ug/onesa-ai-robot/.venv/lib/python3.11/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n25 passed, 1 warning in 14.62s\n"
+    },
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "onesa-ai-robot-frontend",
+        "run",
+        "lint"
+      ],
+      "exit_code": 0,
+      "output_tail": "\n> onesa-robot-interface@0.1.0 lint\n> node --check public/app.js && node --check server.mjs && node --check api/v1/[...path].mjs\n\n"
+    },
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "onesa-ai-robot-frontend",
+        "run",
+        "typecheck"
+      ],
+      "exit_code": 0,
+      "output_tail": "\n> onesa-robot-interface@0.1.0 typecheck\n> tsc --noEmit\n\n"
+    },
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "onesa-ai-robot-frontend",
+        "run",
+        "build"
+      ],
+      "exit_code": 0,
+      "output_tail": "\n> onesa-robot-interface@0.1.0 build\n> node scripts/build.mjs\n\nBuilt independent static simulation interface. Gateway hosting remains separate.\n"
+    },
+    {
+      "command": [
+        "npm",
+        "--prefix",
+        "onesa-ai-robot-frontend",
+        "test"
+      ],
+      "exit_code": 0,
+      "output_tail": "1 existing frontend proxy test passed with authorized loopback socket access."
+    },
+    {
+      "command": [
+        ".venv/bin/python",
+        "scripts/check-contracts.py"
+      ],
+      "exit_code": 0,
+      "output_tail": "Exported versioned simulation contract without opening a database.\n\u2728 openapi-typescript 7.13.0\n\ud83d\ude80 contracts/openapi.json \u2192 contracts/schema.ts [34.3ms]\nSimulation API and generated types match the source contract.\n"
+    }
+  ],
+  "limitations": [
+    "Full live staging/production acceptance not executed",
+    "Full DB/browser/image/ROS suites retained in CI; not rerun in this local pipeline audit",
+    "Robot release tests retain seven native protection specific skips; private-Free external handoff tested"
+  ]
+}

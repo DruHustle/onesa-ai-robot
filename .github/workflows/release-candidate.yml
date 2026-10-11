@@ -29,14 +29,16 @@ jobs:
         }
 
         '
-    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        persist-credentials: false
     - name: Require implemented application build context
       env:
         APPLICATION: ${{ inputs.application }}
       run: "if ! test -f \"onesa-ai-robot-${APPLICATION}/Dockerfile\"; then\n  echo 'Application not implemented. No candidate\
         \ can be packaged.'\n  exit 1\nfi\n"
     - name: Require exact-revision software and publication checks
-      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+      uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
       with:
         script: "const checks = await github.paginate(github.rest.checks.listForRef, {\n  ...context.repo, ref: context.sha,\
           \ per_page: 100\n});\nfor (const name of ['backend', 'frontend', 'containers (frontend)', 'containers (backend)',\
@@ -51,8 +53,9 @@ jobs:
         docker save "onesa-robot-${APPLICATION}:${GITHUB_SHA}" -o candidate.tar
 
         '
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       with:
         name: robot-${{ inputs.application }}-${{ github.sha }}
         path: candidate.tar
         retention-days: 7
+    timeout-minutes: 30

@@ -86,12 +86,22 @@ def main():
     github = GitHub()
     sha, run = observed_context(github)
     trusted_run(
-        run, "robot-monitor.yml", sha, {"main"}, event="workflow_run", completed=False
+        run,
+        "robot-monitor.yml",
+        sha,
+        {"main"},
+        event="workflow_dispatch",
+        completed=False,
     )
     upstream = github.run(os.environ["UPSTREAM_RUN"])
     environment = os.environ["DEPLOYMENT_ENVIRONMENT"]
-    workflow = "release-staging.yml" if environment == "Staging" else "deploy.yml"
-    trusted_run(upstream, workflow, sha, {"main"})
+    require(
+        environment == "Staging",
+        "Production monitoring requires external owner credentials",
+    )
+    from evidence import trusted_staging_run
+
+    trusted_staging_run(github, upstream, sha)
     record, artifact = github.artifact(
         upstream,
         "staging-verification" if environment == "Staging" else "production-deployment",

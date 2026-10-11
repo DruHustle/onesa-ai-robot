@@ -1,15 +1,5 @@
 name: Release qualification evidence
 'on':
-  workflow_run:
-    workflows:
-    - Robot software verification
-    - Repository hygiene
-    - Reviewed production frontend build
-    - Robot staging deployment
-    types:
-    - completed
-    branches:
-    - main
   workflow_dispatch:
     inputs:
       staging_run:
@@ -30,16 +20,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       with:
-        persist-credentials: 'false'
+        persist-credentials: false
         ref: ${{ github.sha }}
     - name: Generate observed technical evidence
       env:
         GH_TOKEN: ${{ github.token }}
         STAGING_RUN: ${{ inputs.staging_run }}
       run: python3 scripts/release/evidence.py generate --output "$RUNNER_TEMP/qualification/record.json"
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       with:
         name: release-qualification
         path: ${{ runner.temp }}/qualification/record.json

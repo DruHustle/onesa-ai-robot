@@ -1,46 +1,37 @@
 name: Robot deployment monitoring
 'on':
-  workflow_run:
-    workflows:
-    - Robot staging deployment
-    - Robot production deployment
-    types:
-    - completed
-    branches:
-    - main
+  workflow_dispatch:
+    inputs:
+      staging_run:
+        description: Exact successful owner staging run to observe
+        type: string
+        required: true
 permissions:
   contents: read
   actions: read
 jobs:
   observe:
-    if: ${{ github.event.repository.private == false && (github.event.repository.private == false && github.repository ==
-      'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.event.workflow_run.head_repository.full_name ==
-      github.repository && github.event.workflow_run.head_sha == github.sha && github.event.workflow_run.conclusion == 'success')
-      }}
+    if: github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle'
+      && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    environment: ${{ github.event.workflow_run.name == 'Robot staging deployment' && 'Staging' || 'Production' }}
     steps:
-    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       with:
-        persist-credentials: 'false'
+        persist-credentials: false
         ref: ${{ github.sha }}
     - name: Verify current providers and simulator readiness
       env:
         GH_TOKEN: ${{ github.token }}
-        UPSTREAM_RUN: ${{ github.event.workflow_run.id }}
-        DEPLOYMENT_ENVIRONMENT: ${{ github.event.workflow_run.name == 'Robot staging deployment' && 'Staging' || 'Production'
-          }}
-        RENDER_API_KEY: ${{ github.event.workflow_run.name == 'Robot staging deployment' && secrets.STAGING_RENDER_API_KEY
-          || secrets.RENDER_API_KEY }}
-        RENDER_SERVICE_ID: ${{ github.event.workflow_run.name == 'Robot staging deployment' && secrets.STAGING_RENDER_SERVICE_ID
-          || secrets.RENDER_SERVICE_ID }}
-        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-        VERCEL_PROJECT_ID: ${{ github.event.workflow_run.name == 'Robot staging deployment' && secrets.STAGING_VERCEL_PROJECT_ID
-          || secrets.VERCEL_PROJECT_ID }}
+        UPSTREAM_RUN: ${{ inputs.staging_run }}
+        DEPLOYMENT_ENVIRONMENT: Staging
+        RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
+        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
       run: python3 scripts/release/monitor.py observe --output "$RUNNER_TEMP/robot-monitor/record.json"
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       with:
         name: robot-deployment-monitoring
         path: ${{ runner.temp }}/robot-monitor/record.json

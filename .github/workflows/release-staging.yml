@@ -1,6 +1,13 @@
 name: Robot staging deployment
-'on':
+'on': # zizmor: ignore[dangerous-triggers] -- Exact owner main SHA; CI and artifact provenance checked before use; see CI_CD_PIPELINE_REPORT.md
   workflow_dispatch: {}
+  workflow_run:
+    workflows:
+    - Robot software verification
+    types:
+    - completed
+    branches:
+    - main
 permissions:
   contents: read
   actions: read
@@ -9,14 +16,18 @@ concurrency:
   cancel-in-progress: false
 jobs:
   deploy:
-    if: always() && true && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.ref ==
-      'refs/heads/main'
+    if: github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle'
+      && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_run'
+      && github.event.repository.private == true && vars.STAGING_AUTOMATION_ENABLED == 'true' && github.event.workflow_run.event
+      == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name
+      == github.repository && github.event.workflow_run.head_sha == github.sha && github.event.workflow_run.conclusion ==
+      'success'))
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       with:
-        persist-credentials: 'false'
+        persist-credentials: false
         ref: ${{ github.sha }}
     - name: Validate exact candidate evidence
       env:
@@ -35,7 +46,7 @@ jobs:
         ROBOT_TEST_OPERATOR: ${{ vars.STAGING_ROBOT_TEST_OPERATOR }}
         VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
       run: python3 scripts/release/cloud.py preflight Staging
-    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
       with:
         node-version: '24'
     - name: Install locked frontend tooling
@@ -110,7 +121,7 @@ jobs:
         ROBOT_TEST_OPERATOR: ${{ vars.STAGING_ROBOT_TEST_OPERATOR }}
         VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
       run: python3 scripts/release/cloud.py receipt Staging --directory "$RUNNER_TEMP/robot-release" --browser-passed
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       with:
         name: staging-verification
         path: ${{ runner.temp }}/robot-release/record.json

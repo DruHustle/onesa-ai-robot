@@ -25,9 +25,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       with:
-        persist-credentials: 'false'
+        persist-credentials: false
     - name: Require complete exact-candidate checks
       env:
         GH_TOKEN: ${{ github.token }}
@@ -55,7 +55,7 @@ jobs:
         python3 scripts/release/edge-manifest.py "$RUNNER_TEMP/edge"
 
         '
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       with:
         name: robot-edge-simulation-${{ github.sha }}
         path: '${{ runner.temp }}/edge/simulator.tar
