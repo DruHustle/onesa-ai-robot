@@ -1,0 +1,65 @@
+# Public: hosted only. Private: full local validation precedes cloud execution.
+name: Private local validation
+'on':
+  workflow_call: {}
+permissions:
+  contents: read
+jobs:
+  scaffold-check:
+    runs-on:
+    - self-hosted
+    - Linux
+    - ARM64
+    - onesa-robot-local
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - name: Validate documented independent application boundaries
+      run: |
+        test -f onesa-ai-robot-frontend/README.md
+        test -f onesa-ai-robot-backend/README.md
+        test -f onesa-ai-robot-frontend/.env.example
+        test -f onesa-ai-robot-backend/.env.example
+    - run: echo 'Scaffold only. Application build, test and deployment remain unimplemented.'
+    timeout-minutes: 120
+    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
+    env:
+      ONESA_CI_TOKEN: ${{ github.token }}
+  publication-hygiene:
+    runs-on:
+    - self-hosted
+    - Linux
+    - ARM64
+    - onesa-robot-local
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - run: python scripts/repository_hygiene.py --history
+    timeout-minutes: 120
+    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
+    env:
+      ONESA_CI_TOKEN: ${{ github.token }}
+  complete:
+    name: local-complete
+    if: ${{ always() && github.event.repository.private == true && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'skipped') }}
+    needs:
+    - scaffold-check
+    - publication-hygiene
+    runs-on:
+    - self-hosted
+    - Linux
+    - ARM64
+    - onesa-robot-local
+    timeout-minutes: 120
+    env:
+      ONESA_CI_TOKEN: ${{ github.token }}
+    steps:
+    - run: echo "All local validation passed for $GITHUB_SHA on $RUNNER_NAME" >> "$GITHUB_STEP_SUMMARY"

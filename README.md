@@ -18,3 +18,5 @@ Choose runtime, hardware targets, contracts and safety requirements before imple
 · [GitHub setup](GITHUB_SETUP.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md).
 The root `.env.example` and application examples are proposed configuration, not a
 working runtime contract. No license is assigned pending ownership approval.
+
+Actions visibility, local-first private validation and hosted public routing: [runner maintenance](docs/engineering/SELF_HOSTED_RUNNER.md).

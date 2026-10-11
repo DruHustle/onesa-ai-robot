@@ -1,0 +1,7 @@
+{
+  "repository": "DruHustle/onesa-ai-robot",
+  "name": "onesa-robot-local-arm64",
+  "label": "onesa-robot-local",
+  "user": "robotci",
+  "directory": "/opt/onesa-robot-runner"
+}

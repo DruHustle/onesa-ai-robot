@@ -26,3 +26,7 @@ planned address, not a live deployment. Reserve it in the domain plan; attach DN
 only once an implemented and qualified frontend has a confirmed hosting target.
 The gateway remains independently deployable and authenticated; selecting the
 hostname does not implement or authorize hardware control.
+
+## Local CI infrastructure
+
+Runner provisioning and workflow routing are independent of application release: see [SELF_HOSTED_RUNNER.md](SELF_HOSTED_RUNNER.md). Main remains scaffold-only; simulator/ROS 2/hardware qualification must never be inferred from its boundary checks. Audit branches must retain their implemented application tests when incorporating the runner migration.
