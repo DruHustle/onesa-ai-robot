@@ -34,13 +34,19 @@ jobs:
           ROBOT_DATABASE_PATH: /tmp/robot-browser-test.sqlite3
           ROBOT_PUBLIC_ORIGIN: http://localhost:3431
         run: |
-          export ROBOT_OPERATOR_PASSWORD_HASH=$(cd onesa-ai-robot-backend && python -c "from robot_api.security import password_hash; print(password_hash('browser-test-operator-only'))")
+          ROBOT_OPERATOR_PASSWORD_HASH=$(cd onesa-ai-robot-backend && python -c "from robot_api.security import password_hash; print(password_hash('browser-test-operator-only'))")
+          export ROBOT_OPERATOR_PASSWORD_HASH
           (cd onesa-ai-robot-backend && sh start.sh) > /tmp/robot-backend-test.log 2>&1 &
           backend_pid=$!
           (cd onesa-ai-robot-frontend && npm start) > /tmp/robot-frontend-test.log 2>&1 &
           frontend_pid=$!
           trap 'kill "$backend_pid" "$frontend_pid" 2>/dev/null || true' EXIT
-          for i in $(seq 1 30); do curl -fsS http://localhost:3431/api/v1/ready > /dev/null && break || sleep 1; done
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://localhost:3431/api/v1/ready > /dev/null; then break; fi
+            echo "Waiting for Robot readiness: $attempt"
+            sleep 1
+          done
+          curl -fsS http://localhost:3431/api/v1/ready > /dev/null
           npm --prefix onesa-ai-robot-frontend run test:e2e
   containers:
     runs-on: ubuntu-latest

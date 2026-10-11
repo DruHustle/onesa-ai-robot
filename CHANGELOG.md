@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-11 — Public repository hosted Actions
+
+- Make browser setup fail when password hashing or backend readiness fails; retain
+  all three browser suites and bound startup waiting.
+
+- Record the owner-selected temporary public visibility and standard GitHub-hosted
+  runner policy. Local runners remain private-only; retain security and release gates.
+- Clarify that earlier private-plan protection failures are historical and do not
+  establish current public-repository enforcement. No billing or protection settings changed.
+
 ## 2026-10-11 — Incomplete request deadline
 
 Bound simulator mutation body reception to five seconds total and reject excess
