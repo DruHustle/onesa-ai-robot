@@ -33,3 +33,8 @@ do not copy an open main file without WAL consistency. Test restoration only in 
 isolated simulator: history persists, sessions revoke, stop stays latched, no task
 resumes. Production restoration/retention and alert delivery need owner acceptance.
 ROS 2 Jazzy interface definitions are preparatory, not a connected control adapter.
+
+Public CI uses GitHub-hosted Ubuntu exclusively. The private-only reusable validation
+gate includes the full simulator, cross-browser and container checks; it does not
+register a runner or authorize a persistent host or physical control. See
+[runner operations](SELF_HOSTED_RUNNER.md).

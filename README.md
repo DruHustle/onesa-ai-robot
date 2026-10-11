@@ -28,4 +28,4 @@ its configuration; provider/build/test/release gates must be qualified independe
 Secrets, databases, models, uploads and internal release evidence remain outside Git.
 No project licensing or physical hardware operation is authorized by this change.
 
-[Engineering policies](AGENTS.md) · [Contribution workflow](CONTRIBUTING.md) · [Security reporting](SECURITY.md) · [GitHub Free operating plan](docs/development/FREE_GITHUB_PLAN.md). Main protection is blocked by current plan eligibility, not enforced.
+[Engineering policies](AGENTS.md) · [Contribution workflow](CONTRIBUTING.md) · [Security reporting](SECURITY.md) · [GitHub Free operating plan](docs/development/FREE_GITHUB_PLAN.md). Main protection is not enforced in current public readback. Earlier private-plan rejection does not establish current eligibility.

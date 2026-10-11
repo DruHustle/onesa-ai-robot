@@ -127,7 +127,9 @@ class ActionResponse(BaseModel):
 class State:
     def __init__(self, settings: Settings):
         settings.database_path.parent.mkdir(parents=True, exist_ok=True)
-        self.db = sqlite3.connect(settings.database_path, check_same_thread=False, timeout=2)
+        # Transactions, routes and watchdog run on one application event-loop thread.
+        # Reject foreign-thread access rather than sharing an implicit transaction.
+        self.db = sqlite3.connect(settings.database_path, timeout=2)
         self.db.row_factory = sqlite3.Row
         settings.database_path.chmod(0o600)
         self.db.execute("PRAGMA journal_mode=WAL")
