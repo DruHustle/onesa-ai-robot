@@ -83,6 +83,8 @@ jobs:
     - name: 'Release requirement: qualification failure-path tests'
       run: python3 -m unittest discover -s scripts/release -p 'test_*.py'
     - run: python3 -m unittest discover -s scripts/runner -p 'test_*.py'
+    - name: Verify hosting diagnostic redaction and denied access
+      run: python3 -m unittest discover -s scripts -p 'test_inspect_hosting.py'
     timeout-minutes: 30
     env:
       REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
