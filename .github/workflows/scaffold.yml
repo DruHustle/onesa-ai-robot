@@ -1,16 +1,41 @@
+# Public: hosted only. Private: full local validation precedes cloud execution.
 name: Robot scaffold checks
-on: [push, pull_request, workflow_dispatch]
+'on':
+- push
+- pull_request
+- workflow_dispatch
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
+  local-validation:
+    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
+    uses: ./.github/workflows/_local-validation.yml
   scaffold-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Validate documented independent application boundaries
-        run: |
-          test -f onesa-ai-robot-frontend/README.md
-          test -f onesa-ai-robot-backend/README.md
-          test -f onesa-ai-robot-frontend/.env.example
-          test -f onesa-ai-robot-backend/.env.example
-      - run: echo 'Scaffold only. Application build, test and deployment remain unimplemented.'
+    - name: Verify GitHub-hosted execution and actual visibility
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+      run: |-
+        test "$RUNNER_ENVIRONMENT" = github-hosted
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Visibility changed; dispatch fresh validation under the current policy'; exit 1; }
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - name: Validate documented independent application boundaries
+      run: |
+        test -f onesa-ai-robot-frontend/README.md
+        test -f onesa-ai-robot-backend/README.md
+        test -f onesa-ai-robot-frontend/.env.example
+        test -f onesa-ai-robot-backend/.env.example
+    - run: echo 'Scaffold only. Application build, test and deployment remain unimplemented.'
+    needs:
+    - local-validation
+    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
+    timeout-minutes: 45
