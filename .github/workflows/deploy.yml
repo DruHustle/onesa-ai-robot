@@ -1,0 +1,140 @@
+name: Robot production deployment
+"on":
+  workflow_dispatch:
+    inputs:
+      approval_run:
+        description: Latest owner release-review approval run for current main
+        type: string
+        required: true
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: robot-cloud-deployment
+  cancel-in-progress: false
+jobs:
+  local-validation:
+    if: github.event.repository.private == true && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle'
+    uses: ./.github/workflows/_local-validation.yml
+  deploy:
+    needs: local-validation
+    if: always() && (github.event.repository.private == false || needs.local-validation.result == 'success') && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: Production
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - name: Validate exact candidate evidence
+      env:
+        GH_TOKEN: ${{ github.token }}
+        APPROVAL_RUN: ${{ inputs.approval_run }}
+      run: python3 scripts/release/evidence.py promote --approval-run "$APPROVAL_RUN" --output "$RUNNER_TEMP/robot-release/preflight.json"
+    - name: Verify isolated provider targets
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        ROBOT_API_URL: ${{ vars.ROBOT_API_URL }}
+        ROBOT_PUBLIC_ORIGIN: ${{ vars.ROBOT_PUBLIC_ORIGIN }}
+        ROBOT_TEST_OPERATOR: ${{ vars.ROBOT_TEST_OPERATOR }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      run: python3 scripts/release/cloud.py preflight Production
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+    - name: Install locked frontend tooling
+      working-directory: onesa-ai-robot-frontend
+      run: npm ci --ignore-scripts
+    - name: Install pinned deployment CLI
+      run: npm install --global vercel@63.1.0
+    - name: Download reviewed encrypted production build
+      env:
+        GH_TOKEN: ${{ github.token }}
+        APPROVAL_RUN: ${{ inputs.approval_run }}
+      run: python3 scripts/release/evidence.py fetch-build --approval-run "$APPROVAL_RUN" --output "$RUNNER_TEMP/reviewed-build/record.json"
+    - name: Restore authenticated reviewed build
+      env:
+        RELEASE_BUILD_KEY: ${{ secrets.RELEASE_BUILD_KEY }}
+      run: node scripts/release/bundle.mjs unpack "$RUNNER_TEMP/reviewed-build"
+    - name: Recheck live isolated staging before production
+      env:
+        RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+      run: python3 scripts/release/monitor.py stage-live --input "$RUNNER_TEMP/robot-release/preflight.json" --output "$RUNNER_TEMP/staging-live/record.json"
+    - name: Deploy exact backend source
+      env:
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+      run: RENDER_RECEIPT_PATH="$RUNNER_TEMP/robot-release/render.json" python3 scripts/deploy_render.py
+    - name: Revalidate approval before frontend promotion
+      env:
+        GH_TOKEN: ${{ github.token }}
+        APPROVAL_RUN: ${{ inputs.approval_run }}
+      run: python3 scripts/release/evidence.py promote --approval-run "$APPROVAL_RUN" --output "$RUNNER_TEMP/rechecked/record.json"
+    - name: Deploy reviewed frontend output
+      env:
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        ROBOT_API_URL: ${{ vars.ROBOT_API_URL }}
+      run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" --meta githubCommitSha="$GITHUB_SHA" --meta githubCommitRef=main > "$RUNNER_TEMP/robot-release/frontend-url.txt"
+    - name: Verify canonical production operator origin before credentials are used
+      env:
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        ROBOT_PUBLIC_ORIGIN: ${{ vars.ROBOT_PUBLIC_ORIGIN }}
+      run: python3 scripts/release/cloud.py operator-origin Production --directory "$RUNNER_TEMP/robot-release"
+    - name: Synthetic API and safety acceptance
+      env:
+        ROBOT_EDGE_TOKEN: ${{ secrets.ROBOT_EDGE_TOKEN }}
+        ROBOT_EDGE_DEVICE_ID: ${{ vars.ROBOT_EDGE_DEVICE_ID }}
+        ROBOT_TEST_PASSWORD: ${{ secrets.ROBOT_TEST_PASSWORD }}
+        ROBOT_TEST_SCOPE: approved-synthetic-production
+        ROBOT_PUBLIC_ORIGIN: ${{ vars.ROBOT_PUBLIC_ORIGIN }}
+        ROBOT_API_URL: ${{ vars.ROBOT_API_URL }}
+        ROBOT_TEST_OPERATOR: ${{ vars.ROBOT_TEST_OPERATOR }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      run: python3 scripts/release/smoke.py Production --directory "$RUNNER_TEMP/robot-release"
+    - name: Install browsers
+      working-directory: onesa-ai-robot-frontend
+      run: npx playwright install --with-deps chromium firefox webkit
+    - name: Real browser simulation and accessibility acceptance
+      working-directory: onesa-ai-robot-frontend
+      env:
+        ROBOT_TEST_PASSWORD: ${{ secrets.ROBOT_TEST_PASSWORD }}
+        ROBOT_TEST_OPERATOR: ${{ vars.ROBOT_TEST_OPERATOR }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      run: |
+        ROBOT_BROWSER_URL=$(cat "$RUNNER_TEMP/robot-release/operator-url.txt") npm run test:e2e
+    - name: Record verified provider and acceptance evidence
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        ROBOT_API_URL: ${{ vars.ROBOT_API_URL }}
+        ROBOT_PUBLIC_ORIGIN: ${{ vars.ROBOT_PUBLIC_ORIGIN }}
+        ROBOT_TEST_OPERATOR: ${{ vars.ROBOT_TEST_OPERATOR }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      run: python3 scripts/release/cloud.py receipt Production --directory "$RUNNER_TEMP/robot-release" --browser-passed
+    - uses: actions/upload-artifact@v4
+      with:
+        name: production-deployment
+        path: ${{ runner.temp }}/robot-release/record.json
+        retention-days: 7
+        if-no-files-found: error
+    - name: Remove private provider files
+      if: always()
+      run: rm -rf -- "$GITHUB_WORKSPACE/.vercel" "$RUNNER_TEMP/reviewed-build"

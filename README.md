@@ -25,6 +25,9 @@ The limits apply to a synthetic joint and are not physical robot safety certific
 `robot.onesa.eu` currently serves the earlier static preview. The simulator candidate
 is not publicly promoted by a feature push. Vercel Git deployments are disabled in
 its configuration; provider/build/test/release gates must be qualified independently.
+Cloud staging, artifact review, production gates and separate edge candidate packaging
+are available locally; see [release automation](docs/engineering/AUTOMATED_QUALIFICATION.md).
+Durable Render production is blocked by the free SQLite storage constraint.
 Secrets, databases, models, uploads and internal release evidence remain outside Git.
 No project licensing or physical hardware operation is authorized by this change.
 

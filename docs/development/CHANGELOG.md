@@ -1,5 +1,21 @@
 # Development changelog
 
+## 2026-10-11 — Robot cloud and separate edge release automation
+
+- Added owner-gated Vercel Preview/production builds, Render exact-source staging,
+  artifact qualification/review/promotion, synthetic safety/API/browser acceptance,
+  follow-up provider readiness monitoring and operator rollback instructions.
+- Added path-aware feature CI, full main checks, backend mypy, pinned ROS Jazzy
+  interface compilation/local messaging and versioned simulation edge candidates.
+- Added authenticated outbound synthetic telemetry with distinct device identity,
+  boot/sequence/freshness/replay limits and bounded audit; device tokens cannot grant
+  operator or actuator authority. Updated typed HTTP contracts.
+- Explicitly label ephemeral Render Free staging and block durable production until
+  an approved free storage architecture exists. Physical actuation remains disabled.
+- Portal/AI workflows, data and release cycles are preserved. No remote push, target
+  provisioning, production promotion or physical installation was performed.
+
+
 ## 2026-10-10 — GitHub Free governance plan
 
 - Selected private GitHub Free operation with voluntary feature-branch PRs, verified

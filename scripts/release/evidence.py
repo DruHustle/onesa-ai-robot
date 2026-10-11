@@ -57,8 +57,9 @@ POLICIES = {
             "frontend",
             "containers (frontend)",
             "containers (backend)",
+            "ros-contracts",
         ],
-        "staging_branch": None,
+        "staging_branch": "main",
     },
 }
 POLICY = POLICIES[PRODUCT]
@@ -409,6 +410,7 @@ def generate(github, sha, run, staging_run=None, require_frontend_build=True):
             builds = artifacts_for_ci(github, references)
         except Rejected as error:
             code, reason = "BLOCKED", str(error)
+    simulation_code = code
     record = {
         "schema_version": 1,
         "repository": REPOSITORY,
@@ -435,7 +437,7 @@ def generate(github, sha, run, staging_run=None, require_frontend_build=True):
         "missing_evidence": [reason] if reason else [],
         "provider_build_policy": "Render rebuilds the exact source commit; Vercel deploys the reviewed prebuilt artifact; Render binary equivalence is not claimed",
     }
-    if PRODUCT != "onesa-ai-robot" and code == "PASS" and require_frontend_build:
+    if code == "PASS" and require_frontend_build:
         try:
             candidates = github.runs("release-build.yml", sha)
             require(candidates, "Reviewed production frontend build missing")
@@ -475,12 +477,19 @@ def generate(github, sha, run, staging_run=None, require_frontend_build=True):
         record.update(
             {
                 "scope": "software-and-simulation-only",
-                "SOFTWARE_SIMULATION_VERIFIED": code,
+                "SOFTWARE_SIMULATION_VERIFIED": simulation_code,
+                "SIMULATION_VERIFIED": simulation_code,
+                "ROBOT_SAFETY_SOFTWARE_VERIFIED": simulation_code,
+                "EDGE_DEPLOYMENT_VERIFIED": "NOT TESTED",
+                "PHYSICAL_HARDWARE_APPROVED": "BLOCKED",
                 "ROS2_VERIFIED": "NOT TESTED",
+                "ROS2_INTERFACE_VERIFIED": "PASS"
+                if simulation_code == "PASS"
+                else "NOT TESTED",
                 "PHYSICAL_HARDWARE_READY": "BLOCKED",
             }
         )
-    elif staging_run:
+    if staging_run:
         stage_run = github.run(staging_run)
         trusted_run(stage_run, "release-staging.yml", sha, {POLICY["staging_branch"]})
         stage, origin = github.artifact(stage_run, "staging-verification")
@@ -519,6 +528,24 @@ def verify_stage(stage, sha, fingerprint, builds, now=None):
         "user_data_isolation",
         "storage_integrations",
     }
+    if PRODUCT == "onesa-ai-robot":
+        required = {
+            "deployed_commit",
+            "backend_readiness",
+            "frontend_availability",
+            "authentication",
+            "authorization",
+            "simulation",
+            "safety_denial",
+            "cancellation",
+            "connection_loss",
+            "stale_command",
+            "replay_rejection",
+            "audit_history",
+            "browser_acceptance",
+            "storage_isolation",
+            "edge_telemetry",
+        }
     if PRODUCT == "onesa-ai-platform":
         required |= {"streaming", "inference", "embeddings"}
     require(required <= stage["checks"].keys(), "Mandatory staging checks absent")
@@ -567,6 +594,14 @@ def technical_gate(github, evidence, sha):
         evidence["CODE_VERIFIED"] == "PASS" and evidence["STAGING_VERIFIED"] == "PASS",
         "Technical or staging qualification missing",
     )
+    if PRODUCT == "onesa-ai-robot":
+        require(
+            evidence.get("scope") == "software-and-simulation-only"
+            and evidence.get("SIMULATION_VERIFIED") == "PASS"
+            and evidence.get("ROBOT_SAFETY_SOFTWARE_VERIFIED") == "PASS"
+            and evidence.get("PHYSICAL_HARDWARE_APPROVED") == "BLOCKED",
+            "Cloud approval cannot authorize physical operation",
+        )
     code, references = checked_ci(github, sha)
     require(code == "PASS", "Latest exact-commit CI/security did not pass")
     require(
@@ -761,6 +796,7 @@ def main():
             "manifest",
             "source-hash",
             "stage-preflight",
+            "edge-preflight",
             "build-preflight",
             "fetch-build",
         ],
@@ -826,10 +862,29 @@ def main():
         directory.mkdir(parents=True, exist_ok=True)
         (directory / "bundle.enc").write_bytes(encrypted)
         record = build["manifest"]
-    elif args.mode == "stage-preflight":
+    elif args.mode in {"stage-preflight", "edge-preflight"}:
         trusted_run(
-            run, "release-staging.yml", sha, {POLICY["staging_branch"]}, completed=False
+            run,
+            "robot-edge-release.yml"
+            if args.mode == "edge-preflight"
+            else "release-staging.yml",
+            sha,
+            {POLICY["staging_branch"]},
+            completed=False,
         )
+        if args.mode == "edge-preflight":
+            github.protected_main(sha)
+            require(
+                os.environ.get("EDGE_LICENSE_REVIEW") == "approved",
+                "Owner distribution review required",
+            )
+            issue_id = os.environ.get("EDGE_REVIEW_ISSUE", "")
+            require(issue_id.isdigit(), "Owner distribution review issue required")
+            issue = github.api(f"repos/{REPOSITORY}/issues/{issue_id}")
+            require(
+                issue["user"]["login"] == OWNER and issue["state"] == "open",
+                "Distribution review unavailable/revoked",
+            )
         record = generate(github, sha, run, require_frontend_build=False)
         require(
             record["CODE_VERIFIED"] == "PASS",

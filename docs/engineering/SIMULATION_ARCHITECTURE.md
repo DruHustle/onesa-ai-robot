@@ -31,3 +31,20 @@ loss, cancellation, session expiry/revocation and restart are software tests. Th
 is no actual perception/model-policy path, connected ROS runtime or hardware safety
 certification. Those dependencies must remain explicit, never silently simulated
 inside a response labelled as a real robot or real model.
+
+## Optional simulated edge telemetry
+
+The separate `edge/simulation-agent.py` sends version-1 HTTPS telemetry outbound to
+Render. It uses an independent per-device bearer token; the API stores only SHA256
+of that token. Boot challenge, monotonic sequence, three-second freshness and ten
+requests/second are enforced. Telemetry is explicitly synthetic and stopped, and
+cannot create/approve/reset tasks or change the safety gate. Stale/disconnected
+telemetry becomes `not_connected`. Bounded telemetry audit is in process memory;
+it is not durable compliance logging. Task history remains in private SQLite.
+
+No inbound edge listener, DDS exposure, tunnel, router change or automatic retry
+is introduced. A failed agent stops and requires operator restart. There is no
+cloud-to-edge motion/action transport: the cloud simulator retains its existing
+independent motion gate, while a future real edge adapter must enforce its own
+hardware-specific safety rules regardless of cloud state. Follow the separate
+[release process](AUTOMATED_QUALIFICATION.md) before packaging/installing any adapter.

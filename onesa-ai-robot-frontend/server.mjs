@@ -6,9 +6,9 @@ import {fileURLToPath} from 'node:url';
 const root = resolve(import.meta.dirname, 'public');
 const port = Number(process.env.PORT || 3431);
 const upstream = new URL(process.env.ROBOT_API_URL || 'http://127.0.0.1:8431');
-if (!['http:', 'https:'].includes(upstream.protocol) || upstream.username || upstream.password || upstream.pathname !== '/') throw new Error('ROBOT_API_URL must be a credential-free HTTP(S) origin');
+if (!['http:', 'https:'].includes(upstream.protocol) || upstream.username || upstream.password || upstream.pathname !== '/' || upstream.search || upstream.hash) throw new Error('ROBOT_API_URL must be a credential-free HTTP(S) origin');
 if (upstream.protocol === 'http:' && !['127.0.0.1', 'localhost', 'backend'].includes(upstream.hostname)) throw new Error('Remote gateway requires TLS');
-const routes = /^\/api\/v1\/(health|ready|auth\/(login|logout|me)|status|tasks(?:\/[a-f0-9-]{36}\/(approve|cancel))?|heartbeat|stop|reset)$/;
+const routes = /^\/api\/v1\/(edge\/audit|health|ready|auth\/(login|logout|me)|status|tasks(?:\/[a-f0-9-]{36}\/(approve|cancel))?|heartbeat|stop|reset)$/;
 const security = {
   'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
   'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer',

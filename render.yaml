@@ -1,0 +1,31 @@
+# Review/apply manually to an authorized isolated target. No production disk is provisioned.
+services:
+  - type: web
+    name: onesa-robot-simulation-staging
+    runtime: docker
+    plan: free
+    branch: main
+    rootDir: onesa-ai-robot-backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeployTrigger: off
+    healthCheckPath: /api/v1/ready
+    envVars:
+      - key: ROBOT_DEPLOYMENT_ENVIRONMENT
+        value: staging
+      - key: ROBOT_STORAGE_MODE
+        value: ephemeral-simulation
+      - key: ROBOT_ACTUATION_ENABLED
+        value: "false"
+      - key: ROBOT_DATABASE_PATH
+        value: /app/storage/robot.sqlite3
+      - key: ROBOT_PUBLIC_ORIGIN
+        sync: false
+      - key: ROBOT_OPERATOR_NAME
+        sync: false
+      - key: ROBOT_OPERATOR_PASSWORD_HASH
+        sync: false
+      - key: ROBOT_EDGE_DEVICE_ID
+        sync: false
+      - key: ROBOT_EDGE_TOKEN_SHA256
+        sync: false

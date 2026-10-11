@@ -11,9 +11,11 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi.security import HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from robot_api.edge import EdgeMonitor, Telemetry
 from robot_api.safety import Proposal, SafetyGate, SafetyViolation
 from robot_api.security import PasswordVerifier, VerificationBusy, token_hash
 
@@ -28,7 +30,11 @@ class Settings(BaseSettings):
     operator_name: str = Field(default="operator", min_length=1, max_length=64)
     operator_password_hash: str
     database_path: Path = Path("storage/robot.sqlite3")
+    edge_device_id: str = ""
+    edge_token_sha256: str = ""
     actuation_enabled: bool = False
+    deployment_environment: Literal["local", "staging", "production"] = "local"
+    storage_mode: Literal["persistent", "ephemeral-simulation"] = "persistent"
     session_seconds: int = Field(default=900, ge=60, le=3600)
     heartbeat_seconds: float = Field(default=3, ge=1, le=10)
 
@@ -37,6 +43,17 @@ class Settings(BaseSettings):
         from urllib.parse import urlsplit
 
         url = urlsplit(self.public_origin)
+        if bool(self.edge_device_id) != bool(self.edge_token_sha256):
+            raise ValueError("Configure both synthetic edge identity and token hash")
+        if self.edge_device_id:
+            import re
+
+            if not re.fullmatch(
+                r"synthetic-[a-z0-9-]{1,48}", self.edge_device_id
+            ) or not re.fullmatch(r"[a-f0-9]{64}", self.edge_token_sha256):
+                raise ValueError("Only authenticated synthetic telemetry devices are supported")
+        if self.deployment_environment == "production" and self.storage_mode != "persistent":
+            raise ValueError("Production requires approved persistent simulation storage")
         if self.actuation_enabled:
             raise ValueError("Physical actuation is not implemented or authorized")
         if (
@@ -84,6 +101,7 @@ class SessionResponse(BaseModel):
 
 
 class Capabilities(BaseModel):
+    edge_telemetry: Literal["simulation_connected", "not_connected"] = "not_connected"
     ros2: Literal["not_connected"] = "not_connected"
     camera: Literal["not_connected"] = "not_connected"
     stt: Literal["not_configured"] = "not_configured"
@@ -217,6 +235,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def lifespan(app):
         state = State(config)
         app.state.sim = state
+        app.state.edge = EdgeMonitor(config.edge_device_id, config.edge_token_sha256)
         app.state.passwords = PasswordVerifier()
 
         async def watch():
@@ -257,7 +276,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.middleware("http")
     async def boundary(request: Request, call_next):
         if request.method not in ("GET", "HEAD", "OPTIONS"):
-            if request.headers.get("origin") != config.public_origin:
+            if (
+                request.url.path != "/api/v1/edge/telemetry"
+                and request.headers.get("origin") != config.public_origin
+            ):
                 return Response(status_code=403)
             body = b""
             try:
@@ -327,6 +349,27 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     Operator = Annotated[Session, Depends(session)]
 
+    @app.get("/api/v1/edge/challenge", dependencies=[Depends(HTTPBearer(auto_error=False))])
+    async def edge_challenge(request: Request):
+        monitor = request.app.state.edge
+        monitor.authorize(request.headers.get("authorization", ""))
+        return {
+            "boot_challenge": monitor.challenge,
+            "next_sequence": monitor.sequence + 1,
+            "version": 1,
+        }
+
+    @app.post("/api/v1/edge/telemetry", dependencies=[Depends(HTTPBearer(auto_error=False))])
+    async def edge_telemetry(value: Telemetry, request: Request):
+        monitor = request.app.state.edge
+        monitor.authorize(request.headers.get("authorization", ""))
+        monitor.receive(value)
+        return {"status": "received", "scope": "simulation-telemetry-only"}
+
+    @app.get("/api/v1/edge/audit")
+    async def edge_audit(request: Request, operator: Operator):
+        return {"events": list(request.app.state.edge.audit), "retention": "bounded-process-memory"}
+
     @app.get("/api/v1/health")
     def health():
         return {"status": "live", "mode": "simulation"}
@@ -338,7 +381,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(503, "Safety watchdog unavailable")
         if sim.db.execute("SELECT count(*) FROM safety WHERE id=1").fetchone()[0] != 1:
             raise HTTPException(503, "Safety state unavailable")
-        return {"status": "ready", "mode": "simulation", "physical_actuation": False}
+        return {
+            "status": "ready",
+            "mode": "simulation",
+            "physical_actuation": False,
+            "storage_mode": config.storage_mode,
+            "deployment_environment": config.deployment_environment,
+        }
 
     @app.post("/api/v1/auth/login", response_model=SessionResponse)
     async def login(value: Login, request: Request, response: Response):
@@ -399,6 +448,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "operator": operator["name"],
             "active_task": sim.active["id"] if sim.active else None,
             "capabilities": {
+                "edge_telemetry": request.app.state.edge.status(),
                 "ros2": "not_connected",
                 "camera": "not_connected",
                 "stt": "not_configured",

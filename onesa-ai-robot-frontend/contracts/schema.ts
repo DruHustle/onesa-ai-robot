@@ -55,6 +55,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/edge/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Edge Audit */
+        get: operations["edge_audit_api_v1_edge_audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/edge/challenge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Edge Challenge */
+        get: operations["edge_challenge_api_v1_edge_challenge_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/edge/telemetry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Edge Telemetry */
+        post: operations["edge_telemetry_api_v1_edge_telemetry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -233,6 +284,12 @@ export interface components {
              */
             camera: "not_connected";
             /**
+             * Edge Telemetry
+             * @default not_connected
+             * @enum {string}
+             */
+            edge_telemetry: "simulation_connected" | "not_connected";
+            /**
              * Ros2
              * @default not_connected
              * @constant
@@ -354,6 +411,39 @@ export interface components {
              */
             state: "proposed" | "running" | "completed" | "cancelled";
         };
+        /** Telemetry */
+        Telemetry: {
+            /** Boot Challenge */
+            boot_challenge: string;
+            /** Device Id */
+            device_id: string;
+            /**
+             * Mode
+             * @constant
+             */
+            mode: "simulation";
+            /** Observed At */
+            observed_at: number;
+            /**
+             * Physical Actuation
+             * @constant
+             */
+            physical_actuation: false;
+            /** Position Radians */
+            position_radians: number;
+            /** Sequence */
+            sequence: number;
+            /**
+             * Stopped
+             * @constant
+             */
+            stopped: true;
+            /**
+             * Version
+             * @constant
+             */
+            version: 1;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -445,6 +535,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionResponse"];
+                };
+            };
+        };
+    };
+    edge_audit_api_v1_edge_audit_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    edge_challenge_api_v1_edge_challenge_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    edge_telemetry_api_v1_edge_telemetry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Telemetry"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

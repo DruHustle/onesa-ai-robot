@@ -30,3 +30,9 @@ protected staged deployment still need qualification. `git.deploymentEnabled=fal
 prevents automatic Git deployment; no public release is implied by a branch push.
 API schema/types are generated from the backend, checked with
 `python scripts/check-contracts.py` from the repository root using the backend venv.
+
+Hosted staging and owner-approved release instructions are in the
+[cloud release guide](../docs/engineering/AUTOMATED_QUALIFICATION.md). Configure a
+server-only `ROBOT_API_URL` per Vercel environment. The monorepo CLI runs from repository
+root and project root remains `onesa-ai-robot-frontend`. `npm run lint` checks source
+syntax; build/types/unit, cross-browser flows and accessibility remain independent gates.

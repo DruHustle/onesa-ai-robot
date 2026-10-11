@@ -12,5 +12,7 @@ it to the versioned HTTP Proposal schema and pass the same independent safety ga
 operator approval, stale-message checks, session and watchdog boundaries. ROS messages
 must never authorize action directly. Keep ROS graph access restricted (SROS 2
 permissions where implemented); an exposed DDS graph is not a trusted control plane.
-No ROS messaging test has passed on a real target in this audit. Physical emergency
+The isolated ROS Jazzy CI check compiles both message definitions and verifies local
+discovery and synthetic telemetry. This is an interface test, not an installed robot
+edge or integrated action adapter. Real edge messaging remains unverified. Physical emergency
 stop, device limits and hardware-specific policy validation are separate owner gates.

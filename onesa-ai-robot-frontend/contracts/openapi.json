@@ -28,6 +28,15 @@
             "title": "Camera",
             "type": "string"
           },
+          "edge_telemetry": {
+            "default": "not_connected",
+            "enum": [
+              "simulation_connected",
+              "not_connected"
+            ],
+            "title": "Edge Telemetry",
+            "type": "string"
+          },
           "ros2": {
             "const": "not_connected",
             "default": "not_connected",
@@ -294,6 +303,70 @@
         "title": "TaskSummary",
         "type": "object"
       },
+      "Telemetry": {
+        "additionalProperties": false,
+        "properties": {
+          "boot_challenge": {
+            "maxLength": 43,
+            "minLength": 43,
+            "title": "Boot Challenge",
+            "type": "string"
+          },
+          "device_id": {
+            "pattern": "^synthetic-[a-z0-9-]{1,48}$",
+            "title": "Device Id",
+            "type": "string"
+          },
+          "mode": {
+            "const": "simulation",
+            "title": "Mode",
+            "type": "string"
+          },
+          "observed_at": {
+            "title": "Observed At",
+            "type": "number"
+          },
+          "physical_actuation": {
+            "const": false,
+            "title": "Physical Actuation",
+            "type": "boolean"
+          },
+          "position_radians": {
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Position Radians",
+            "type": "number"
+          },
+          "sequence": {
+            "minimum": 0.0,
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "stopped": {
+            "const": true,
+            "title": "Stopped",
+            "type": "boolean"
+          },
+          "version": {
+            "const": 1,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "device_id",
+          "boot_challenge",
+          "sequence",
+          "observed_at",
+          "mode",
+          "physical_actuation",
+          "stopped",
+          "position_radians"
+        ],
+        "title": "Telemetry",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -333,6 +406,12 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
       }
     }
   },
@@ -414,6 +493,84 @@
           }
         },
         "summary": "Me"
+      }
+    },
+    "/api/v1/edge/audit": {
+      "get": {
+        "operationId": "edge_audit_api_v1_edge_audit_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Edge Audit"
+      }
+    },
+    "/api/v1/edge/challenge": {
+      "get": {
+        "operationId": "edge_challenge_api_v1_edge_challenge_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Edge Challenge"
+      }
+    },
+    "/api/v1/edge/telemetry": {
+      "post": {
+        "operationId": "edge_telemetry_api_v1_edge_telemetry_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Telemetry"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Edge Telemetry"
       }
     },
     "/api/v1/health": {

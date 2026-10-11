@@ -39,3 +39,10 @@ this does not replace frontend/network rate limits or authorize hardware control
 behind the approved same-origin frontend/TLS boundary. No credential is a frontend
 public setting. Physical actuation=true always fails startup. No migration or test
 uses either sibling product's database.
+
+For disposable Render staging, explicitly set `ROBOT_DEPLOYMENT_ENVIRONMENT=staging`
+and `ROBOT_STORAGE_MODE=ephemeral-simulation`. Readiness reports that storage scope;
+production rejects it. Use the [cloud release guide](../docs/engineering/AUTOMATED_QUALIFICATION.md)
+for exact provider gates and environment settings. Optional edge telemetry is read-only,
+synthetic, device-authenticated and independent of operator authority. It never grants
+actuator control. `python -m mypy robot_api` now runs alongside lint/unit checks.

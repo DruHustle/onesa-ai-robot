@@ -4,6 +4,8 @@ name: Release qualification evidence
     workflows:
     - Robot software verification
     - Repository hygiene
+    - Reviewed production frontend build
+    - Robot staging deployment
     types:
     - completed
     branches:

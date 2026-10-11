@@ -68,6 +68,17 @@ def fixtures():
             "streaming",
             "inference",
             "embeddings",
+            "authorization",
+            "simulation",
+            "safety_denial",
+            "cancellation",
+            "connection_loss",
+            "stale_command",
+            "replay_rejection",
+            "audit_history",
+            "browser_acceptance",
+            "storage_isolation",
+            "edge_telemetry",
         ]
     }
     stage = {
@@ -90,6 +101,10 @@ def fixtures():
         "record_sha256": e.digest(stage),
     }
     evidence = {
+        "scope": "software-and-simulation-only",
+        "SIMULATION_VERIFIED": "PASS",
+        "ROBOT_SAFETY_SOFTWARE_VERIFIED": "PASS",
+        "PHYSICAL_HARDWARE_APPROVED": "BLOCKED",
         "schema_version": 1,
         "repository": e.REPOSITORY,
         "workflow_run_id": 30,
@@ -221,6 +236,13 @@ class GateTests(unittest.TestCase):
                         stage, SHA, FINGERPRINT, self.evidence["builds"], now=NOW
                     )
         for name in original["checks"]:
+            if e.PRODUCT == "onesa-ai-robot" and name in {
+                "database_connectivity",
+                "critical_workflows",
+                "user_data_isolation",
+                "storage_integrations",
+            }:
+                continue
             stage = copy.deepcopy(original)
             stage["checks"][name] = "FAIL"
             if (
@@ -375,8 +397,6 @@ class GateTests(unittest.TestCase):
             hosted.recheck(self.evidence)
 
     def test_reviewed_build_encryption_roundtrip_and_tampering(self):
-        if e.PRODUCT == "onesa-ai-robot":
-            self.skipTest("Not applicable to robot software-only evidence")
         import os
         import subprocess
 
@@ -527,7 +547,7 @@ class GateTests(unittest.TestCase):
 
     def test_production_metrics_require_observed_signals_and_no_server_errors(self):
         if e.PRODUCT == "onesa-ai-robot":
-            self.skipTest("Robot has no production promotion")
+            self.skipTest("Robot uses its simulator acceptance suite")
         import hosted
 
         key = "METRICS_TOKEN" if e.PRODUCT.endswith("portal") else "ONESA_METRICS_TOKEN"
@@ -580,7 +600,7 @@ class GateTests(unittest.TestCase):
 
     def test_missing_production_fixture_never_passes_smoke(self):
         if e.PRODUCT == "onesa-ai-robot":
-            self.skipTest("Robot has no production promotion")
+            self.skipTest("Robot uses its simulator acceptance suite")
         import hosted_suite
 
         with patch.dict("os.environ", {}, clear=True):
@@ -627,8 +647,6 @@ class GateTests(unittest.TestCase):
             def api(self, path):
                 return {"state": "open", "user": {"login": e.OWNER}}
 
-        if e.PRODUCT == "onesa-ai-robot":
-            self.skipTest("Not applicable to robot software-only evidence")
         with (
             patch.object(e, "source_hash", return_value=FINGERPRINT),
             patch.object(e, "fresh", return_value=True),

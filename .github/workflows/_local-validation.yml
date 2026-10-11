@@ -19,10 +19,11 @@ jobs:
         with: {python-version: '3.11'}
       - run: python -m pip install --require-hashes -r requirements-dev.lock
         working-directory: onesa-ai-robot-backend
-      - run: python -m ruff check robot_api tests && python -m ruff format --check robot_api tests && python -m pytest -q
+      - run: python -m ruff check robot_api tests && python -m ruff format --check robot_api tests && python -m mypy robot_api && python -m pytest -q
         working-directory: onesa-ai-robot-backend
       - run: python -m pip_audit -r requirements.lock --disable-pip --no-deps
         working-directory: onesa-ai-robot-backend
+      - run: python3 -m unittest discover -s scripts/release -p 'test_*.py'
       - run: python3 -m unittest discover -s scripts/runner -p 'test_*.py'
   frontend:
     if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
@@ -40,7 +41,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
       - run: python -m pip install --require-hashes -r onesa-ai-robot-backend/requirements.lock
-      - run: npm ci --ignore-scripts && npm run build && npm run typecheck && npm test && npm audit --audit-level=high
+      - run: npm ci --ignore-scripts && npm run lint && npm run build && npm run typecheck && npm test && npm audit --audit-level=high
         working-directory: onesa-ai-robot-frontend
       - run: python scripts/check-contracts.py
       - run: npx playwright install chromium firefox webkit

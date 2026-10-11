@@ -6,12 +6,32 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  changes:
+    needs: local-validation
+    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      frontend: ${{ steps.paths.outputs.frontend }}
+      backend: ${{ steps.paths.outputs.backend }}
+      edge: ${{ steps.paths.outputs.edge }}
+      applications: ${{ steps.paths.outputs.applications }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: paths
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: python3 scripts/ci-paths.py
   local-validation:
     if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
     uses: ./.github/workflows/_local-validation.yml
   backend:
-    needs: local-validation
-    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
+    needs: [local-validation, changes]
+    if: ${{ always() && needs.changes.result == 'success' && needs.changes.outputs.backend == 'true' && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
     runs-on: ubuntu-latest
     steps:
       - name: Verify GitHub-hosted execution and actual visibility
@@ -27,16 +47,16 @@ jobs:
         with: {python-version: '3.11'}
       - run: python -m pip install --require-hashes -r requirements-dev.lock
         working-directory: onesa-ai-robot-backend
-      - run: python -m ruff check robot_api tests && python -m ruff format --check robot_api tests && python -m pytest -q
+      - run: python -m ruff check robot_api tests && python -m ruff format --check robot_api tests && python -m mypy robot_api && python -m pytest -q
         working-directory: onesa-ai-robot-backend
       - run: python -m pip_audit -r requirements.lock --disable-pip --no-deps
         working-directory: onesa-ai-robot-backend
       - name: 'Release requirement: qualification failure-path tests'
-        run: python3 -m unittest discover -s scripts/release -p 'test_evidence.py'
+        run: python3 -m unittest discover -s scripts/release -p 'test_*.py'
       - run: python3 -m unittest discover -s scripts/runner -p 'test_*.py'
   frontend:
-    needs: local-validation
-    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
+    needs: [local-validation, changes]
+    if: ${{ always() && needs.changes.result == 'success' && needs.changes.outputs.frontend == 'true' && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
     runs-on: ubuntu-latest
     steps:
       - name: Verify GitHub-hosted execution and actual visibility
@@ -53,7 +73,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
       - run: python -m pip install --require-hashes -r onesa-ai-robot-backend/requirements.lock
-      - run: npm ci --ignore-scripts && npm run build && npm run typecheck && npm test && npm audit --audit-level=high
+      - run: npm ci --ignore-scripts && npm run lint && npm run build && npm run typecheck && npm test && npm audit --audit-level=high
         working-directory: onesa-ai-robot-frontend
       - run: python scripts/check-contracts.py
       - run: npx playwright install --with-deps chromium firefox webkit
@@ -78,13 +98,13 @@ jobs:
           curl -fsS http://localhost:3431/api/v1/ready > /dev/null
           npm --prefix onesa-ai-robot-frontend run test:e2e
   containers:
-    needs: local-validation
-    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
+    needs: [local-validation, changes]
+    if: ${{ always() && needs.changes.result == 'success' && needs.changes.outputs.frontend == 'true' && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        application: [frontend, backend]
+        application: ${{ fromJSON(needs.changes.outputs.applications) }}
     steps:
       - name: Verify GitHub-hosted execution and actual visibility
         env:
@@ -114,3 +134,15 @@ jobs:
           path: ${{ runner.temp }}/runtime/record.json
           retention-days: 7
           if-no-files-found: error
+
+  ros-contracts:
+    needs: [local-validation, changes]
+    if: ${{ always() && needs.changes.result == 'success' && needs.changes.outputs.edge == 'true' && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Compile and exchange synthetic ROS 2 Jazzy messages on isolated localhost
+        run: docker run --rm --network none -v "$PWD/ros2:/source:ro" ros:jazzy-ros-base@sha256:066420e07f60aa18262f2479981def87ebcfcec42eefb0c0c57c4a46098348ca sh /source/test-interfaces.sh
