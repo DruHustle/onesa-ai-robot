@@ -15,6 +15,10 @@ versioned APIs; do not copy its Git history or require sibling source for builds
 Choose runtime, hardware targets, contracts and safety requirements before implementing.
 
 [Build/test status](docs/engineering/BUILD_AND_TEST.md) · [Deployment plan](docs/engineering/DEPLOYMENT.md)
-· [GitHub setup](GITHUB_SETUP.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md).
+· [Engineering policies](AGENTS.md).
 The root `.env.example` and application examples are proposed configuration, not a
 working runtime contract. No license is assigned pending ownership approval.
+
+[Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Verified branch protection status](docs/development/BRANCH_PROTECTION_REPORT.md). Main protection is currently **BLOCKED — NOT ENFORCED** by GitHub plan eligibility.
+
+The selected policy is [GitHub Free with private repositories](docs/development/FREE_GITHUB_PLAN.md). PR and check discipline is voluntary until server protection is supported; no upgrade or visibility change is proposed.
