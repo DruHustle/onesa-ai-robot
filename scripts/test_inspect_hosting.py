@@ -8,9 +8,17 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 import inspect_hosting as inspection
+import repository_hygiene as hygiene
 
 
 class InspectionTests(unittest.TestCase):
+    def test_redaction_fixture_exception_is_exact_and_path_scoped(self):
+        fixture = b'secret="synthetic-sensitive-fixture-must-not-be-emitted"'
+        self.assertEqual(hygiene.secrets(fixture, "scripts/test_inspect_hosting.py"), [])
+        self.assertIn("credential-assignment", hygiene.secrets(fixture, "another.py"))
+        self.assertIn("credential-assignment", hygiene.secrets(
+            b'secret="unrelated-long-sensitive-value"', "scripts/test_inspect_hosting.py"))
+
     def test_provider_values_are_never_emitted(self):
         secret = "synthetic-sensitive-fixture-must-not-be-emitted"
 
