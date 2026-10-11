@@ -1,5 +1,7 @@
 # Onesa AI Robot
 
+> Current private-Free release policy: [safeguards and external owner authorization](docs/development/PRIVATE_FREE_SAFEGUARDS.md). Legacy JSON approval is retired; native protection requirements below apply only to a verified supported configuration.
+
 Independent Onesa UG robotics repository. The implemented release scope is an
 **authenticated software simulator** with an operator interface and separate Python
 API. It has no physical actuator driver, robot camera, connected ROS node or live

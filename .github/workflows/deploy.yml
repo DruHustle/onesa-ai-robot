@@ -1,5 +1,5 @@
 name: Robot production deployment
-"on":
+'on':
   workflow_dispatch:
     inputs:
       approval_run:
@@ -13,19 +13,16 @@ concurrency:
   group: robot-cloud-deployment
   cancel-in-progress: false
 jobs:
-  local-validation:
-    if: github.event.repository.private == true && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle'
-    uses: ./.github/workflows/_local-validation.yml
   deploy:
-    needs: local-validation
-    if: always() && (github.event.repository.private == false || needs.local-validation.result == 'success') && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main'
+    if: ${{ github.event.repository.private == false && (always() && true && github.repository == 'DruHustle/onesa-ai-robot'
+      && github.actor == 'DruHustle' && github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     environment: Production
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       with:
-        persist-credentials: false
+        persist-credentials: 'false'
         ref: ${{ github.sha }}
     - name: Validate exact candidate evidence
       env:
@@ -45,7 +42,7 @@ jobs:
         ROBOT_TEST_OPERATOR: ${{ vars.ROBOT_TEST_OPERATOR }}
         VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       run: python3 scripts/release/cloud.py preflight Production
-    - uses: actions/setup-node@v4
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
       with:
         node-version: '24'
     - name: Install locked frontend tooling
@@ -66,8 +63,8 @@ jobs:
       env:
         RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
         RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
-        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
         VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
       run: python3 scripts/release/monitor.py stage-live --input "$RUNNER_TEMP/robot-release/preflight.json" --output "$RUNNER_TEMP/staging-live/record.json"
     - name: Deploy exact backend source
@@ -86,7 +83,8 @@ jobs:
         VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
         VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         ROBOT_API_URL: ${{ vars.ROBOT_API_URL }}
-      run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" --meta githubCommitSha="$GITHUB_SHA" --meta githubCommitRef=main > "$RUNNER_TEMP/robot-release/frontend-url.txt"
+      run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" --meta githubCommitSha="$GITHUB_SHA" --meta githubCommitRef=main
+        > "$RUNNER_TEMP/robot-release/frontend-url.txt"
     - name: Verify canonical production operator origin before credentials are used
       env:
         VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
@@ -114,8 +112,9 @@ jobs:
         ROBOT_TEST_PASSWORD: ${{ secrets.ROBOT_TEST_PASSWORD }}
         ROBOT_TEST_OPERATOR: ${{ vars.ROBOT_TEST_OPERATOR }}
         VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-      run: |
-        ROBOT_BROWSER_URL=$(cat "$RUNNER_TEMP/robot-release/operator-url.txt") npm run test:e2e
+      run: 'ROBOT_BROWSER_URL=$(cat "$RUNNER_TEMP/robot-release/operator-url.txt") npm run test:e2e
+
+        '
     - name: Record verified provider and acceptance evidence
       env:
         GH_TOKEN: ${{ github.token }}
@@ -129,7 +128,7 @@ jobs:
         ROBOT_TEST_OPERATOR: ${{ vars.ROBOT_TEST_OPERATOR }}
         VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
       run: python3 scripts/release/cloud.py receipt Production --directory "$RUNNER_TEMP/robot-release" --browser-passed
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       with:
         name: production-deployment
         path: ${{ runner.temp }}/robot-release/record.json

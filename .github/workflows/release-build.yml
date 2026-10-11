@@ -8,19 +8,15 @@ concurrency:
   group: reviewed-production-build
   cancel-in-progress: false
 jobs:
-  local-validation:
-    if: github.event.repository.private == true && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle'
-    uses: ./.github/workflows/_local-validation.yml
   build:
-    needs: local-validation
-    if: always() && (github.event.repository.private == false || needs.local-validation.result == 'success') && github.repository == 'DruHustle/onesa-ai-robot'
-      && github.actor == 'DruHustle' && github.ref == 'refs/heads/main'
+    if: ${{ github.event.repository.private == false && (always() && true && github.repository == 'DruHustle/onesa-ai-robot'
+      && github.actor == 'DruHustle' && github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       with:
-        persist-credentials: false
+        persist-credentials: 'false'
         ref: ${{ github.sha }}
     - name: Require protected main and exact-candidate CI
       env:
@@ -36,7 +32,7 @@ jobs:
         ROBOT_API_URL: ${{ vars.ROBOT_API_URL }}
         ROBOT_PUBLIC_ORIGIN: ${{ vars.ROBOT_PUBLIC_ORIGIN }}
       run: python3 scripts/release/cloud.py preflight Production
-    - uses: actions/setup-node@v4
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
       with:
         node-version: '24'
     - name: Install pinned deployment CLI
@@ -49,9 +45,11 @@ jobs:
         VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
         VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      run: |
-        vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+      run: 'vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
         vercel build --prod --token="$VERCEL_TOKEN"
+
+        '
     - name: Encrypt reviewed prebuilt output with a scoped key
       env:
         RELEASE_BUILD_KEY: ${{ secrets.RELEASE_BUILD_KEY }}
@@ -62,13 +60,13 @@ jobs:
         export SOURCE_SHA256
 
         node scripts/release/bundle.mjs pack "$RUNNER_TEMP/reviewed-build"'
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
         name: production-build-manifest
         path: ${{ runner.temp }}/reviewed-build/record.json
         retention-days: 7
         if-no-files-found: error
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
         name: production-build-encrypted
         path: ${{ runner.temp }}/reviewed-build/bundle.enc

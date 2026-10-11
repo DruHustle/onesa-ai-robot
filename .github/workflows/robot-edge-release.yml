@@ -5,7 +5,9 @@ name: Robot edge simulation software package
       licensing_review:
         description: Owner approves distribution of this exact simulation candidate
         type: choice
-        options: [blocked, approved]
+        options:
+        - blocked
+        - approved
         default: blocked
         required: true
       review_issue:
@@ -18,37 +20,50 @@ permissions:
   issues: read
 jobs:
   package:
-    if: github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main' && github.event.repository.private == false
+    if: github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main'
+      && github.event.repository.private == false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - name: Require complete exact-candidate checks
-        env:
-          GH_TOKEN: ${{ github.token }}
-          EDGE_LICENSE_REVIEW: ${{ inputs.licensing_review }}
-          EDGE_REVIEW_ISSUE: ${{ inputs.review_issue }}
-        run: python3 scripts/release/evidence.py edge-preflight --output "$RUNNER_TEMP/edge/preflight.json"
-      - name: Package simulation software and ROS interface sources
-        run: |
-          docker build -t "onesa-robot-edge-simulation:$GITHUB_SHA" onesa-ai-robot-backend
-          mkdir -p data/security
-          chmod 700 data/security
-          docker save "onesa-robot-edge-simulation:$GITHUB_SHA" -o data/security/runtime.tar
-          docker run --rm --user "$(id -u):$(id -g)" -e TRIVY_CACHE_DIR=/tmp/trivy-cache -v "$PWD/data/security:/reports" aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa image --scanners vuln,secret --format json --output /reports/runtime.json --input /reports/runtime.tar
-          python3 scripts/image_gate.py data/security/runtime.json
-          docker save "onesa-robot-edge-simulation:$GITHUB_SHA" -o "$RUNNER_TEMP/edge/simulator.tar"
-          tar -cf "$RUNNER_TEMP/edge/interfaces.tar" ros2/onesa_sim_interfaces ros2/README.md edge/simulation-agent.py
-          python3 scripts/release/edge-manifest.py "$RUNNER_TEMP/edge"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: robot-edge-simulation-${{ github.sha }}
-          path: |
-            ${{ runner.temp }}/edge/simulator.tar
-            ${{ runner.temp }}/edge/interfaces.tar
-            ${{ runner.temp }}/edge/record.json
-          if-no-files-found: error
-          retention-days: 7
-# No registry publication, SSH installer, hardware driver or physical execution.
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      with:
+        persist-credentials: 'false'
+    - name: Require complete exact-candidate checks
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EDGE_LICENSE_REVIEW: ${{ inputs.licensing_review }}
+        EDGE_REVIEW_ISSUE: ${{ inputs.review_issue }}
+      run: python3 scripts/release/evidence.py edge-preflight --output "$RUNNER_TEMP/edge/preflight.json"
+    - name: Package simulation software and ROS interface sources
+      run: 'docker build -t "onesa-robot-edge-simulation:$GITHUB_SHA" onesa-ai-robot-backend
+
+        mkdir -p data/security
+
+        chmod 700 data/security
+
+        docker save "onesa-robot-edge-simulation:$GITHUB_SHA" -o data/security/runtime.tar
+
+        docker run --rm --user "$(id -u):$(id -g)" -e TRIVY_CACHE_DIR=/tmp/trivy-cache -v "$PWD/data/security:/reports" aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa
+        image --scanners vuln,secret --format json --output /reports/runtime.json --input /reports/runtime.tar
+
+        python3 scripts/image_gate.py data/security/runtime.json
+
+        docker save "onesa-robot-edge-simulation:$GITHUB_SHA" -o "$RUNNER_TEMP/edge/simulator.tar"
+
+        tar -cf "$RUNNER_TEMP/edge/interfaces.tar" ros2/onesa_sim_interfaces ros2/README.md edge/simulation-agent.py
+
+        python3 scripts/release/edge-manifest.py "$RUNNER_TEMP/edge"
+
+        '
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      with:
+        name: robot-edge-simulation-${{ github.sha }}
+        path: '${{ runner.temp }}/edge/simulator.tar
+
+          ${{ runner.temp }}/edge/interfaces.tar
+
+          ${{ runner.temp }}/edge/record.json
+
+          '
+        if-no-files-found: error
+        retention-days: 7

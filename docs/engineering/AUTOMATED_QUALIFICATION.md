@@ -1,5 +1,7 @@
 # Robot cloud and edge release qualification
 
+> Current private-Free release policy: [safeguards and external owner authorization](../development/PRIVATE_FREE_SAFEGUARDS.md). Legacy JSON approval is retired; native protection requirements below apply only to a verified supported configuration.
+
 The implemented product is a static JavaScript/typed-client operator interface and
 FastAPI software simulator. The directory is `onesa-ai-robot-frontend`, despite the
 logical product name “robot interface”. No directory rename, framework rewrite or
@@ -66,7 +68,7 @@ identity with the locally scanned Docker image is not claimed.
 and `PHYSICAL_HARDWARE_READY` remain BLOCKED even after a cloud approval.
 Operations/legal gates require explicit owner review. No physical PASS is generated.
 Robot had no legacy `RELEASE_QUALIFICATION_JSON` deploy gate; no secret is removed.
-The two sibling products retain their existing legacy fallback and migration controls.
+The sibling products have retired their legacy JSON fallback; private Free uses external owner authorization.
 
 The added development-only mypy 2.4.0 and hash-locked dependencies were obtained
 from PyPI and checked against installed package metadata: mypy/mypy-extensions,

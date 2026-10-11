@@ -1,5 +1,7 @@
 # Simulator deployment and recovery
 
+> Current private-Free release policy: [safeguards and external owner authorization](../development/PRIVATE_FREE_SAFEGUARDS.md). Legacy JSON approval is retired; native protection requirements below apply only to a verified supported configuration.
+
 Cloud staging/release workflows, provider settings, secret locations, approval gates,
 telemetry-only edge transport, monitoring and rollback are now documented in
 [AUTOMATED_QUALIFICATION.md](AUTOMATED_QUALIFICATION.md). Render Free staging is

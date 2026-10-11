@@ -1,5 +1,5 @@
 name: Robot staging deployment
-"on":
+'on':
   workflow_dispatch: {}
 permissions:
   contents: read
@@ -8,19 +8,15 @@ concurrency:
   group: robot-cloud-deployment
   cancel-in-progress: false
 jobs:
-  local-validation:
-    if: github.event.repository.private == true && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle'
-    uses: ./.github/workflows/_local-validation.yml
   deploy:
-    needs: local-validation
-    if: always() && (github.event.repository.private == false || needs.local-validation.result == 'success') && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main'
+    if: always() && true && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.ref ==
+      'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    environment: Staging
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       with:
-        persist-credentials: false
+        persist-credentials: 'false'
         ref: ${{ github.sha }}
     - name: Validate exact candidate evidence
       env:
@@ -31,15 +27,15 @@ jobs:
         GH_TOKEN: ${{ github.token }}
         RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
         RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
-        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
         VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
         ROBOT_API_URL: ${{ vars.STAGING_ROBOT_API_URL }}
         ROBOT_PUBLIC_ORIGIN: ${{ vars.STAGING_ROBOT_PUBLIC_ORIGIN }}
         ROBOT_TEST_OPERATOR: ${{ vars.STAGING_ROBOT_TEST_OPERATOR }}
         VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
       run: python3 scripts/release/cloud.py preflight Staging
-    - uses: actions/setup-node@v4
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
       with:
         node-version: '24'
     - name: Install locked frontend tooling
@@ -49,21 +45,25 @@ jobs:
       run: npm install --global vercel@63.1.0
     - name: Build and deploy protected simulation Preview
       env:
-        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
         VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
         ROBOT_API_URL: ${{ vars.STAGING_ROBOT_API_URL }}
-      run: |
-        vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+      run: 'vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+
         vercel build --token="$VERCEL_TOKEN"
-        vercel deploy --prebuilt --token="$VERCEL_TOKEN" --meta githubCommitSha="$GITHUB_SHA" --meta githubCommitRef=main > "$RUNNER_TEMP/robot-release/frontend-url.txt"
+
+        vercel deploy --prebuilt --token="$VERCEL_TOKEN" --meta githubCommitSha="$GITHUB_SHA" --meta githubCommitRef=main
+        > "$RUNNER_TEMP/robot-release/frontend-url.txt"
+
+        '
     - name: Bind only the verified Preview origin
       env:
         GH_TOKEN: ${{ github.token }}
         RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
         RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
-        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
         VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
         ROBOT_API_URL: ${{ vars.STAGING_ROBOT_API_URL }}
         ROBOT_PUBLIC_ORIGIN: ${{ vars.STAGING_ROBOT_PUBLIC_ORIGIN }}
@@ -94,22 +94,23 @@ jobs:
         ROBOT_TEST_PASSWORD: ${{ secrets.STAGING_ROBOT_TEST_PASSWORD }}
         ROBOT_TEST_OPERATOR: ${{ vars.STAGING_ROBOT_TEST_OPERATOR }}
         VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
-      run: |
-        ROBOT_BROWSER_URL=$(cat "$RUNNER_TEMP/robot-release/frontend-url.txt") npm run test:e2e
+      run: 'ROBOT_BROWSER_URL=$(cat "$RUNNER_TEMP/robot-release/frontend-url.txt") npm run test:e2e
+
+        '
     - name: Record verified provider and acceptance evidence
       env:
         GH_TOKEN: ${{ github.token }}
         RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
         RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
-        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
         VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
         ROBOT_API_URL: ${{ vars.STAGING_ROBOT_API_URL }}
         ROBOT_PUBLIC_ORIGIN: ${{ vars.STAGING_ROBOT_PUBLIC_ORIGIN }}
         ROBOT_TEST_OPERATOR: ${{ vars.STAGING_ROBOT_TEST_OPERATOR }}
         VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
       run: python3 scripts/release/cloud.py receipt Staging --directory "$RUNNER_TEMP/robot-release" --browser-passed
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
         name: staging-verification
         path: ${{ runner.temp }}/robot-release/record.json
