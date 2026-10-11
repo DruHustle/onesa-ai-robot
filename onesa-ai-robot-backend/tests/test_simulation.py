@@ -1,3 +1,4 @@
+import asyncio
 import time
 from uuid import uuid4
 
@@ -119,6 +120,31 @@ def test_watchdog_stops_and_does_not_resume_after_reconnection(api):
     assert api.get("/api/v1/status").json()["stopped"]
     assert api.get("/api/v1/tasks").json()["tasks"][0]["reason"] == "operator_connection_lost"
     api.post("/api/v1/heartbeat")
+    assert api.get("/api/v1/status").json()["active_task"] is None
+
+
+@pytest.mark.parametrize("method,path", [("GET", "/api/v1/status"), ("POST", "/api/v1/heartbeat")])
+def test_requests_revoke_expired_authority_when_background_tick_is_delayed(
+    api, monkeypatch, method, path
+):
+    login(api)
+    reset(api)
+    task_id = approve(api, proposal(duration_seconds=5))
+    sim = api.app.state.sim
+    original_tick = sim.tick
+
+    def delayed_background_tick():
+        if asyncio.current_task() is not api.app.state.watch:
+            original_tick()
+
+    monkeypatch.setattr(sim, "tick", delayed_background_tick)
+    api.portal.call(lambda: sim.active.update(heartbeat=time.monotonic() - 2))
+    position = sim.position
+    assert api.request(method, path).status_code == 200
+    assert sim.stopped and sim.active is None and sim.position == position
+    row = sim.db.execute("SELECT state,reason FROM tasks WHERE id=?", (task_id,)).fetchone()
+    assert tuple(row) == ("cancelled", "operator_connection_lost")
+    assert api.post("/api/v1/heartbeat").status_code == 200
     assert api.get("/api/v1/status").json()["active_task"] is None
 
 

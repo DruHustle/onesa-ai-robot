@@ -275,9 +275,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return response
 
     def state(request: Request, require_watchdog: bool = False) -> State:
-        if require_watchdog and request.app.state.watch.done():
-            raise HTTPException(503, "Safety watchdog unavailable")
-        return request.app.state.sim
+        sim = request.app.state.sim
+        if request.app.state.watch.done():
+            if sim.active:
+                sim.cancel("watchdog_failure", stop=True)
+            if require_watchdog:
+                raise HTTPException(503, "Safety watchdog unavailable")
+        # Enforce expired authority before a late heartbeat can refresh it, even
+        # when the background tick was delayed by event-loop scheduling.
+        sim.tick()
+        return sim
 
     async def password_valid(request: Request, password: str) -> bool:
         try:
@@ -295,7 +302,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             failures.append(time.monotonic())
             raise HTTPException(403, "Operator confirmation required")
 
-    def session(request: Request) -> Session:
+    async def session(request: Request) -> Session:
         sim = state(request)
         key = token_hash(request.cookies.get("robot_session", ""))
         row = sim.db.execute(
@@ -435,7 +442,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         await confirm(sim, request, value.password)
         # Confirmation yields to the watchdog/logout; recheck authority afterwards.
         sim = state(request, require_watchdog=True)
-        operator = session(request)
+        operator = await session(request)
         if sim.stopped or sim.active:
             raise HTTPException(409, "Stopped or already running")
         row = sim.db.execute(
@@ -500,7 +507,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         sim = state(request, require_watchdog=True)
         await confirm(sim, request, value.password)
         sim = state(request, require_watchdog=True)
-        session(request)
+        await session(request)
         if sim.active:
             raise HTTPException(409, "Cancel the current task first")
         sim.db.execute("UPDATE safety SET stopped=0 WHERE id=1")
