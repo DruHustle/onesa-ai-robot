@@ -1,22 +1,38 @@
 # Onesa AI Robot
 
-Independent Onesa UG robotics repository. This workspace started empty; this change
-prepares engineering governance and application boundaries. A static frontend theme
-preview is available; **no connected robot application or backend exists yet.**
-No hardware operation is authorized.
+> Current pipeline: [automated review, staging qualification and owner activation](docs/development/CI_CD_PIPELINE_REPORT.md). Prepared local changes are not live deployments; branch/PR optimization and automatic technical evidence supersede older manual-only details.
 
-| Directory | Intended application |
-| --- | --- |
-| `onesa-ai-robot-frontend/` | Independently deployable operator interface (planned) |
-| `onesa-ai-robot-backend/` | Independently deployable robot gateway (planned) |
+> Current private-Free release policy: [safeguards and external owner authorization](docs/development/PRIVATE_FREE_SAFEGUARDS.md). Legacy JSON approval is retired; native protection requirements below apply only to a verified supported configuration.
 
-Keep robot-specific dependencies here. Consume the AI platform through authenticated,
-versioned APIs; do not copy its Git history or require sibling source for builds.
-Choose runtime, hardware targets, contracts and safety requirements before implementing.
+Independent Onesa UG robotics repository. The implemented release scope is an
+**authenticated software simulator** with an operator interface and separate Python
+API. It has no physical actuator driver, robot camera, connected ROS node or live
+STT/VLM/TTS/VLA model. Physical actuation is disabled and enabling it rejects startup.
 
-[Build/test status](docs/engineering/BUILD_AND_TEST.md) · [Deployment plan](docs/engineering/DEPLOYMENT.md)
-· [GitHub setup](GITHUB_SETUP.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md).
-The root `.env.example` and application examples are proposed configuration, not a
-working runtime contract. No license is assigned pending ownership approval.
+| Application | Runtime | Build/run guide |
+| --- | --- | --- |
+| `onesa-ai-robot-frontend/` | Static interface + Node 24 same-origin API proxy | [Frontend](onesa-ai-robot-frontend/README.md) |
+| `onesa-ai-robot-backend/` | Python 3.11 / FastAPI / private SQLite | [Backend](onesa-ai-robot-backend/README.md) |
 
-Actions visibility, local-first private validation and hosted public routing: [runner maintenance](docs/engineering/SELF_HOSTED_RUNNER.md).
+Operators sign in, explicitly reset the simulation stop state, propose a synthetic
+joint movement, confirm approval, cancel or stop, and review durable task history.
+The independent gate checks freshness, position, velocity and acceleration at
+proposal/approval and every simulation step. Session revocation, missed heartbeats,
+shutdown and restart revoke execution authority; there is no automatic resume.
+The limits apply to a synthetic joint and are not physical robot safety certification.
+
+[Build and tests](docs/engineering/BUILD_AND_TEST.md) ·
+[Deployment and recovery](docs/engineering/DEPLOYMENT.md) ·
+[Architecture](docs/engineering/SIMULATION_ARCHITECTURE.md) ·
+[ROS boundary](ros2/README.md).
+
+`robot.onesa.eu` currently serves the earlier static preview. The simulator candidate
+is not publicly promoted by a feature push. Vercel Git deployments are disabled in
+its configuration; provider/build/test/release gates must be qualified independently.
+Cloud staging, artifact review, production gates and separate edge candidate packaging
+are available locally; see [release automation](docs/engineering/AUTOMATED_QUALIFICATION.md).
+Durable Render production is blocked by the free SQLite storage constraint.
+Secrets, databases, models, uploads and internal release evidence remain outside Git.
+No project licensing or physical hardware operation is authorized by this change.
+
+[Engineering policies](AGENTS.md) · [Contribution workflow](CONTRIBUTING.md) · [Security reporting](SECURITY.md) · [GitHub Free operating plan](docs/development/FREE_GITHUB_PLAN.md). Main protection is not enforced in current public readback. Earlier private-plan rejection does not establish current eligibility.

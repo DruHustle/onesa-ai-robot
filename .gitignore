@@ -93,3 +93,8 @@ credentials*.json
 *.db-shm
 
 .vercel/
+
+/docs/internal/release-audit/
+
+/onesa-ai-robot-frontend/public/client.js
+/onesa-ai-robot-frontend/dist-types/

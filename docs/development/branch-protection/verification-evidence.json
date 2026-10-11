@@ -1,0 +1,310 @@
+{
+  "inspected_at": "2026-10-10T21:30:44+02:00",
+  "repository": {
+    "exit_code": 0,
+    "data": {
+      "full_name": "DruHustle/onesa-ai-robot",
+      "html_url": "https://github.com/DruHustle/onesa-ai-robot",
+      "default_branch": "main",
+      "visibility": "private",
+      "owner": {
+        "login": "DruHustle",
+        "type": "User"
+      },
+      "permissions": {
+        "admin": true,
+        "maintain": true,
+        "push": true,
+        "triage": true,
+        "pull": true
+      },
+      "archived": false
+    }
+  },
+  "collaborators": {
+    "exit_code": 0,
+    "data": [
+      {
+        "login": "DruHustle",
+        "role_name": "admin"
+      }
+    ]
+  },
+  "branches": {
+    "exit_code": 0,
+    "data": [
+      {
+        "name": "main",
+        "commit": {
+          "sha": "6eb412249ce65273cc2813624298228a576b4e50",
+          "url": "https://api.github.com/repos/DruHustle/onesa-ai-robot/commits/6eb412249ce65273cc2813624298228a576b4e50"
+        },
+        "protected": false
+      },
+      {
+        "name": "vercel/vercel-web-analytics-integrati-2j94yy",
+        "commit": {
+          "sha": "0d8d02cbae1cba365c66473f64d92131f64104bb",
+          "url": "https://api.github.com/repos/DruHustle/onesa-ai-robot/commits/0d8d02cbae1cba365c66473f64d92131f64104bb"
+        },
+        "protected": false
+      }
+    ]
+  },
+  "rulesets": {
+    "exit_code": 1,
+    "data": {
+      "message": "Upgrade to GitHub Pro or make this repository public to enable this feature.",
+      "documentation_url": "https://docs.github.com/rest/repos/rules#get-all-repository-rulesets",
+      "status": "403"
+    }
+  },
+  "effective_rules": {
+    "exit_code": 1,
+    "data": {
+      "message": "Upgrade to GitHub Pro or make this repository public to enable this feature.",
+      "documentation_url": "https://docs.github.com/rest/repos/rules#get-rules-for-a-branch",
+      "status": "403"
+    }
+  },
+  "branch_protection": {
+    "exit_code": 1,
+    "data": {
+      "message": "Upgrade to GitHub Pro or make this repository public to enable this feature.",
+      "documentation_url": "https://docs.github.com/rest/branches/branch-protection#get-branch-protection",
+      "status": "403"
+    }
+  },
+  "main_checks": {
+    "exit_code": 0,
+    "data": [
+      {
+        "id": 114237317194,
+        "name": "publication-hygiene",
+        "head_sha": "6eb412249ce65273cc2813624298228a576b4e50",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/DruHustle/onesa-ai-robot/actions/runs/38060397335/job/114237317194",
+        "app": "github-actions",
+        "app_id": 15368
+      },
+      {
+        "id": 114237317048,
+        "name": "scaffold-check",
+        "head_sha": "6eb412249ce65273cc2813624298228a576b4e50",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/DruHustle/onesa-ai-robot/actions/runs/38060397346/job/114237317048",
+        "app": "github-actions",
+        "app_id": 15368
+      }
+    ]
+  },
+  "pull_request_runs": {
+    "exit_code": 0,
+    "data": [
+      {
+        "id": 38059272371,
+        "name": "Robot scaffold checks",
+        "head_sha": "0d8d02cbae1cba365c66473f64d92131f64104bb",
+        "event": "pull_request",
+        "head_branch": "vercel/vercel-web-analytics-integrati-2j94yy",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/DruHustle/onesa-ai-robot/actions/runs/38059272371",
+        "path": ".github/workflows/scaffold.yml"
+      },
+      {
+        "id": 38059272368,
+        "name": "Repository hygiene",
+        "head_sha": "0d8d02cbae1cba365c66473f64d92131f64104bb",
+        "event": "pull_request",
+        "head_branch": "vercel/vercel-web-analytics-integrati-2j94yy",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/DruHustle/onesa-ai-robot/actions/runs/38059272368",
+        "path": ".github/workflows/repository-hygiene.yml"
+      }
+    ]
+  },
+  "environments": {
+    "exit_code": 0,
+    "data": {
+      "total_count": 2,
+      "environments": [
+        {
+          "id": 23957801006,
+          "node_id": "EN_kwDOVCu1Ms8AAAAFk_8ILg",
+          "name": "Preview",
+          "url": "https://api.github.com/repos/DruHustle/onesa-ai-robot/environments/Preview",
+          "html_url": "https://github.com/DruHustle/onesa-ai-robot/deployments/activity_log?environments_filter=Preview",
+          "created_at": "2026-10-10T14:22:03Z",
+          "updated_at": "2026-10-10T14:22:03Z",
+          "can_admins_bypass": true,
+          "protection_rules": [],
+          "deployment_branch_policy": null
+        },
+        {
+          "id": 23927174580,
+          "node_id": "EN_kwDOVCu1Ms8AAAAFkiu1tA",
+          "name": "Production",
+          "url": "https://api.github.com/repos/DruHustle/onesa-ai-robot/environments/Production",
+          "html_url": "https://github.com/DruHustle/onesa-ai-robot/deployments/activity_log?environments_filter=Production",
+          "created_at": "2026-10-10T00:48:36Z",
+          "updated_at": "2026-10-10T00:48:36Z",
+          "can_admins_bypass": true,
+          "protection_rules": [],
+          "deployment_branch_policy": null
+        }
+      ]
+    }
+  },
+  "hooks": {
+    "exit_code": 0,
+    "data": []
+  },
+  "deployments": {
+    "exit_code": 0,
+    "data": [
+      {
+        "id": 6982319663,
+        "sha": "6eb412249ce65273cc2813624298228a576b4e50",
+        "ref": "6eb412249ce65273cc2813624298228a576b4e50",
+        "environment": "Production",
+        "production_environment": false,
+        "transient_environment": false,
+        "creator": "vercel[bot]"
+      },
+      {
+        "id": 6982135271,
+        "sha": "0d8d02cbae1cba365c66473f64d92131f64104bb",
+        "ref": "0d8d02cbae1cba365c66473f64d92131f64104bb",
+        "environment": "Preview",
+        "production_environment": false,
+        "transient_environment": false,
+        "creator": "vercel[bot]"
+      },
+      {
+        "id": 6981213405,
+        "sha": "bd4968252fbc86bb69e7e52882fc215513ccf633",
+        "ref": "bd4968252fbc86bb69e7e52882fc215513ccf633",
+        "environment": "Production",
+        "production_environment": false,
+        "transient_environment": false,
+        "creator": "vercel[bot]"
+      },
+      {
+        "id": 6973982368,
+        "sha": "57509093fde37df16aa69e31faaf4569756db61e",
+        "ref": "57509093fde37df16aa69e31faaf4569756db61e",
+        "environment": "Production",
+        "production_environment": false,
+        "transient_environment": false,
+        "creator": "vercel[bot]"
+      }
+    ]
+  },
+  "installation_inventory": {
+    "exit_code": 1,
+    "data": {
+      "message": "You must authenticate with an access token authorized to a GitHub App in order to list installations",
+      "documentation_url": "https://docs.github.com/rest/apps/installations#list-app-installations-accessible-to-the-user-access-token",
+      "status": "403"
+    }
+  },
+  "application_and_readback": [
+    {
+      "method": "POST",
+      "endpoint": "repos/DruHustle/onesa-ai-robot/rulesets",
+      "exit_code": 1,
+      "data": {
+        "message": "Upgrade to GitHub Pro or make this repository public to enable this feature.",
+        "documentation_url": "https://docs.github.com/rest/repos/rules#create-a-repository-ruleset",
+        "status": "403"
+      }
+    },
+    {
+      "method": "PUT",
+      "endpoint": "repos/DruHustle/onesa-ai-robot/branches/main/protection",
+      "exit_code": 1,
+      "data": {
+        "message": "Upgrade to GitHub Pro or make this repository public to enable this feature.",
+        "documentation_url": "https://docs.github.com/rest/branches/branch-protection#update-branch-protection",
+        "status": "403"
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "repos/DruHustle/onesa-ai-robot/branches/main",
+      "exit_code": 0,
+      "data": {
+        "name": "main",
+        "sha": "6eb412249ce65273cc2813624298228a576b4e50",
+        "protected": false,
+        "protection": {
+          "enabled": false,
+          "required_status_checks": {
+            "enforcement_level": "off",
+            "contexts": [],
+            "checks": []
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "repos/DruHustle/onesa-ai-robot/rules/branches/main",
+      "exit_code": 1,
+      "data": {
+        "message": "Upgrade to GitHub Pro or make this repository public to enable this feature.",
+        "documentation_url": "https://docs.github.com/rest/repos/rules#get-rules-for-a-branch",
+        "status": "403"
+      }
+    },
+    {
+      "method": "GET",
+      "endpoint": "repos/DruHustle/onesa-ai-robot/branches/main/protection",
+      "exit_code": 1,
+      "data": {
+        "message": "Upgrade to GitHub Pro or make this repository public to enable this feature.",
+        "documentation_url": "https://docs.github.com/rest/branches/branch-protection#get-branch-protection",
+        "status": "403"
+      }
+    }
+  ],
+  "pr_jobs_38059272371": {
+    "exit_code": 0,
+    "data": [
+      {
+        "id": 114234025286,
+        "name": "scaffold-check",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/DruHustle/onesa-ai-robot/actions/runs/38059272371/job/114234025286"
+      }
+    ]
+  },
+  "pr_jobs_38059272368": {
+    "exit_code": 0,
+    "data": [
+      {
+        "id": 114234025608,
+        "name": "publication-hygiene",
+        "status": "completed",
+        "conclusion": "success",
+        "html_url": "https://github.com/DruHustle/onesa-ai-robot/actions/runs/38059272368/job/114234025608"
+      }
+    ]
+  },
+  "local_validation": {
+    "required_contexts": 2,
+    "workflow_yaml_and_unique_pr_contexts": "passed",
+    "equivalent_payloads": "passed",
+    "executable_job_structure_preserved": "passed",
+    "relative_policy_links": "passed",
+    "git_diff_check": "passed",
+    "publication_hygiene_findings": 0,
+    "enforcement_test_pr": "not performed: GitHub plan blocks activation",
+    "application_tests": "not rerun: governance and job display names only"
+  }
+}

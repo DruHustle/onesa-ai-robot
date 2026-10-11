@@ -1,15 +1,31 @@
-# Build and test readiness
+# Independent software builds and tests
 
-Frontend: `onesa-ai-robot-frontend/public/` contains a dependency-free static preview.
-Serve it using the frontend README instructions; there is no compilation step.
-Desktop/mobile rendering and overflow were checked locally at 1440px and 390px.
-Backend: `onesa-ai-robot-backend/` has documentation/configuration examples only.
-Both application builds/tests are **not applicable: not implemented**. Do not report
-this repository as an operational robot or independently deployable implementation.
+> Current pipeline: [automated review, staging qualification and owner activation](../development/CI_CD_PIPELINE_REPORT.md). Prepared local changes are not live deployments; branch/PR optimization and automatic technical evidence supersede older manual-only details.
 
-CI runs `publication-hygiene` and `scaffold-check` for the documentation boundary only.
-Before application readiness, add per-application reproducible installs, lint/type
-checks, unit tests, Docker builds, service health checks and contract integration
-against a mock AI-platform API. Each Docker build must use only that app's directory.
-Add hardware tests only through an approved controlled runner with actuation disabled
-by default. Required application status checks must be added after implementation.
+Use the [frontend](../../onesa-ai-robot-frontend/README.md) and
+[backend](../../onesa-ai-robot-backend/README.md) commands. Node 24 and Python 3.11
+are qualified software runtimes. Both applications have independent Dockerfiles,
+lockfiles and environment examples; sibling source is never a build dependency.
+
+From the repository root, with the backend venv active, regenerate a deliberately
+reviewed contract change with `python scripts/generate-contracts.py`, then from the
+frontend directory `npx openapi-typescript contracts/openapi.json -o
+contracts/schema.ts`. `python scripts/check-contracts.py` rejects accidental drift;
+do not regenerate to erase a breaking change without compatibility review.
+
+CI checks backend security/simulation/persistence, frontend builds/proxy/typed routes,
+all three browsers at 320/390/768/1024/1440, dependency advisories, runtime image
+vulnerabilities/secrets and publication hygiene. Candidate packaging requires all
+exact-revision jobs. Generated runtime data/raw security reports stay private.
+
+Scope: software simulation only. ROS 2 installed edge integration,
+model endpoints, actual sensor/actuator behavior, emergency-stop hardware and real
+edge-network latency remain NOT TESTED or BLOCKED until their targets exist.
+Automated accessibility checks do not certify complete WCAG 2.2 AA compliance.
+
+Release changes also require `.venv/bin/python -m unittest discover -s scripts/release
+-p 'test_*.py'` from the root, `actionlint .github/workflows/*.yml`, and backend
+`python -m mypy robot_api` with the hash-locked development requirements. ROS interface
+verification uses the pinned official Jazzy image command in `scaffold.yml`, with no
+external network. Keep all three browser projects required; local launch failure is
+not a passing application test.

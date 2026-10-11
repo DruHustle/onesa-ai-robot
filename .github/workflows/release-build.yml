@@ -1,0 +1,78 @@
+name: Reviewed production frontend build
+'on':
+  workflow_dispatch: {}
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: reviewed-production-build
+  cancel-in-progress: false
+jobs:
+  build:
+    if: ${{ github.event.repository.private == false && (always() && true && github.repository == 'DruHustle/onesa-ai-robot'
+      && github.actor == 'DruHustle' && github.ref == 'refs/heads/main') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - name: Require protected main and exact-candidate CI
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: python3 scripts/release/evidence.py build-preflight --output "$RUNNER_TEMP/build-preflight/record.json"
+    - name: Validate isolated production targets
+      env:
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        ROBOT_API_URL: ${{ vars.ROBOT_API_URL }}
+        ROBOT_PUBLIC_ORIGIN: ${{ vars.ROBOT_PUBLIC_ORIGIN }}
+      run: python3 scripts/release/cloud.py preflight Production
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      with:
+        node-version: '24'
+    - name: Install pinned deployment CLI
+      run: npm install --global vercel@63.1.0
+    - name: Install locked frontend tooling
+      working-directory: onesa-ai-robot-frontend
+      run: npm ci --ignore-scripts
+    - name: Build production candidate without publishing
+      env:
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      run: 'vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+        vercel build --prod --token="$VERCEL_TOKEN"
+
+        '
+    - name: Encrypt reviewed prebuilt output with a scoped key
+      env:
+        RELEASE_BUILD_KEY: ${{ secrets.RELEASE_BUILD_KEY }}
+      run: 'git diff --quiet HEAD --
+
+        SOURCE_SHA256=$(python3 scripts/release/evidence.py source-hash)
+
+        export SOURCE_SHA256
+
+        node scripts/release/bundle.mjs pack "$RUNNER_TEMP/reviewed-build"'
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: production-build-manifest
+        path: ${{ runner.temp }}/reviewed-build/record.json
+        retention-days: 7
+        if-no-files-found: error
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: production-build-encrypted
+        path: ${{ runner.temp }}/reviewed-build/bundle.enc
+        retention-days: 7
+        if-no-files-found: error
+    - name: Remove private build and provider environment files
+      if: always()
+      run: rm -rf -- "$GITHUB_WORKSPACE/.vercel" "$RUNNER_TEMP/reviewed-build"
+    environment: Production

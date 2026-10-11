@@ -1,0 +1,143 @@
+name: Robot staging deployment
+'on': # zizmor: ignore[dangerous-triggers] -- Exact owner main SHA; CI and artifact provenance checked before use; see CI_CD_PIPELINE_REPORT.md
+  workflow_dispatch: {}
+  workflow_run:
+    workflows:
+    - Robot software verification
+    types:
+    - completed
+    branches:
+    - main
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: robot-cloud-deployment
+  cancel-in-progress: false
+jobs:
+  deploy:
+    if: github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle'
+      && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_run'
+      && github.event.repository.private == true && vars.STAGING_AUTOMATION_ENABLED == 'true' && github.event.workflow_run.event
+      == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name
+      == github.repository && github.event.workflow_run.head_sha == github.sha && github.event.workflow_run.conclusion ==
+      'success'))
+    environment: Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - name: Validate exact candidate evidence
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: python3 scripts/release/evidence.py stage-preflight --output "$RUNNER_TEMP/robot-release/preflight.json"
+    - name: Verify isolated provider targets
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
+        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        ROBOT_STORAGE_MODE: ${{ vars.STAGING_ROBOT_STORAGE_MODE || 'ephemeral-simulation' }}
+        ROBOT_TURSO_DATABASE_URL: ${{ vars.STAGING_ROBOT_TURSO_DATABASE_URL }}
+        ROBOT_API_URL: ${{ vars.STAGING_ROBOT_API_URL }}
+        ROBOT_PUBLIC_ORIGIN: ${{ vars.STAGING_ROBOT_PUBLIC_ORIGIN }}
+        ROBOT_TEST_OPERATOR: ${{ vars.STAGING_ROBOT_TEST_OPERATOR }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+      run: python3 scripts/release/cloud.py preflight Staging
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      with:
+        node-version: '24'
+    - name: Install locked frontend tooling
+      working-directory: onesa-ai-robot-frontend
+      run: npm ci --ignore-scripts
+    - name: Install pinned deployment CLI
+      run: npm install --global vercel@63.1.0
+    - name: Build and deploy protected simulation Preview
+      env:
+        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        ROBOT_STORAGE_MODE: ${{ vars.STAGING_ROBOT_STORAGE_MODE || 'ephemeral-simulation' }}
+        ROBOT_TURSO_DATABASE_URL: ${{ vars.STAGING_ROBOT_TURSO_DATABASE_URL }}
+        ROBOT_API_URL: ${{ vars.STAGING_ROBOT_API_URL }}
+      run: 'vercel pull --yes --environment=preview --git-branch=staging --token="$VERCEL_TOKEN"
+
+        vercel build --token="$VERCEL_TOKEN"
+
+        vercel deploy --prebuilt --token="$VERCEL_TOKEN" --meta githubCommitSha="$GITHUB_SHA" --meta githubCommitRef=staging
+        > "$RUNNER_TEMP/robot-release/frontend-url.txt"
+
+        '
+    - name: Bind only the verified Preview origin
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
+        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        ROBOT_STORAGE_MODE: ${{ vars.STAGING_ROBOT_STORAGE_MODE || 'ephemeral-simulation' }}
+        ROBOT_TURSO_DATABASE_URL: ${{ vars.STAGING_ROBOT_TURSO_DATABASE_URL }}
+        ROBOT_API_URL: ${{ vars.STAGING_ROBOT_API_URL }}
+        ROBOT_PUBLIC_ORIGIN: ${{ vars.STAGING_ROBOT_PUBLIC_ORIGIN }}
+        ROBOT_TEST_OPERATOR: ${{ vars.STAGING_ROBOT_TEST_OPERATOR }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+      run: python3 scripts/release/cloud.py bind-preview Staging --directory "$RUNNER_TEMP/robot-release"
+    - name: Deploy exact backend source
+      env:
+        RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
+      run: RENDER_RECEIPT_PATH="$RUNNER_TEMP/robot-release/render.json" python3 scripts/deploy_render.py
+    - name: Synthetic API and safety acceptance
+      env:
+        ROBOT_EDGE_TOKEN: ${{ secrets.STAGING_ROBOT_EDGE_TOKEN }}
+        ROBOT_EDGE_DEVICE_ID: ${{ vars.STAGING_ROBOT_EDGE_DEVICE_ID }}
+        ROBOT_TEST_PASSWORD: ${{ secrets.STAGING_ROBOT_TEST_PASSWORD }}
+        ROBOT_TEST_SCOPE: approved-synthetic-staging
+        ROBOT_STORAGE_MODE: ${{ vars.STAGING_ROBOT_STORAGE_MODE || 'ephemeral-simulation' }}
+        ROBOT_TURSO_DATABASE_URL: ${{ vars.STAGING_ROBOT_TURSO_DATABASE_URL }}
+        ROBOT_API_URL: ${{ vars.STAGING_ROBOT_API_URL }}
+        ROBOT_TEST_OPERATOR: ${{ vars.STAGING_ROBOT_TEST_OPERATOR }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+      run: python3 scripts/release/smoke.py Staging --directory "$RUNNER_TEMP/robot-release"
+    - name: Install browsers
+      working-directory: onesa-ai-robot-frontend
+      run: npx playwright install --with-deps chromium firefox webkit
+    - name: Real browser simulation and accessibility acceptance
+      working-directory: onesa-ai-robot-frontend
+      env:
+        ROBOT_TEST_PASSWORD: ${{ secrets.STAGING_ROBOT_TEST_PASSWORD }}
+        ROBOT_TEST_OPERATOR: ${{ vars.STAGING_ROBOT_TEST_OPERATOR }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+      run: 'ROBOT_BROWSER_URL=$(cat "$RUNNER_TEMP/robot-release/frontend-url.txt") npm run test:e2e
+
+        '
+    - name: Record verified provider and acceptance evidence
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
+        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        ROBOT_STORAGE_MODE: ${{ vars.STAGING_ROBOT_STORAGE_MODE || 'ephemeral-simulation' }}
+        ROBOT_TURSO_DATABASE_URL: ${{ vars.STAGING_ROBOT_TURSO_DATABASE_URL }}
+        ROBOT_API_URL: ${{ vars.STAGING_ROBOT_API_URL }}
+        ROBOT_PUBLIC_ORIGIN: ${{ vars.STAGING_ROBOT_PUBLIC_ORIGIN }}
+        ROBOT_TEST_OPERATOR: ${{ vars.STAGING_ROBOT_TEST_OPERATOR }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+      run: python3 scripts/release/cloud.py receipt Staging --directory "$RUNNER_TEMP/robot-release" --browser-passed
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: staging-verification
+        path: ${{ runner.temp }}/robot-release/record.json
+        retention-days: 7
+        if-no-files-found: error
+    - name: Remove private provider files
+      if: always()
+      run: rm -rf -- "$GITHUB_WORKSPACE/.vercel" "$RUNNER_TEMP/reviewed-build"
