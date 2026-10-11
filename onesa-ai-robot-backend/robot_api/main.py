@@ -17,6 +17,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from robot_api.safety import Proposal, SafetyGate, SafetyViolation
 from robot_api.security import PasswordVerifier, VerificationBusy, token_hash
 
+REQUEST_BODY_SECONDS = 5
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -256,10 +258,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             if request.headers.get("origin") != config.public_origin:
                 return Response(status_code=403)
             body = b""
-            async for chunk in request.stream():
-                body += chunk
-                if len(body) > 16384:
-                    return Response(status_code=413)
+            try:
+                # A total deadline also bounds a client that keeps trickling bytes.
+                async with asyncio.timeout(REQUEST_BODY_SECONDS):
+                    async for chunk in request.stream():
+                        if len(body) + len(chunk) > 16384:
+                            return Response(status_code=413, headers={"Cache-Control": "no-store"})
+                        body += chunk
+            except TimeoutError:
+                return Response(status_code=408, headers={"Cache-Control": "no-store"})
             request._body = body
         try:
             response = await call_next(request)

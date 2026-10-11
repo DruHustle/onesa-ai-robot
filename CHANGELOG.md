@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-11 — Incomplete request deadline
+
+Bound simulator mutation body reception to five seconds total and reject excess
+bytes before concatenation. Stalled and trickling ASGI request regressions verify
+408/no-store; existing Origin, session, CSRF and physical-actuation gates remain.
+
 - Record owner-created Robot Render targets and their unverified state. Free-tier persistent-storage and hosted simulator acceptance remain blocked; no physical or public promotion is enabled.
 
 ## 2026-10-11 — Private staging host instructions
