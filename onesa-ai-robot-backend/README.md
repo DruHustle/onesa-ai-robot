@@ -31,6 +31,9 @@ SameSite Strict and Secure on HTTPS. Mutations need exact Origin plus session CS
 proof. Stop is operator-authorized. Reset and approval also require password proof.
 There is one configured operator identity; multi-user roles are not claimed. Login
 attempts and active sessions are bounded. Tasks/history are bounded and persisted.
+Mutating request bodies are limited to 16 KiB and a five-second total receive
+deadline, including clients that trickle bytes. Incomplete requests return 408;
+this does not replace frontend/network rate limits or authorize hardware control.
 
 `docker build -t onesa-robot-api:local .` builds independently. Keep the API private
 behind the approved same-origin frontend/TLS boundary. No credential is a frontend
