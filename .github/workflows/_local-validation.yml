@@ -1,0 +1,120 @@
+name: Private local validation
+on:
+  workflow_call: {}
+permissions:
+  contents: read
+jobs:
+  backend:
+    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
+    timeout-minutes: 120
+    env:
+      ONESA_CI_TOKEN: ${{ github.token }}
+    runs-on: [self-hosted, Linux, ARM64, onesa-robot-local]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install --require-hashes -r requirements-dev.lock
+        working-directory: onesa-ai-robot-backend
+      - run: python -m ruff check robot_api tests && python -m ruff format --check robot_api tests && python -m pytest -q
+        working-directory: onesa-ai-robot-backend
+      - run: python -m pip_audit -r requirements.lock --disable-pip --no-deps
+        working-directory: onesa-ai-robot-backend
+      - run: python3 -m unittest discover -s scripts/runner -p 'test_*.py'
+  frontend:
+    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
+    timeout-minutes: 120
+    env:
+      ONESA_CI_TOKEN: ${{ github.token }}
+    runs-on: [self-hosted, Linux, ARM64, onesa-robot-local]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python -m pip install --require-hashes -r onesa-ai-robot-backend/requirements.lock
+      - run: npm ci --ignore-scripts && npm run build && npm run typecheck && npm test && npm audit --audit-level=high
+        working-directory: onesa-ai-robot-frontend
+      - run: python scripts/check-contracts.py
+      - run: npx playwright install chromium firefox webkit
+        working-directory: onesa-ai-robot-frontend
+      - name: Synthetic cross-browser operator acceptance
+        env:
+          ROBOT_DATABASE_PATH: /tmp/robot-browser-test.sqlite3
+          ROBOT_PUBLIC_ORIGIN: http://localhost:3431
+        run: |
+          ROBOT_OPERATOR_PASSWORD_HASH=$(cd onesa-ai-robot-backend && python -c "from robot_api.security import password_hash; print(password_hash('browser-test-operator-only'))")
+          export ROBOT_OPERATOR_PASSWORD_HASH
+          (cd onesa-ai-robot-backend && sh start.sh) > /tmp/robot-backend-test.log 2>&1 &
+          backend_pid=$!
+          (cd onesa-ai-robot-frontend && npm start) > /tmp/robot-frontend-test.log 2>&1 &
+          frontend_pid=$!
+          trap 'kill "$backend_pid" "$frontend_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://localhost:3431/api/v1/ready > /dev/null; then break; fi
+            echo "Waiting for Robot readiness: $attempt"
+            sleep 1
+          done
+          curl -fsS http://localhost:3431/api/v1/ready > /dev/null
+          npm --prefix onesa-ai-robot-frontend run test:e2e
+  containers:
+    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
+    timeout-minutes: 120
+    env:
+      ONESA_CI_TOKEN: ${{ github.token }}
+    runs-on: [self-hosted, Linux, ARM64, onesa-robot-local]
+    strategy:
+      fail-fast: false
+      matrix:
+        application: [frontend, backend]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - run: docker build -t onesa-robot-runtime:${{ matrix.application }}-${{ github.run_id }} ./onesa-ai-robot-${{ matrix.application }}
+      - name: Actual backend startup and shutdown
+        if: matrix.application == 'backend'
+        run: python3 scripts/test-container-startup.py onesa-robot-runtime:${{ matrix.application }}-${{ github.run_id }}
+      - name: Runtime security gate
+        run: |
+          mkdir -p data/security
+          chmod 700 data/security
+          docker save onesa-robot-runtime:${{ matrix.application }}-${{ github.run_id }} -o data/security/runtime.tar
+          docker run --rm --user "$(id -u):$(id -g)" -e TRIVY_CACHE_DIR=/tmp/trivy-cache -v "$PWD/data/security:/reports" aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa image --scanners vuln,secret --format json --output /reports/runtime.json --input /reports/runtime.tar
+          python3 scripts/image_gate.py data/security/runtime.json
+      - name: Remove restricted scan output
+        if: always()
+        run: rm -rf -- "$GITHUB_WORKSPACE/data/security"
+  publication-hygiene:
+    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
+    timeout-minutes: 120
+    runs-on: [self-hosted, Linux, ARM64, onesa-robot-local]
+    env:
+      ONESA_CI_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: python scripts/repository_hygiene.py --history
+  complete:
+    name: local-complete
+    if: ${{ always() && github.event.repository.private == true && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'skipped') }}
+    needs: [backend, frontend, containers, publication-hygiene]
+    runs-on: [self-hosted, Linux, ARM64, onesa-robot-local]
+    timeout-minutes: 120
+    env:
+      ONESA_CI_TOKEN: ${{ github.token }}
+    steps:
+      - run: echo "Current simulator validation passed for $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"

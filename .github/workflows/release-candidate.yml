@@ -11,9 +11,22 @@ permissions:
   contents: read
   checks: read
 jobs:
+  local-validation:
+    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
+    uses: ./.github/workflows/_local-validation.yml
   candidate:
+    needs: local-validation
+    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
     runs-on: ubuntu-latest
     steps:
+      - name: Verify GitHub-hosted execution and actual visibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
+          test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }
       - uses: actions/checkout@v4
       - name: Require implemented application build context
         env:

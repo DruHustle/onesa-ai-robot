@@ -2,10 +2,26 @@ name: Robot software verification
 on: [push, pull_request, workflow_dispatch]
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
+  local-validation:
+    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
+    uses: ./.github/workflows/_local-validation.yml
   backend:
+    needs: local-validation
+    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
     runs-on: ubuntu-latest
     steps:
+      - name: Verify GitHub-hosted execution and actual visibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
+          test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
@@ -15,9 +31,20 @@ jobs:
         working-directory: onesa-ai-robot-backend
       - run: python -m pip_audit -r requirements.lock --disable-pip --no-deps
         working-directory: onesa-ai-robot-backend
+      - run: python3 -m unittest discover -s scripts/runner -p 'test_*.py'
   frontend:
+    needs: local-validation
+    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
     runs-on: ubuntu-latest
     steps:
+      - name: Verify GitHub-hosted execution and actual visibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
+          test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: '24'}
@@ -49,12 +76,22 @@ jobs:
           curl -fsS http://localhost:3431/api/v1/ready > /dev/null
           npm --prefix onesa-ai-robot-frontend run test:e2e
   containers:
+    needs: local-validation
+    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         application: [frontend, backend]
     steps:
+      - name: Verify GitHub-hosted execution and actual visibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
+          test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Repository visibility changed; start fresh validation'; exit 1; }
       - uses: actions/checkout@v4
       - run: docker build -t onesa-robot-runtime:ci ./onesa-ai-robot-${{ matrix.application }}
       - name: Actual backend startup and shutdown

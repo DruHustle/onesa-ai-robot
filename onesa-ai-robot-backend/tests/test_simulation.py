@@ -1,4 +1,5 @@
 import asyncio
+import sqlite3
 import time
 from uuid import uuid4
 
@@ -141,8 +142,10 @@ def test_requests_revoke_expired_authority_when_background_tick_is_delayed(
     api.portal.call(lambda: sim.active.update(heartbeat=time.monotonic() - 2))
     position = sim.position
     assert api.request(method, path).status_code == 200
-    assert sim.stopped and sim.active is None and sim.position == position
-    row = sim.db.execute("SELECT state,reason FROM tasks WHERE id=?", (task_id,)).fetchone()
+    assert api.portal.call(lambda: sim.stopped) and sim.active is None and sim.position == position
+    row = api.portal.call(
+        lambda: sim.db.execute("SELECT state,reason FROM tasks WHERE id=?", (task_id,)).fetchone()
+    )
     assert tuple(row) == ("cancelled", "operator_connection_lost")
     assert api.post("/api/v1/heartbeat").status_code == 200
     assert api.get("/api/v1/status").json()["active_task"] is None
@@ -162,11 +165,15 @@ def test_session_revocation_cancel_restart_and_expiry(config):
         login(first)
         reset(first)
         approve(first, proposal(duration_seconds=5))
-        first.app.state.sim.db.execute("UPDATE sessions SET expires=0")
-        first.app.state.sim.db.commit()
+
+        def expire_sessions():
+            first.app.state.sim.db.execute("UPDATE sessions SET expires=0")
+            first.app.state.sim.db.commit()
+
+        first.portal.call(expire_sessions)
         time.sleep(0.15)
         assert first.get("/api/v1/tasks").status_code == 401
-        assert first.app.state.sim.stopped
+        assert first.portal.call(lambda: first.app.state.sim.stopped)
         login(first)
         reset(first)
         approve(first, proposal(duration_seconds=5))
@@ -182,6 +189,18 @@ def test_session_revocation_cancel_restart_and_expiry(config):
         assert rows[0]["state"] == "cancelled"
 
 
+def test_database_connection_is_owned_by_application_thread(api):
+    with pytest.raises(sqlite3.ProgrammingError, match="same thread"):
+        api.app.state.sim.db.execute("SELECT stopped FROM safety")
+    assert (
+        api.portal.call(
+            lambda: api.app.state.sim.db.execute("SELECT stopped FROM safety").fetchone()[0]
+        )
+        == 1
+    )
+    assert api.get("/api/v1/ready").status_code == 200
+
+
 def test_approval_rechecks_staleness_and_owner(api):
     login(api)
     reset(api)
@@ -189,17 +208,29 @@ def test_approval_rechecks_staleness_and_owner(api):
     task_id = response.json()["id"]
     assert api.post("/api/v1/tasks/absent/approve", json={"password": PASSWORD}).status_code == 404
     sim = api.app.state.sim
-    row = sim.db.execute("SELECT proposal FROM tasks WHERE id=?", (task_id,)).fetchone()
+    row = api.portal.call(
+        lambda: sim.db.execute("SELECT proposal FROM tasks WHERE id=?", (task_id,)).fetchone()
+    )
     expired = Proposal.model_validate_json(row[0]).model_copy(
         update={"issued_at": time.time() - 30}
     )
-    sim.db.execute("UPDATE tasks SET proposal=? WHERE id=?", (expired.model_dump_json(), task_id))
-    sim.db.commit()
+
+    def replace_proposal():
+        sim.db.execute(
+            "UPDATE tasks SET proposal=? WHERE id=?", (expired.model_dump_json(), task_id)
+        )
+        sim.db.commit()
+
+    api.portal.call(replace_proposal)
     assert (
         api.post(f"/api/v1/tasks/{task_id}/approve", json={"password": PASSWORD}).status_code == 422
     )
-    sim.db.execute("UPDATE tasks SET owner='different-operator' WHERE id=?", (task_id,))
-    sim.db.commit()
+
+    def change_owner():
+        sim.db.execute("UPDATE tasks SET owner='different-operator' WHERE id=?", (task_id,))
+        sim.db.commit()
+
+    api.portal.call(change_owner)
     assert api.post(f"/api/v1/tasks/{task_id}/cancel").status_code == 404
     assert api.get("/api/v1/tasks").json()["tasks"] == []
 
@@ -238,8 +269,6 @@ def test_gate_limits_and_actuation_disabled(config):
 
 
 def test_isolated_online_backup_restores_history_without_execution_authority(config, tmp_path):
-    import sqlite3
-
     backup = tmp_path / "backup.sqlite3"
     restored = tmp_path / "restored.sqlite3"
     with TestClient(create_app(config)) as client:
@@ -247,11 +276,15 @@ def test_isolated_online_backup_restores_history_without_execution_authority(con
         login(client)
         reset(client)
         approve(client, proposal(duration_seconds=5))
-        destination = sqlite3.connect(backup)
-        try:
-            client.app.state.sim.db.backup(destination)
-        finally:
-            destination.close()
+
+        def snapshot():
+            destination = sqlite3.connect(backup)
+            try:
+                client.app.state.sim.db.backup(destination)
+            finally:
+                destination.close()
+
+        client.portal.call(snapshot)
     source, destination = sqlite3.connect(backup), sqlite3.connect(restored)
     try:
         source.backup(destination)
@@ -336,9 +369,12 @@ def test_password_work_cannot_starve_watchdog_or_queue_unbounded_hashes(api, mon
                 == 429
             )
             deadline = time.monotonic() + 2
-            while not api.app.state.sim.stopped and time.monotonic() < deadline:
+            while (
+                not api.portal.call(lambda: api.app.state.sim.stopped)
+                and time.monotonic() < deadline
+            ):
                 time.sleep(0.02)
-            assert api.app.state.sim.stopped
+            assert api.portal.call(lambda: api.app.state.sim.stopped)
             assert (
                 api.get("/api/v1/tasks").json()["tasks"][0]["reason"] == "operator_connection_lost"
             )

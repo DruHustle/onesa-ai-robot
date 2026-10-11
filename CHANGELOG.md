@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-11 — Preserve audited applications with owner runner policy
+
+- Merge the owner-approved main policy without replacing current application fixes.
+- Public jobs verify hosted execution and live visibility; private reusable validation
+  retains all implemented tests, browser matrices, startup and image-security gates.
+- No local runner activation, production promotion or physical control.
+
 ## 2026-10-11 — Public repository hosted Actions
 
 - Make browser setup fail when password hashing or backend readiness fails; retain
@@ -51,3 +58,11 @@ concurrent logout during task approval. Physical actuation remains disabled.
 The operator UI also ignores failures from obsolete telemetry requests after a
 new session is established. A browser regression delays an old 401 across sign-out
 and sign-in and verifies that the new session remains authenticated.
+
+## 2026-10-11 — Simulator SQLite connection ownership
+
+- Enforce application-thread ownership of the simulator connection. Synthetic expiry,
+  stale-proposal and owner edits, plus online backup fixtures, run through the
+  application portal so watchdog commits cannot overlap a caller-thread transaction.
+- Preserve all session, cancellation, restore and safety assertions; add a regression
+  proving foreign-thread SQL is rejected while readiness remains available.
