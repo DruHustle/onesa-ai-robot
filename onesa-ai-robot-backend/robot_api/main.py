@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from robot_api.safety import Proposal, SafetyGate, SafetyViolation
-from robot_api.security import token_hash, verify
+from robot_api.security import PasswordVerifier, VerificationBusy, token_hash
 
 
 class Settings(BaseSettings):
@@ -213,6 +213,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def lifespan(app):
         state = State(config)
         app.state.sim = state
+        app.state.passwords = PasswordVerifier()
 
         async def watch():
             while True:
@@ -278,13 +279,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(503, "Safety watchdog unavailable")
         return request.app.state.sim
 
-    def confirm(sim: State, password: str) -> None:
+    async def password_valid(request: Request, password: str) -> bool:
+        try:
+            return await request.app.state.passwords.verify(password, config.operator_password_hash)
+        except VerificationBusy:
+            raise HTTPException(429, "Password verification busy; retry later") from None
+
+    async def confirm(sim: State, request: Request, password: str) -> None:
         failures = sim.failures["confirmation"]
         while failures and failures[0] < time.monotonic() - 60:
             failures.popleft()
         if len(failures) >= 5:
             raise HTTPException(429, "Confirmation attempts exceeded")
-        if not verify(password, config.operator_password_hash):
+        if not await password_valid(request, password):
             failures.append(time.monotonic())
             raise HTTPException(403, "Operator confirmation required")
 
@@ -327,9 +334,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             failures.popleft()
         if len(failures) >= 5:
             raise HTTPException(429, "Try again later")
-        if value.name != config.operator_name or not verify(
-            value.password, config.operator_password_hash
-        ):
+        valid = await password_valid(request, value.password)
+        if value.name != config.operator_name or not valid:
             failures.append(time.monotonic())
             raise HTTPException(401, "Invalid credentials")
         token, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
@@ -426,7 +432,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.post("/api/v1/tasks/{task_id}/approve", response_model=TaskResponse)
     async def approve(task_id: str, value: Confirmation, request: Request, operator: Operator):
         sim = state(request, require_watchdog=True)
-        confirm(sim, value.password)
+        await confirm(sim, request, value.password)
+        # Confirmation yields to the watchdog/logout; recheck authority afterwards.
+        sim = state(request, require_watchdog=True)
+        operator = session(request)
         if sim.stopped or sim.active:
             raise HTTPException(409, "Stopped or already running")
         row = sim.db.execute(
@@ -489,7 +498,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.post("/api/v1/reset", response_model=ActionResponse)
     async def reset(value: Confirmation, request: Request, operator: Operator):
         sim = state(request, require_watchdog=True)
-        confirm(sim, value.password)
+        await confirm(sim, request, value.password)
+        sim = state(request, require_watchdog=True)
+        session(request)
         if sim.active:
             raise HTTPException(409, "Cancel the current task first")
         sim.db.execute("UPDATE safety SET stopped=0 WHERE id=1")

@@ -19,7 +19,7 @@ async function refresh() {
     const {tasks}=await client.tasks();
     if(current!==generation) return;
     byId('history').replaceChildren(...tasks.map(task=>{const li=document.createElement('li');li.textContent=`${task.state} · ${task.id} · ${task.reason}`;if(task.state==='running'){const button=document.createElement('button');button.textContent='Cancel running task';button.addEventListener('click',()=>run(()=>client.cancel(task.id),'Task cancelled; simulation stopped.'));li.append(button);}return li;}));
-  } catch(error) {byId('connection').textContent='Disconnected — telemetry is stale; the gateway watchdog stops running simulation tasks.';if(error.status===401) signedOut();notice(error.message);}
+  } catch(error) {if(current!==generation) return;byId('connection').textContent='Disconnected — telemetry is stale; the gateway watchdog stops running simulation tasks.';if(error.status===401) signedOut();notice(error.message);}
   finally {polling=false;}
 }
 async function run(action, success) {try {await action();notice(success);await refresh();}catch(error){if(error.status===401) signedOut();notice(error.message);}}

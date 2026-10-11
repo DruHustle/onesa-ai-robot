@@ -269,3 +269,128 @@ def test_confirmation_limits_and_config_errors_hide_hash(api):
     with pytest.raises(ValidationError) as caught:
         Settings(operator_password_hash=disclosed)
     assert disclosed not in str(caught.value)
+
+
+def test_password_work_cannot_starve_watchdog_or_queue_unbounded_hashes(api, monkeypatch):
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    from robot_api import security
+
+    login(api)
+    reset(api)
+    approve(api, proposal(duration_seconds=5))
+    entered, release = threading.Event(), threading.Event()
+    lock = threading.Lock()
+    started = 0
+
+    def slow_verify(*_args):
+        nonlocal started
+        with lock:
+            started += 1
+            if started == 2:
+                entered.set()
+        assert release.wait(5)
+        return False
+
+    monkeypatch.setattr(security, "verify", slow_verify)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        pending = [
+            pool.submit(
+                api.post, "/api/v1/auth/login", json={"name": "operator", "password": "wrong"}
+            )
+            for _ in range(2)
+        ]
+        try:
+            assert entered.wait(2)
+            assert (
+                api.post(
+                    "/api/v1/auth/login", json={"name": "operator", "password": "wrong"}
+                ).status_code
+                == 429
+            )
+            deadline = time.monotonic() + 2
+            while not api.app.state.sim.stopped and time.monotonic() < deadline:
+                time.sleep(0.02)
+            assert api.app.state.sim.stopped
+            assert (
+                api.get("/api/v1/tasks").json()["tasks"][0]["reason"] == "operator_connection_lost"
+            )
+            assert api.post("/api/v1/stop").status_code == 200
+        finally:
+            release.set()
+        assert all(job.result(2).status_code == 401 for job in pending)
+
+
+def test_confirmation_rechecks_session_after_concurrent_logout(api, monkeypatch):
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    from robot_api import security
+
+    login(api)
+    reset(api)
+    identifier = api.post("/api/v1/tasks", json=proposal()).json()["id"]
+    entered, release = threading.Event(), threading.Event()
+
+    def slow_verify(*_args):
+        entered.set()
+        assert release.wait(5)
+        return True
+
+    monkeypatch.setattr(security, "verify", slow_verify)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pending = pool.submit(
+            api.post, f"/api/v1/tasks/{identifier}/approve", json={"password": PASSWORD}
+        )
+        try:
+            assert entered.wait(2)
+            assert api.post("/api/v1/auth/logout").status_code == 200
+        finally:
+            release.set()
+        assert pending.result(2).status_code == 401
+    assert api.app.state.sim.active is None
+
+
+def test_cancelled_hash_caller_retains_capacity_until_worker_finishes(monkeypatch):
+    import asyncio
+    import threading
+
+    from robot_api import security
+
+    release = threading.Event()
+    entered = [threading.Event(), threading.Event()]
+    lock = threading.Lock()
+    calls = 0
+
+    def slow_verify(*_args):
+        nonlocal calls
+        with lock:
+            index = calls
+            calls += 1
+        if index < 2:
+            entered[index].set()
+            assert release.wait(5)
+        return True
+
+    monkeypatch.setattr(security, "verify", slow_verify)
+
+    async def exercise():
+        verifier = security.PasswordVerifier()
+        jobs = [asyncio.create_task(verifier.verify(PASSWORD, HASH)) for _ in range(2)]
+        try:
+            for event in entered:
+                assert await asyncio.to_thread(event.wait, 2)
+            jobs[0].cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await jobs[0]
+            with pytest.raises(security.VerificationBusy):
+                await verifier.verify(PASSWORD, HASH)
+        finally:
+            release.set()
+        assert await jobs[1]
+        # Both worker completions release capacity even after the first caller disconnects.
+        await asyncio.sleep(0.05)
+        assert await verifier.verify(PASSWORD, HASH)
+
+    asyncio.run(exercise())

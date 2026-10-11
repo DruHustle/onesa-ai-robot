@@ -18,3 +18,22 @@ for(const width of [320,390,768,1024,1440]) test(`simulation flows and accessibi
  await page.getByRole('button',{name:'Sign out'}).click();await expect(page.getByRole('button',{name:'Sign in',exact:true})).toBeVisible();
  expect(errors).toEqual([]);
 });
+test('late unauthorized telemetry cannot sign out a newer operator session',async({page})=>{
+ let held, release;
+ const received=new Promise(resolve=>held=resolve);
+ const wait=new Promise(resolve=>release=resolve);
+ await page.route('**/api/v1/status',async route=>{
+  if(!held){await route.continue();return;}
+  const signal=held;held=null;signal();await wait;
+  await route.fulfill({status:401,contentType:'application/json',body:'{"detail":"Old session expired"}'});
+ });
+ await page.goto('/');
+ async function signIn(){await page.getByLabel('Operator name').fill('operator');await page.getByLabel('Password',{exact:true}).fill('browser-test-operator-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible();}
+ await signIn();await received;
+ await page.getByRole('button',{name:'Sign out'}).click();
+ await expect(page.getByRole('button',{name:'Sign in',exact:true})).toBeVisible();
+ await signIn();release();
+ await expect(page.locator('#connection')).toHaveText('Connected to software simulator');
+ await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible();
+ await page.getByRole('button',{name:'Sign out'}).click();
+});

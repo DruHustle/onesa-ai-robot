@@ -1,5 +1,6 @@
 """Password verification and opaque session hashing; no control credentials in the UI."""
 
+import asyncio
 import getpass
 import hashlib
 import hmac
@@ -22,6 +23,31 @@ def verify(password: str, stored: str) -> bool:
         return hmac.compare_digest(password_hash(password, salt).split("$")[2], digest)
     except (ValueError, TypeError):
         return False
+
+
+class VerificationBusy(RuntimeError):
+    """Bound concurrent password hashing without queuing control requests."""
+
+
+class PasswordVerifier:
+    def __init__(self) -> None:
+        self.slots = asyncio.Semaphore(2)
+
+    async def verify(self, password: str, stored: str) -> bool:
+        if self.slots.locked():
+            raise VerificationBusy
+        await self.slots.acquire()
+        task = asyncio.create_task(asyncio.to_thread(verify, password, stored))
+
+        def finished(completed: asyncio.Task) -> None:
+            self.slots.release()
+            # A disconnected caller must not free a slot while scrypt still runs,
+            # or leave an unobserved exception in the background worker task.
+            if not completed.cancelled():
+                completed.exception()
+
+        task.add_done_callback(finished)
+        return await asyncio.shield(task)
 
 
 def token_hash(value: str) -> str:
