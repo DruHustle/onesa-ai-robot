@@ -38,3 +38,8 @@ Public CI uses GitHub-hosted Ubuntu exclusively. The private-only reusable valid
 gate includes the full simulator, cross-browser and container checks; it does not
 register a runner or authorize a persistent host or physical control. See
 [runner operations](SELF_HOSTED_RUNNER.md).
+
+## Automatic software evidence
+
+See [software/simulation qualification](AUTOMATED_QUALIFICATION.md). The artifact
+does not authorize publishing a candidate or physical robot operation.

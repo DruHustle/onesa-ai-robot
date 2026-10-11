@@ -31,6 +31,8 @@ jobs:
         working-directory: onesa-ai-robot-backend
       - run: python -m pip_audit -r requirements.lock --disable-pip --no-deps
         working-directory: onesa-ai-robot-backend
+      - name: 'Release requirement: qualification failure-path tests'
+        run: python3 -m unittest discover -s scripts/release -p 'test_evidence.py'
       - run: python3 -m unittest discover -s scripts/runner -p 'test_*.py'
   frontend:
     needs: local-validation
@@ -104,3 +106,11 @@ jobs:
           docker save onesa-robot-runtime:ci -o data/security/runtime.tar
           docker run --rm --user "$(id -u):$(id -g)" -e TRIVY_CACHE_DIR=/tmp/trivy-cache -v "$PWD/data/security:/reports" aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa image --scanners vuln,secret --format json --output /reports/runtime.json --input /reports/runtime.tar
           python3 scripts/image_gate.py data/security/runtime.json
+      - name: 'Release requirement: record tested runtime digest'
+        run: python3 scripts/release/evidence.py manifest --image "onesa-robot-runtime:ci" --output "$RUNNER_TEMP/runtime/record.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: runtime-onesa-ai-robot-${{ matrix.application }}
+          path: ${{ runner.temp }}/runtime/record.json
+          retention-days: 7
+          if-no-files-found: error

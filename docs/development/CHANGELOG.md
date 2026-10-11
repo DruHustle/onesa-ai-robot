@@ -25,3 +25,9 @@ Consolidated policy references and templates, preserved later audited runtime fi
 ## 2026-10-11 — Request-boundary simulation watchdog
 
 CI exposed a delayed background watchdog leaving an expired task active at a status request. Authenticated requests now enforce task/session deadlines before reading state or refreshing a heartbeat. Session validation runs on the same event loop as simulation transitions; a failed watchdog revokes active authority. Two deterministic stalled-watchdog regressions cover status and late heartbeat, including frozen position and durable cancellation. All 15 backend tests and contract checks pass locally. Physical actuation remains disabled.
+
+## 2026-10-11 — Automatic software/simulation evidence
+
+Added exact-candidate CI/security artifact provenance, tested runtime digest manifests
+and qualification rejection tests. ROS integration remains NOT TESTED and physical
+readiness BLOCKED. No hardware or provider deployment was introduced.
