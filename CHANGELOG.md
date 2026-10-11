@@ -66,3 +66,9 @@ and sign-in and verifies that the new session remains authenticated.
   application portal so watchdog commits cannot overlap a caller-thread transaction.
 - Preserve all session, cancellation, restore and safety assertions; add a regression
   proving foreign-thread SQL is rejected while readiness remains available.
+
+## Documentation portal integration — 2026-10-11
+
+The operator interface documentation link opens the approved Robot simulation
+guide, which separates implemented software from unavailable hardware/ROS/model
+functions. Simulation coverage and Vercel Git deployment guards are unchanged.
