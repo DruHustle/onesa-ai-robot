@@ -143,7 +143,21 @@ if __name__ == "__main__":
                 indent=2,
             )
         )
-    except (Rejected, ValueError, KeyError, TypeError, OSError):
+    except Rejected as error:
+        codes = {
+            "Owner hosted staging operator required": "OWNER_CONTEXT",
+            "Staging service binding mismatch": "SERVICE_BINDING",
+            "Identified free Robot staging service required": "TARGET_IDENTITY",
+            "Complete staging environment inventory required": "ENV_INVENTORY",
+            "Provider credential missing": "CREDENTIAL_MISSING",
+            "Provider readback unavailable; inspect private provider logs": "PROVIDER_READBACK",
+            "Staging layout readback mismatch": "LAYOUT_READBACK",
+        }
+        raise SystemExit(
+            "Robot staging configuration blocked: "
+            + codes.get(str(error), "PROVIDER_OR_CONFIGURATION")
+        ) from None
+    except (ValueError, KeyError, TypeError, OSError):
         raise SystemExit(
             "Robot staging configuration blocked; no private values logged"
         ) from None
