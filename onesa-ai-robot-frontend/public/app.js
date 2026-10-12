@@ -32,7 +32,10 @@ byId('stop').addEventListener('click',()=>run(()=>client.stop(),'Simulation stop
 byId('logout').addEventListener('click',()=>run(async()=>{await client.logout();signedOut();},'Signed out; this session cannot authorize further tasks.'));
 // No localStorage/sessionStorage, token URLs or persistence of operator credentials.
 
-client.me().then(session=>{generation++;csrf=session.csrf;client.csrf=csrf;byId('login-form').hidden=true;byId('operator').hidden=false;timer=setInterval(refresh,500);return refresh();}).catch(error=>{if(error.status!==401)notice(error.message);});
+function restoreSession(){const current=++generation;return client.me().then(session=>{if(current!==generation)return;csrf=session.csrf;client.csrf=csrf;byId('login-form').hidden=true;byId('operator').hidden=false;timer=setInterval(refresh,500);return refresh();}).catch(error=>{if(current===generation&&error.status!==401&&error.name!=='AbortError')notice(error.message);});}
+window.addEventListener('pagehide',()=>{generation++;clearInterval(timer);client.cancelPending();polling=false;});
+window.addEventListener('pageshow',event=>{if(event.persisted)restoreSession();});
+restoreSession();
 
 const appearance = document.getElementById("appearance");
 function updateAppearance(){appearance.value=window.OnesaAppearance.getPreference();}

@@ -12,14 +12,23 @@ const routes = {
 } as const satisfies Record<string,ApiPath>;
 export class RobotClient {
  csrf = '';
+ pending = new AbortController();
+ cancelPending(){this.pending.abort();this.pending=new AbortController();}
  async request<T>(path:string,body?:unknown):Promise<T> {
-  const response=await fetch(path,{method:body===undefined?'GET':'POST',credentials:'same-origin',
+  const lifecycle=this.pending.signal,request=new AbortController();
+  const cancel=()=>request.abort();
+  lifecycle.addEventListener('abort',cancel,{once:true});
+  if(lifecycle.aborted)cancel();
+  const deadline=setTimeout(cancel,10000);
+  try{
+  const response=await fetch(path,{signal:request.signal,method:body===undefined?'GET':'POST',credentials:'same-origin',
    headers:body===undefined?{}:{'Content-Type':'application/json','X-CSRF-Token':this.csrf},
    ...(body===undefined?{}:{body:JSON.stringify(body)})});
   let data:unknown;
-  try {data=await response.json();}catch{data={detail:'Gateway unavailable'};}
+  try {data=await response.json();}catch{throw new Error('Gateway returned an invalid response');}
   if(!response.ok){const error=new Error(typeof (data as {detail?:unknown}).detail==='string'?(data as {detail:string}).detail:'Request rejected; check the configured safety limits.');Object.assign(error,{status:response.status});throw error;}
   return data as T;
+  }finally{clearTimeout(deadline);lifecycle.removeEventListener('abort',cancel);}
  }
  me(){return this.request<components['schemas']['SessionResponse']>(routes.me);}
  login(value:Login){return this.request<components['schemas']['SessionResponse']>(routes.login,value);}
