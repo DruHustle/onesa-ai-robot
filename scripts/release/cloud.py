@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from evidence import REPOSITORY, Rejected, digest, require, save, verify_stage
+from service_runtime import allowed as runtime_allowed
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -21,7 +22,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def provider(url, token, payload=None):
+def provider(url, token, payload=None, *, method=None):
     require(token, "Provider credential missing")
     request = urllib.request.Request(
         url,
@@ -30,7 +31,7 @@ def provider(url, token, payload=None):
             "Content-Type": "application/json",
         },
         data=json.dumps(payload).encode() if payload is not None else None,
-        method="PUT" if payload is not None else "GET",
+        method=method or ("PUT" if payload is not None else "GET"),
     )
     try:
         with urllib.request.build_opener(NoRedirect()).open(
@@ -64,39 +65,58 @@ def origin(value, suffix=None):
 def staging_storage(values):
     mode = os.environ.get("ROBOT_STORAGE_MODE", "ephemeral-simulation")
     require(mode in {"ephemeral-simulation", "turso"}, "Unknown staging storage mode")
-    require(values.get("ROBOT_STORAGE_MODE") == mode, "Staging storage binding mismatch")
+    require(
+        values.get("ROBOT_STORAGE_MODE") == mode, "Staging storage binding mismatch"
+    )
     if mode == "turso":
         expected = os.environ.get("ROBOT_TURSO_DATABASE_URL", "")
         parsed = urllib.parse.urlsplit(expected)
         require(
-            parsed.scheme == "libsql" and parsed.hostname
+            parsed.scheme == "libsql"
+            and parsed.hostname
             and re.fullmatch(r"[a-z0-9][a-z0-9.-]*\.turso\.io", parsed.hostname)
-            and not parsed.username and not parsed.password and not parsed.port
-            and not parsed.query and not parsed.fragment and parsed.path in {"", "/"},
+            and not parsed.username
+            and not parsed.password
+            and not parsed.port
+            and not parsed.query
+            and not parsed.fragment
+            and parsed.path in {"", "/"},
             "Configure the reviewed staging Turso database origin",
         )
-        require(values.get("ROBOT_TURSO_DATABASE_URL") == expected,
-                "Turso staging database identity mismatch")
-        require(bool(values.get("ROBOT_TURSO_AUTH_TOKEN")), "Turso runtime credential missing")
+        require(
+            values.get("ROBOT_TURSO_DATABASE_URL") == expected,
+            "Turso staging database identity mismatch",
+        )
+        require(
+            bool(values.get("ROBOT_TURSO_AUTH_TOKEN")),
+            "Turso runtime credential missing",
+        )
     return mode
 
 
 def preflight(environment):
     require(environment in {"Staging", "Production"}, "Unknown environment")
     require(
-        os.environ["GITHUB_REF"] == "refs/heads/main", "Cloud release requires main"
+        os.environ["GITHUB_REF"]
+        == ("refs/heads/staging" if environment == "Staging" else "refs/heads/main"),
+        "Cloud release branch mismatch",
     )
     service_id = os.environ.get("RENDER_SERVICE_ID", "")
     require(
         re.fullmatch(r"srv-[A-Za-z0-9]+", service_id),
         "Configure isolated Render service ID",
     )
+    if environment == "Staging":
+        require(
+            service_id == "srv-db5k9ft9fdbs73d622cg",
+            "Identified staging service required",
+        )
     token = os.environ.get("RENDER_API_KEY", "")
     base = "https://api.render.com/v1/services/" + service_id
     service = provider(base, token)
     require(
         service.get("repo") == "https://github.com/" + REPOSITORY
-        and service.get("branch") == "main"
+        and service.get("branch") == ("staging" if environment == "Staging" else "main")
         and service.get("type") == "web_service"
         and service.get("rootDir") == "onesa-ai-robot-backend",
         "Render repository, branch or backend root mismatch",
@@ -107,8 +127,8 @@ def preflight(environment):
     )
     details = service.get("serviceDetails", {})
     require(
-        details.get("env") == "docker",
-        "Render must use the reviewed backend Dockerfile",
+        runtime_allowed(service, environment),
+        "Reviewed backend runtime and layout required",
     )
     require(
         origin(details.get("url", "")) == origin(os.environ.get("ROBOT_API_URL", "")),
@@ -206,13 +226,18 @@ def preflight(environment):
         for item in envs.get("envs", [])
         if item.get("key") == "ROBOT_API_URL"
         and target in item.get("target", [])
-        and item.get("gitBranch") in ({"staging"} if environment == "Staging" else {None, "main"})
+        and item.get("gitBranch")
+        in ({"staging"} if environment == "Staging" else {None, "main"})
     ]
     require(
         len(matching) == 1
         and origin(matching[0].get("value", "")) == origin(os.environ["ROBOT_API_URL"]),
         "Server-only frontend API origin must match its isolated Render target",
     )
+    if environment == "Staging":
+        from edge_fixture import remember
+
+        remember(values)
     return service_id
 
 
@@ -258,7 +283,8 @@ def receipt(environment, directory, browser):
     )
     suite = json.loads((directory / "smoke.json").read_text())
     require(
-        suite["scope"] == "software-simulation-only" and suite["status"] == "PASS",
+        suite["scope"] == "software-simulation-only"
+        and suite["status"] in {"PASS", "FAIL", "BLOCKED"},
         "Simulator smoke failed",
     )
     checks = dict(suite["checks"])
@@ -278,23 +304,26 @@ def receipt(environment, directory, browser):
         "vercel_deployment_id": vercel_id,
         "scope": "software-simulation-only",
         "storage": os.environ.get("ROBOT_STORAGE_MODE", "ephemeral-simulation")
-        if environment == "Staging" else "persistent",
+        if environment == "Staging"
+        else "persistent",
         "physical_hardware_approved": False,
         "frontend_url": url,
         "operator_url": operator_url if environment == "Production" else url,
         "render_service_id": os.environ["RENDER_SERVICE_ID"],
         "status": "PASS"
         if all(value == "PASS" for value in checks.values())
+        else "FAIL"
+        if "FAIL" in checks.values()
         else "BLOCKED",
     }
-    if environment == "Staging":
+    save(result, directory / "record.json")
+    if environment == "Staging" and result["status"] == "PASS":
         verify_stage(
             result,
             result["candidate_commit"],
             result["source_sha256"],
             record["builds"],
         )
-    save(result, directory / "record.json")
     require(result["status"] == "PASS", "Deployment acceptance blocked")
 
 

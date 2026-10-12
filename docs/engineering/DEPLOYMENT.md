@@ -1,5 +1,11 @@
 # Simulator deployment and recovery
 
+## Existing free native staging — 2026-10-12
+
+The authenticated inspector confirmed that the existing Free/Frankfurt staging service uses native Python and the approved Turso journal. The registered `release-candidate.yml` owner workflow can inspect it from dev/staging, repair only its source/layout from staging after exact-source CI, and qualify the simulator with `target=staging`. Native staging uses the hash-locked requirements command, the repository Python version, and `sh start.sh` for one process. Production retains its separate Docker/durable-storage and owner/hardware gates.
+
+Repair verifies the exact service/repository/region/plan, staging namespace and physical=false before writing branch/root/health/runtime commands and disabling automatic deployment. It preserves every private value and database record. A mismatched staging test password remains an authentication blocker until the owner classifies the configured operator; it is never silently reset. Provider-bound staging edge identity stays in a private candidate-bound runner file and is removed after verification.
+
 > Current private-Free release policy: [safeguards and external owner authorization](../development/PRIVATE_FREE_SAFEGUARDS.md). Legacy JSON approval is retired; native protection requirements below apply only to a verified supported configuration.
 
 Cloud staging/release workflows, provider settings, secret locations, approval gates,

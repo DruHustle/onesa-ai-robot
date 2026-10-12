@@ -37,6 +37,11 @@ class CloudTests(unittest.TestCase):
             "serviceDetails": {
                 "plan": "free",
                 "env": "docker",
+                "envSpecificDetails": {
+                    "dockerfilePath": "./Dockerfile",
+                    "dockerContext": ".",
+                    "dockerCommand": "",
+                },
                 "url": "https://synthetic.onrender.com",
             },
         }
@@ -119,24 +124,36 @@ class TursoStagingTests(unittest.TestCase):
     def test_turso_requires_exact_url_and_token_but_no_token_in_workflow(self):
         url = "libsql://synthetic-staging.example.turso.io"
         values = {
-            "ROBOT_STORAGE_MODE": "turso", "ROBOT_TURSO_DATABASE_URL": url,
+            "ROBOT_STORAGE_MODE": "turso",
+            "ROBOT_TURSO_DATABASE_URL": url,
             "ROBOT_TURSO_AUTH_TOKEN": "synthetic-database-token",
         }
-        with patch.dict(os.environ, {
-            "ROBOT_STORAGE_MODE": "turso", "ROBOT_TURSO_DATABASE_URL": url,
-        }, clear=True):
+        with patch.dict(
+            os.environ,
+            {
+                "ROBOT_STORAGE_MODE": "turso",
+                "ROBOT_TURSO_DATABASE_URL": url,
+            },
+            clear=True,
+        ):
             self.assertEqual(cloud.staging_storage(values), "turso")
             for changes in (
                 {"ROBOT_TURSO_DATABASE_URL": "libsql://different.example.turso.io"},
-                {"ROBOT_TURSO_AUTH_TOKEN": ""}, {"ROBOT_STORAGE_MODE": "persistent"},
+                {"ROBOT_TURSO_AUTH_TOKEN": ""},
+                {"ROBOT_STORAGE_MODE": "persistent"},
             ):
-                with self.subTest(changes=changes), self.assertRaises(evidence.Rejected):
+                with (
+                    self.subTest(changes=changes),
+                    self.assertRaises(evidence.Rejected),
+                ):
                     cloud.staging_storage({**values, **changes})
 
     def test_default_ephemeral_scope_cannot_silently_accept_turso(self):
         with patch.dict(os.environ, {}, clear=True):
-            self.assertEqual(cloud.staging_storage({"ROBOT_STORAGE_MODE": "ephemeral-simulation"}),
-                             "ephemeral-simulation")
+            self.assertEqual(
+                cloud.staging_storage({"ROBOT_STORAGE_MODE": "ephemeral-simulation"}),
+                "ephemeral-simulation",
+            )
             with self.assertRaises(evidence.Rejected):
                 cloud.staging_storage({"ROBOT_STORAGE_MODE": "turso"})
 

@@ -65,7 +65,7 @@ POLICIES = {
             "containers (backend)",
             "ros-contracts",
         ],
-        "staging_branch": "main",
+        "staging_branch": "staging",
     },
 }
 POLICY = POLICIES[PRODUCT]
@@ -282,9 +282,14 @@ def trusted_staging_run(github, run, sha, completed=True):
     event = run["event"]
     require(event in {"workflow_dispatch", "workflow_run"}, "Untrusted staging event")
     branches = {POLICY["staging_branch"]} if event == "workflow_dispatch" else {"main"}
-    trusted_run(
-        run, "release-staging.yml", sha, branches, event=event, completed=completed
-    )
+    workflow = "release-staging.yml"
+    if run.get("path") == ".github/workflows/release-candidate.yml":
+        require(
+            event == "workflow_dispatch",
+            "Registered staging bridge requires owner dispatch",
+        )
+        workflow = "release-candidate.yml"
+    trusted_run(run, workflow, sha, branches, event=event, completed=completed)
     require(
         run["actor"]["login"] == OWNER and run["triggering_actor"]["login"] == OWNER,
         "Staging requires owner provenance",

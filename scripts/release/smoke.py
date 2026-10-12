@@ -102,8 +102,11 @@ def run(url, environment):
         checks["backend_readiness"] = "PASS"
         require(
             ready.get("storage_mode")
-            == (os.environ.get("ROBOT_STORAGE_MODE", "ephemeral-simulation")
-                if environment == "Staging" else "persistent"),
+            == (
+                os.environ.get("ROBOT_STORAGE_MODE", "ephemeral-simulation")
+                if environment == "Staging"
+                else "persistent"
+            ),
             "Storage scope mismatch",
         )
         checks["storage_isolation"] = "PASS"
@@ -287,6 +290,9 @@ if __name__ == "__main__":
     operator_file = directory / (
         "operator-url.txt" if args.environment == "Production" else "frontend-url.txt"
     )
+    from edge_fixture import restore
+
+    restore(args.environment)
     result = run(operator_file.read_text().strip(), args.environment)
     save(result, directory / "smoke.json")
     require(
