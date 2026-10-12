@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -258,9 +259,56 @@ def frontend(url, environment):
     return data["id"]
 
 
+def resolve_preview(directory, *, attempts=60):
+    """Reuse native Git's exact protected staging build; never deploy it twice."""
+    preflight("Staging")
+    query = urllib.parse.urlencode(
+        {
+            "projectId": os.environ["VERCEL_PROJECT_ID"],
+            "teamId": os.environ["VERCEL_ORG_ID"],
+            "limit": 100,
+        }
+    )
+    for attempt in range(attempts):
+        data = provider(
+            "https://api.vercel.com/v6/deployments?" + query, os.environ["VERCEL_TOKEN"]
+        )
+        candidates = [
+            item
+            for item in data.get("deployments", [])
+            if item.get("meta", {}).get("githubCommitSha") == os.environ["GITHUB_SHA"]
+            and item.get("meta", {}).get("githubCommitRef") == "staging"
+            and item.get("target") in {None, "preview"}
+        ]
+        ready = [
+            item
+            for item in candidates
+            if item.get("readyState", item.get("state")) == "READY"
+        ]
+        if ready:
+            require(
+                len(ready) == 1, "Multiple native staging Previews for the same source"
+            )
+            url = origin("https://" + ready[0]["url"], ".vercel.app")
+            frontend(url, "Staging")
+            Path(directory, "frontend-url.txt").write_text(url + "\n")
+            print("Verified exact-source protected native Git staging Preview")
+            return url
+        require(
+            not any(
+                item.get("readyState", item.get("state")) in {"ERROR", "CANCELED"}
+                for item in candidates
+            ),
+            "Native staging Preview build failed",
+        )
+        if attempt + 1 < attempts:
+            time.sleep(5)
+    raise Rejected("No ready native Git staging Preview for the exact candidate")
+
+
 def receipt(environment, directory, browser):
     directory = Path(directory)
-    record = json.loads((directory / "preflight.json").read_text())
+    record = json.loads((directory / "preflight" / "record.json").read_text())
     url = origin((directory / "frontend-url.txt").read_text().strip(), ".vercel.app")
     vercel_id = frontend(url, environment)
     if environment == "Production":
@@ -330,7 +378,14 @@ def receipt(environment, directory, browser):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "mode", choices=["preflight", "bind-preview", "operator-origin", "receipt"]
+        "mode",
+        choices=[
+            "preflight",
+            "resolve-preview",
+            "bind-preview",
+            "operator-origin",
+            "receipt",
+        ],
     )
     parser.add_argument("environment", choices=["Staging", "Production"])
     parser.add_argument("--directory")
@@ -338,6 +393,11 @@ def main():
     args = parser.parse_args()
     if args.mode == "preflight":
         preflight(args.environment)
+    elif args.mode == "resolve-preview":
+        require(
+            args.environment == "Staging", "Only staging may resolve a native Preview"
+        )
+        resolve_preview(args.directory)
     elif args.mode == "bind-preview":
         require(
             args.environment == "Staging", "Only synthetic Preview may change origin"

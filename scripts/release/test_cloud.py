@@ -1,7 +1,9 @@
 """Release/provider failure paths with synthetic fixtures only."""
 
 import os
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import cloud
@@ -10,6 +12,60 @@ import smoke
 
 
 class CloudTests(unittest.TestCase):
+    def test_native_preview_reuse_rejects_duplicates_wrong_source_and_production(self):
+        candidate = {
+            "meta": {"githubCommitSha": "a" * 40, "githubCommitRef": "staging"},
+            "target": None,
+            "readyState": "READY",
+            "url": "synthetic.vercel.app",
+        }
+        env = {
+            "GITHUB_SHA": "a" * 40,
+            "VERCEL_PROJECT_ID": "prj_synthetic",
+            "VERCEL_ORG_ID": "team_synthetic",
+            "VERCEL_TOKEN": "synthetic-only",
+        }
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.dict(os.environ, env, clear=True),
+            patch.object(cloud, "preflight"),
+            patch.object(cloud, "frontend") as verify,
+        ):
+            for items in [
+                [candidate, candidate],
+                [{**candidate, "target": "production"}],
+                [
+                    {
+                        **candidate,
+                        "meta": {
+                            "githubCommitSha": "b" * 40,
+                            "githubCommitRef": "staging",
+                        },
+                    }
+                ],
+            ]:
+                with (
+                    patch.object(
+                        cloud, "provider", return_value={"deployments": items}
+                    ),
+                    self.assertRaises(evidence.Rejected),
+                ):
+                    cloud.resolve_preview(directory, attempts=1)
+                self.assertFalse(Path(directory, "frontend-url.txt").exists())
+            with patch.object(
+                cloud, "provider", return_value={"deployments": [candidate]}
+            ) as provider:
+                self.assertEqual(
+                    cloud.resolve_preview(directory, attempts=1),
+                    "https://synthetic.vercel.app",
+                )
+                self.assertEqual(
+                    len(provider.call_args.args), 2
+                )  # GET only, no mutation payload.
+                verify.assert_called_once_with(
+                    "https://synthetic.vercel.app", "Staging"
+                )
+
     def test_missing_probe_credentials_cannot_pass(self):
         with patch.dict(os.environ, {}, clear=True):
             result = smoke.run("https://synthetic.vercel.app", "Staging")

@@ -9,6 +9,25 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class WorkflowBoundaryTests(unittest.TestCase):
+    def test_all_evidence_outputs_use_the_required_record_filename(self):
+        outputs = []
+        for path in (ROOT / ".github/workflows").glob("*.yml"):
+            outputs.extend(
+                re.findall(
+                    r'evidence\.py[^\n]*--output\s+"([^"\n]+)"', path.read_text()
+                )
+            )
+        self.assertGreaterEqual(len(outputs), 8)
+        for output in outputs:
+            self.assertEqual(Path(output).name, "record.json", output)
+        staging = (ROOT / ".github/workflows/release-staging.yml").read_text()
+        self.assertIn("robot-release/preflight/record.json", staging)
+        for script in ("cloud.py", "edge-manifest.py"):
+            self.assertIn(
+                '/ "preflight" / "record.json"',
+                (ROOT / "scripts/release" / script).read_text(),
+            )
+
     def test_free_workflows_are_credential_free_and_authorization_is_manual(self):
         for name in ("free-qualification.yml", "free-authorization.yml"):
             text = (ROOT / ".github/workflows" / name).read_text()

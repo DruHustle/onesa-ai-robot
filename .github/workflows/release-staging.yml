@@ -52,7 +52,7 @@ jobs:
     - name: Validate exact candidate evidence
       env:
         GH_TOKEN: ${{ github.token }}
-      run: python3 scripts/release/evidence.py stage-preflight --output "$RUNNER_TEMP/robot-release/preflight.json"
+      run: python3 scripts/release/evidence.py stage-preflight --output "$RUNNER_TEMP/robot-release/preflight/record.json"
     - name: Verify isolated provider targets
       env:
         GH_TOKEN: ${{ github.token }}
@@ -74,24 +74,21 @@ jobs:
     - name: Install locked frontend tooling
       working-directory: onesa-ai-robot-frontend
       run: npm ci --ignore-scripts
-    - name: Install pinned deployment CLI
-      run: npm install --global vercel@63.1.0
-    - name: Build and deploy protected simulation Preview
+    - name: Reuse exact-source protected native Git Preview
       env:
+        GH_TOKEN: ${{ github.token }}
+        RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
         VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
         VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
         VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
         ROBOT_STORAGE_MODE: ${{ vars.STAGING_ROBOT_STORAGE_MODE || 'ephemeral-simulation' }}
         ROBOT_TURSO_DATABASE_URL: ${{ vars.STAGING_ROBOT_TURSO_DATABASE_URL }}
         ROBOT_API_URL: ${{ vars.STAGING_ROBOT_API_URL || 'https://onesa-ai-robot-backend-staging.onrender.com' }}
-      run: 'vercel pull --yes --environment=preview --git-branch=staging --token="$VERCEL_TOKEN"
-
-        vercel build --token="$VERCEL_TOKEN"
-
-        vercel deploy --prebuilt --token="$VERCEL_TOKEN" --meta githubCommitSha="$GITHUB_SHA" --meta githubCommitRef=staging
-        > "$RUNNER_TEMP/robot-release/frontend-url.txt"
-
-        '
+        ROBOT_PUBLIC_ORIGIN: ${{ vars.STAGING_ROBOT_PUBLIC_ORIGIN }}
+        ROBOT_TEST_OPERATOR: ${{ vars.STAGING_ROBOT_TEST_OPERATOR || 'operator' }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+      run: python3 scripts/release/cloud.py resolve-preview Staging --directory "$RUNNER_TEMP/robot-release"
     - name: Bind only the verified Preview origin
       env:
         GH_TOKEN: ${{ github.token }}

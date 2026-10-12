@@ -33,7 +33,7 @@ jobs:
         GH_TOKEN: ${{ github.token }}
         EDGE_LICENSE_REVIEW: ${{ inputs.licensing_review }}
         EDGE_REVIEW_ISSUE: ${{ inputs.review_issue }}
-      run: python3 scripts/release/evidence.py edge-preflight --output "$RUNNER_TEMP/edge/preflight.json"
+      run: python3 scripts/release/evidence.py edge-preflight --output "$RUNNER_TEMP/edge/preflight/record.json"
     - name: Package simulation software and ROS interface sources
       run: 'docker build -t "onesa-robot-edge-simulation:$GITHUB_SHA" onesa-ai-robot-backend
 

@@ -8,6 +8,7 @@ name: Robot candidate packaging (simulation only)
         default: package
         options:
         - package
+        - inspect-hosting
         - inspect-staging
         - repair-staging
         - staging
@@ -24,6 +25,26 @@ permissions:
   checks: read
   actions: read
 jobs:
+  hosting-inspection:
+    if: github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/dev' && inputs.target == 'inspect-hosting'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - name: Verify hosted execution and current visibility
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: test "$RUNNER_ENVIRONMENT" = github-hosted && test "$(gh api repos/DruHustle/onesa-ai-robot --jq '.private')" = false
+    - name: Read production and staging settings without changing resources
+      env:
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      run: python3 scripts/inspect_hosting.py
   staging:
     if: github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/staging' && inputs.target == 'staging'
     uses: ./.github/workflows/release-staging.yml
