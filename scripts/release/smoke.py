@@ -4,6 +4,7 @@ import argparse
 import http.cookiejar
 import json
 import os
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -11,7 +12,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from cloud import NoRedirect, origin
-from evidence import Rejected, require, save
+from evidence import Rejected, require
 
 CHECKS = [
     "backend_readiness",
@@ -281,11 +282,28 @@ def run(url, environment):
     return record
 
 
-if __name__ == "__main__":
+def save_smoke(record, directory):
+    """Keep intermediate acceptance separate from the strict final record writer."""
+    directory = Path(directory)
+    require(not directory.is_symlink(), "Unsafe smoke output directory")
+    directory.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(mode="w", dir=directory, delete=False) as output:
+        temporary = Path(output.name)
+        try:
+            os.chmod(temporary, 0o600)
+            json.dump(record, output, indent=2, sort_keys=True)
+            output.write("\n")
+            output.flush()
+            os.replace(temporary, directory / "smoke.json")
+        finally:
+            temporary.unlink(missing_ok=True)
+
+
+def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("environment", choices=["Staging", "Production"])
     parser.add_argument("--directory", required=True)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     directory = Path(args.directory)
     operator_file = directory / (
         "operator-url.txt" if args.environment == "Production" else "frontend-url.txt"
@@ -294,7 +312,11 @@ if __name__ == "__main__":
 
     restore(args.environment)
     result = run(operator_file.read_text().strip(), args.environment)
-    save(result, directory / "smoke.json")
+    save_smoke(result, directory)
     require(
         result["status"] == "PASS", "Hosted simulation acceptance blocked or failed"
     )
+
+
+if __name__ == "__main__":
+    main()

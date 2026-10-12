@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-12 — Preserve hosted simulator acceptance evidence
+
+The first live simulator run reached acceptance but the intermediate writer rejected
+`smoke.json` because it was the final `record.json` writer. Save intermediate smoke
+results atomically with private permissions and keep final qualification restrictions
+unchanged. Exercise the actual CLI entrypoint for both passing and failing results.
+
 ## 2026-10-12 — Correct verified Turso staging identity
 
 Authenticated resource inspection found the existing database is
