@@ -100,6 +100,7 @@ jobs:
         ROBOT_API_URL: ${{ vars.STAGING_ROBOT_API_URL || 'https://onesa-ai-robot-backend-staging.onrender.com' }}
         ROBOT_TEST_OPERATOR: ${{ vars.STAGING_ROBOT_TEST_OPERATOR || 'operator' }}
         ROBOT_TEST_PASSWORD: ${{ secrets.STAGING_ROBOT_TEST_PASSWORD }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
         STAGING_OPERATION: ${{ inputs.target }}
       run: python3 scripts/release/staging_configuration.py
   candidate:
