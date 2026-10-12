@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-12 — Remove appearance switching
+
+Remove Auto/Light/Dark controls, preference logic, timers and custom palette switching at the owner’s request. Retain the fixed light surfaces and navy/cyan brand elements, with responsive and authenticated acceptance checks. Remove only assets and tests belonging to the retired feature.
+
+
 ## 2026-10-12 — Private staging credential diagnostics
 
 Report whether the named Preview automation bypass reaches the direct Staging inspection job as a boolean. Secret-name inventory alone does not establish a usable value or reusable-workflow binding. Preserve the existing operator credentials; reconcile the authorized test secret privately, without resetting the operator or weakening Preview protection.

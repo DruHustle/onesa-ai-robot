@@ -36,9 +36,3 @@ function restoreSession(){const current=++generation;return client.me().then(ses
 window.addEventListener('pagehide',()=>{generation++;clearInterval(timer);client.cancelPending();polling=false;});
 window.addEventListener('pageshow',event=>{if(event.persisted)restoreSession();});
 restoreSession();
-
-const appearance = document.getElementById("appearance");
-function updateAppearance(){appearance.value=window.OnesaAppearance.getPreference();}
-appearance.addEventListener("change",()=>window.OnesaAppearance.setPreference(appearance.value));
-window.addEventListener("onesa:appearance",updateAppearance);
-updateAppearance();

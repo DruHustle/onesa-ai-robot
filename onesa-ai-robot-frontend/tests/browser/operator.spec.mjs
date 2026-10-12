@@ -1,12 +1,12 @@
 import {test,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 test.afterEach(async({page,baseURL})=>{await page.unrouteAll({behavior:'ignoreErrors'});const me=await page.request.get('/api/v1/auth/me');if(me.ok()){const session=await me.json();await page.request.post('/api/v1/auth/logout',{headers:{Origin:baseURL,'X-CSRF-Token':session.csrf},data:{}});}});
-for(const mode of ['light','dark']) for(const width of [320,390,768,1024,1440]) test(`simulation flows and accessibility in ${mode} at ${width}`,async({page})=>{
+for(const width of [320,390,768,1024,1440]) test(`simulation flows and accessibility at ${width}`,async({page})=>{
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
  await page.setViewportSize({width,height:1000});await page.goto('/');
  await expect(page).toHaveTitle('Onesa Robot — Software simulation');
- await page.locator('.appearance-control select').selectOption(mode);
- await expect(page.locator('html')).toHaveAttribute('data-theme',mode);
+ await expect(page.locator('.appearance-control')).toHaveCount(0);
+ expect(await page.evaluate(()=>getComputedStyle(document.documentElement).colorScheme)).toBe('light');
  await page.keyboard.press('Tab');
  await expect(page.getByRole('link',{name:'Skip to content'})).toBeFocused();
  await page.getByLabel('Operator name').fill(process.env.ROBOT_TEST_OPERATOR || 'operator');await page.getByLabel('Password',{exact:true}).fill((process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only'));await page.getByRole('button',{name:'Sign in',exact:true}).click();
