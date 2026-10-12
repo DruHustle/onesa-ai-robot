@@ -10,7 +10,7 @@ for(const width of [320,390,768,1024,1440]) test(`simulation flows and accessibi
  await page.keyboard.press('Tab');
  await expect(page.getByRole('link',{name:'Skip to content'})).toBeFocused();
  await page.getByLabel('Operator name').fill(process.env.ROBOT_TEST_OPERATOR || 'operator');await page.getByLabel('Password',{exact:true}).fill((process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only'));await page.getByRole('button',{name:'Sign in',exact:true}).click();
- await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible();await page.reload();await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible();for(let navigation=0;navigation<3;navigation++){await page.reload();await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible();}
  await page.getByLabel('Confirm password to reset').fill((process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only'));await page.getByRole('button',{name:'Reset simulation stop'}).click();
  await expect(page.locator('#stop-state')).toContainText('Ready');
  await page.getByRole('button',{name:'Create proposal'}).click();await expect(page.locator('#approval-form')).toBeVisible();await expect(page.locator('#proposed-id')).toContainText(/[a-f0-9-]{36}/);const taskId=await page.locator('#proposed-id').textContent();await page.getByLabel('Confirm operator password',{exact:true}).fill((process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only'));await page.getByRole('button',{name:'Approve simulation task'}).click();

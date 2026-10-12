@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-12 — Suspend requests before navigation
+
+A hosted WebKit check caught a remaining request during reload. Suspend polling and cancel requests at `beforeunload` as well as `pagehide`, fence the heartbeat continuation before its next request, and prevent completed UI actions from starting new refreshes while the document leaves. A restored page reauthenticates before polling; it never resumes tasks. Exercise repeated real reloads at every supported width and keep browser errors fatal.
+
 ## 2026-10-12 — Remove appearance switching
 
 Remove Auto/Light/Dark controls, preference logic, timers and custom palette switching at the owner’s request. Retain the fixed light surfaces and navy/cyan brand elements, with responsive and authenticated acceptance checks. Remove only assets and tests belonging to the retired feature.
