@@ -37,7 +37,7 @@ export async function handler(req, res) {
       return;
     }
     if (!['GET','HEAD'].includes(req.method)) {res.writeHead(405).end();return;}
-    const files = new Map([['/','index.html'],['/index.html','index.html'],['/theme.css','theme.css'],['/app.js','app.js'],['/client.js','client.js'],['/brand/onesa-orbit.png','brand/onesa-orbit.png'],['/robots.txt','robots.txt']]);
+    const files = new Map([['/','index.html'],['/index.html','index.html'],['/theme.css','theme.css'],['/app.js','app.js'],['/automatic-day-night.js','automatic-day-night.js'],['/client.js','client.js'],['/brand/onesa-orbit.png','brand/onesa-orbit.png'],['/robots.txt','robots.txt']]);
     const file = files.get(url.pathname);
     if (!file) {res.writeHead(404).end();return;}
     const body=await readFile(resolve(root,file));

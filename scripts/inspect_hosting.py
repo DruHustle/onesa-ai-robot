@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 
@@ -77,6 +78,7 @@ def render(service_id):
         and isinstance(entries, list)
         and len(entries) < 100,
         "configured": {k: bool(values.get(k)) for k in KEYS},
+        "operator_identifier": "operator" if service_id == "srv-db5k9ft9fdbs73d622cg" and values.get("ROBOT_OPERATOR_NAME") == "operator" else None,
         "physical_actuation_disabled": values.get("ROBOT_ACTUATION_ENABLED") == "false",
         "persistent_storage_mode": values.get("ROBOT_STORAGE_MODE") == "persistent",
         "deployments_api_http": deploy_status,
@@ -98,7 +100,27 @@ def vercel():
     project, status = read("https://api.vercel.com", path + query, token)
     entries, env_status = read("https://api.vercel.com", path + "/env" + query, token)
     env = entries.get("envs", [])
+    verified = (
+        status == 200 and project.get("link", {}).get("org") == "DruHustle"
+        and project.get("link", {}).get("repo") == "onesa-ai-robot"
+        and project.get("rootDirectory") == "onesa-ai-robot-frontend"
+    )
+    previews = []
+    if verified:
+        deployments, deployment_status = read("https://api.vercel.com", "/v6/deployments?" + urlencode({"teamId":org_id,"projectId":project_id,"target":"preview","limit":20}), token)
+        if deployment_status == 200:
+            for item in deployments.get("deployments", []):
+                meta = item.get("meta", {})
+                sha = meta.get("githubCommitSha", "")
+                host = item.get("url", "")
+                if (meta.get("githubCommitRef") == "staging" and item.get("target") != "production"
+                    and item.get("readyState", item.get("state")) == "READY"
+                    and re.fullmatch(r"[a-f0-9]{40}", sha) and re.fullmatch(r"[a-z0-9-]+\.vercel\.app", host)):
+                    previews.append({"url":"https://"+host,"source_commit":sha})
     return {
+        "project_name": project.get("name") if verified and re.fullmatch(r"[a-z0-9-]{1,100}", project.get("name", "")) else None,
+        "ready_staging_previews": previews,
+
         "api_http": status,
         "project_identifiers_configured": True,
         "repository_matches": project.get("link", {}).get("repo") == "onesa-ai-robot",

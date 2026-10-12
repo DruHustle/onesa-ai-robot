@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-12 — Automatic day/night styling and private-Free staging preparation
+
+Follow visitor-local 07:00/19:00 transitions without an appearance selector or stored
+manual preference. Test both modes across the existing simulator journeys and five
+viewport widths; keep login, STOP, restart and navigation safety checks intact.
+Prepare repository-level staging secret bindings for private GitHub Free, preserving
+the existing operator and protected Preview. Provider inspection reports only the
+verified project, source-bound Preview and operator identifiers. Hosted authentication
+remains unqualified until the owner reconciles the existing credentials privately.
+Correct the frontend workflow's Node cache indentation and retain its required checks.
+
 ## 2026-10-12 — Suspend requests before navigation
 
 A hosted WebKit check caught a remaining request during reload. Suspend polling and cancel requests at `beforeunload` as well as `pagehide`, fence the heartbeat continuation before its next request, and prevent completed UI actions from starting new refreshes while the document leaves. A restored page reauthenticates before polling; it never resumes tasks. Exercise repeated real reloads at every supported width and keep browser errors fatal.
