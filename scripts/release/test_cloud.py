@@ -37,6 +37,11 @@ class CloudTests(unittest.TestCase):
             "serviceDetails": {
                 "plan": "free",
                 "env": "docker",
+                "envSpecificDetails": {
+                    "dockerfilePath": "./Dockerfile",
+                    "dockerContext": ".",
+                    "dockerCommand": "",
+                },
                 "url": "https://synthetic.onrender.com",
             },
         }

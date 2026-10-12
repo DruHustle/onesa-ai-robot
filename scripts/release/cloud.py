@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from evidence import REPOSITORY, Rejected, digest, require, save, verify_stage
+from service_runtime import allowed as runtime_allowed
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -126,8 +127,8 @@ def preflight(environment):
     )
     details = service.get("serviceDetails", {})
     require(
-        service.get("runtime", details.get("runtime", details.get("env"))) == "docker",
-        "Render must use the reviewed backend Dockerfile",
+        runtime_allowed(service, environment),
+        "Reviewed backend runtime and layout required",
     )
     require(
         origin(details.get("url", "")) == origin(os.environ.get("ROBOT_API_URL", "")),
@@ -233,6 +234,10 @@ def preflight(environment):
         and origin(matching[0].get("value", "")) == origin(os.environ["ROBOT_API_URL"]),
         "Server-only frontend API origin must match its isolated Render target",
     )
+    if environment == "Staging":
+        from edge_fixture import remember
+
+        remember(values)
     return service_id
 
 

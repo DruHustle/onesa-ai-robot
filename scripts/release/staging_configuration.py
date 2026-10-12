@@ -8,6 +8,9 @@ import re
 
 from cloud import provider
 from evidence import REPOSITORY, Rejected, require
+from service_runtime import kind as service_runtime
+from service_runtime import layout as runtime_layout
+from service_runtime import verified as runtime_layout_verified
 
 SERVICE = "srv-db5k9ft9fdbs73d622cg"
 API = "https://onesa-ai-robot-backend-staging.onrender.com"
@@ -97,9 +100,28 @@ def inspect_or_repair(repair=False):
                 }
             )
         )
-    target(service, require_docker=repair)
+    target(service, require_docker=False)
+    entries = provider(base + "/env-vars?limit=100", token)
+    require(
+        isinstance(entries, list) and len(entries) < 100,
+        "Complete staging environment inventory required",
+    )
+    settings = {entry["envVar"]["key"]: entry["envVar"]["value"] for entry in entries}
     if repair:
-        # Disable native auto deploy in the same patch as reviewed nonsecret layout changes.
+        require(
+            runtime_layout(service) is not None, "Reviewed staging runtime required"
+        )
+        require(
+            settings.get("ROBOT_ACTUATION_ENABLED") == "false"
+            and settings.get("ROBOT_DEPLOYMENT_ENVIRONMENT") == "staging",
+            "Isolated simulation staging required",
+        )
+        require(
+            service_runtime(service) != "python"
+            or settings.get("ROBOT_STORAGE_MODE") == "turso",
+            "Native staging requires reviewed durable Turso journal",
+        )
+        # Change only this known free service's source/layout; preserve every private value.
         provider(
             base,
             token,
@@ -109,23 +131,13 @@ def inspect_or_repair(repair=False):
                 "rootDir": "onesa-ai-robot-backend",
                 "serviceDetails": {
                     "healthCheckPath": "/api/v1/ready",
-                    "envSpecificDetails": {
-                        "dockerfilePath": "./Dockerfile",
-                        "dockerContext": ".",
-                        "dockerCommand": "",
-                    },
+                    "envSpecificDetails": runtime_layout(service),
                 },
             },
             method="PATCH",
         )
         service = provider(base, token)
-        target(service)
-    entries = provider(base + "/env-vars?limit=100", token)
-    require(
-        isinstance(entries, list) and len(entries) < 100,
-        "Complete staging environment inventory required",
-    )
-    settings = {entry["envVar"]["key"]: entry["envVar"]["value"] for entry in entries}
+        target(service, require_docker=False)
     details = service["serviceDetails"]
     runtime = details.get("envSpecificDetails", {})
     layout = (
@@ -133,17 +145,12 @@ def inspect_or_repair(repair=False):
         and service.get("rootDir") == "onesa-ai-robot-backend"
         and service.get("autoDeployTrigger") == "off"
         and details.get("healthCheckPath") == "/api/v1/ready"
-        and runtime.get("dockerfilePath") == "./Dockerfile"
-        and runtime.get("dockerContext") == "."
-        and not runtime.get("dockerCommand")
+        and runtime_layout_verified(service)
     )
     require(not repair or layout, "Staging layout readback mismatch")
     return {
         "target_verified": True,
-        "runtime_verified": service.get(
-            "runtime", details.get("runtime", details.get("env"))
-        )
-        == "docker",
+        "runtime_verified": runtime_layout_verified(service),
         "runtime_kind": next(
             (
                 value

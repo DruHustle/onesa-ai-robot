@@ -166,4 +166,4 @@ jobs:
         if-no-files-found: error
     - name: Remove private provider files
       if: always()
-      run: rm -rf -- "$GITHUB_WORKSPACE/.vercel" "$RUNNER_TEMP/reviewed-build"
+      run: rm -rf -- "$GITHUB_WORKSPACE/.vercel" "$RUNNER_TEMP/reviewed-build" "$RUNNER_TEMP/robot-release/verified-edge-fixture.json"

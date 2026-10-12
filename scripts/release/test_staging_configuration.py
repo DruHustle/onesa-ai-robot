@@ -69,11 +69,31 @@ class StagingConfigurationTests(unittest.TestCase):
         with (
             patch.dict(os.environ, self.context(), clear=True),
             patch.object(
-                stage, "provider", side_effect=[self.service(), {}, self.service(), []]
+                stage,
+                "provider",
+                side_effect=[
+                    self.service(),
+                    [
+                        {
+                            "envVar": {
+                                "key": "ROBOT_ACTUATION_ENABLED",
+                                "value": "false",
+                            }
+                        },
+                        {
+                            "envVar": {
+                                "key": "ROBOT_DEPLOYMENT_ENVIRONMENT",
+                                "value": "staging",
+                            }
+                        },
+                    ],
+                    {},
+                    self.service(),
+                ],
             ) as provider,
         ):
             result = stage.inspect_or_repair(True)
-        mutation = provider.call_args_list[1]
+        mutation = provider.call_args_list[2]
         self.assertEqual(mutation.kwargs, {"method": "PATCH"})
         self.assertEqual(
             set(mutation.args[2]),
@@ -118,4 +138,51 @@ class StagingConfigurationTests(unittest.TestCase):
             self.assertRaises(Rejected),
         ):
             stage.inspect_or_repair(True)
-        self.assertEqual(len(provider.call_args_list), 1)
+        self.assertEqual(len(provider.call_args_list), 2)
+
+    def test_native_staging_layout_preserves_private_values_and_blocks_physical_mode(
+        self,
+    ):
+        from service_runtime import layout
+
+        service = self.service()
+        service["serviceDetails"].update(
+            runtime="python", env=None, envSpecificDetails=layout({"runtime": "python"})
+        )
+        settings = {
+            "ROBOT_ACTUATION_ENABLED": "false",
+            "ROBOT_DEPLOYMENT_ENVIRONMENT": "staging",
+            "ROBOT_STORAGE_MODE": "turso",
+        }
+        entries = [
+            {"envVar": {"key": key, "value": value}} for key, value in settings.items()
+        ]
+        with (
+            patch.dict(os.environ, self.context(), clear=True),
+            patch.object(
+                stage, "provider", side_effect=[service, entries, {}, service]
+            ) as provider,
+        ):
+            result = stage.inspect_or_repair(True)
+        self.assertTrue(result["layout_verified"])
+        self.assertFalse(result["credentials_changed"])
+        self.assertEqual(
+            provider.call_args_list[2].args[2]["serviceDetails"]["envSpecificDetails"],
+            layout({"runtime": "python"}),
+        )
+        for changes in [
+            {"ROBOT_ACTUATION_ENABLED": "true"},
+            {"ROBOT_DEPLOYMENT_ENVIRONMENT": "production"},
+            {"ROBOT_STORAGE_MODE": "persistent"},
+        ]:
+            bad = [
+                {"envVar": {"key": key, "value": value}}
+                for key, value in {**settings, **changes}.items()
+            ]
+            with (
+                patch.dict(os.environ, self.context(), clear=True),
+                patch.object(stage, "provider", side_effect=[service, bad]) as provider,
+                self.assertRaises(Rejected),
+            ):
+                stage.inspect_or_repair(True)
+            self.assertEqual(len(provider.call_args_list), 2)

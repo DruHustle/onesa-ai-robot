@@ -290,6 +290,9 @@ if __name__ == "__main__":
     operator_file = directory / (
         "operator-url.txt" if args.environment == "Production" else "frontend-url.txt"
     )
+    from edge_fixture import restore
+
+    restore(args.environment)
     result = run(operator_file.read_text().strip(), args.environment)
     save(result, directory / "smoke.json")
     require(
