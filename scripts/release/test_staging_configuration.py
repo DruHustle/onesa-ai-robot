@@ -9,6 +9,24 @@ from evidence import REPOSITORY, Rejected
 
 
 class StagingConfigurationTests(unittest.TestCase):
+    def test_frontend_repair_refuses_production_before_any_provider_access(self):
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "GITHUB_REPOSITORY": REPOSITORY,
+                    "GITHUB_REF": "refs/heads/main",
+                    "GITHUB_ACTOR": "DruHustle",
+                    "RUNNER_ENVIRONMENT": "github-hosted",
+                },
+                clear=True,
+            ),
+            patch.object(stage, "provider") as provider,
+        ):
+            with self.assertRaises(Rejected):
+                stage.frontend_binding(repair=True)
+            provider.assert_not_called()
+
     def context(self):
         return {
             "GITHUB_REPOSITORY": REPOSITORY,

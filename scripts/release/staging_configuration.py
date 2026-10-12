@@ -5,6 +5,7 @@ import hmac
 import json
 import os
 import re
+from urllib.parse import urlencode
 
 from cloud import provider
 from evidence import REPOSITORY, Rejected, require
@@ -54,6 +55,96 @@ def operator_matches(settings):
         return hmac.compare_digest(actual, digest)
     except (ValueError, TypeError):
         return False
+
+
+def frontend_binding(repair=False, *, configuration_dev=False):
+    require(
+        not repair
+        or (
+            os.environ.get("GITHUB_REPOSITORY") == REPOSITORY
+            and os.environ.get("GITHUB_REF")
+            == ("refs/heads/dev" if configuration_dev else "refs/heads/staging")
+            and os.environ.get("GITHUB_ACTOR") == "DruHustle"
+            and os.environ.get("RUNNER_ENVIRONMENT") == "github-hosted"
+        ),
+        "Owner hosted staging operator required",
+    )
+    project, team = (
+        os.environ.get("VERCEL_PROJECT_ID", ""),
+        os.environ.get("VERCEL_ORG_ID", ""),
+    )
+    if not re.fullmatch(r"prj_[A-Za-z0-9]+", project) or not re.fullmatch(
+        r"(?:team|user)_[A-Za-z0-9]+", team
+    ):
+        return {"frontend_target_verified": False}
+    base = "https://api.vercel.com/v9/projects/" + project
+    query = urlencode({"teamId": team})
+    token = os.environ.get("VERCEL_TOKEN", "")
+    data = provider(base + "?" + query, token)
+    link = data.get("link", {})
+    verified = (
+        link.get("org") == "DruHustle"
+        and link.get("repo") == "onesa-ai-robot"
+        and data.get("rootDirectory") == "onesa-ai-robot-frontend"
+    )
+    if not verified:
+        return {"frontend_target_verified": False}
+    envs = provider(base + "/env?" + query + "&decrypt=true", token)
+    if repair:
+        require(
+            (data.get("ssoProtection") or {}).get("deploymentType")
+            in {
+                "all",
+                "all_except_custom_domains",
+                "preview",
+                "prod_deployment_urls_and_all_previews",
+            },
+            "Protected Preview required",
+        )
+        production = [
+            item
+            for item in envs.get("envs", [])
+            if "production" in item.get("target", [])
+        ]
+        provider(
+            "https://api.vercel.com/v10/projects/"
+            + project
+            + "/env?"
+            + query
+            + "&upsert=true",
+            token,
+            {
+                "key": "ROBOT_API_URL",
+                "value": API,
+                "type": "plain",
+                "target": ["preview"],
+                "gitBranch": "staging",
+            },
+            method="POST",
+        )
+        envs = provider(base + "/env?" + query + "&decrypt=true", token)
+        require(
+            [
+                item
+                for item in envs.get("envs", [])
+                if "production" in item.get("target", [])
+            ]
+            == production,
+            "Production settings changed during Preview repair",
+        )
+    matching = [
+        item
+        for item in envs.get("envs", [])
+        if item.get("key") == "ROBOT_API_URL"
+        and "preview" in item.get("target", [])
+        and item.get("gitBranch") == "staging"
+    ]
+    matched = len(matching) == 1 and matching[0].get("value") == API
+    require(not repair or matched, "Preview API binding readback mismatch")
+    return {
+        "frontend_target_verified": True,
+        "frontend_staging_api_matches": matched,
+    }
 
 
 def inspect_or_repair(repair=False):
@@ -174,6 +265,13 @@ def inspect_or_repair(repair=False):
         == "false",
         "environment_matches": settings.get("ROBOT_DEPLOYMENT_ENVIRONMENT")
         == "staging",
+        "cloud_database_path_matches": settings.get("ROBOT_DATABASE_PATH")
+        == "/app/storage/robot.sqlite3",
+        "cloud_repository_exact_matches": service.get("repo")
+        in {
+            "https://github.com/" + REPOSITORY,
+            "https://github.com/" + REPOSITORY + ".git",
+        },
         "turso_mode_selected": settings.get("ROBOT_STORAGE_MODE") == "turso",
         "turso_database_matches": settings.get("ROBOT_TURSO_DATABASE_URL") == TURSO,
         "turso_token_configured": bool(settings.get("ROBOT_TURSO_AUTH_TOKEN")),
@@ -186,19 +284,66 @@ def inspect_or_repair(repair=False):
         "credentials_changed": False,
         "database_modified": False,
         "deployment_requested": False,
+        **frontend_binding(repair=repair),
+    }
+
+
+def repair_frontend_only():
+    require(
+        os.environ.get("GITHUB_REF") == "refs/heads/dev",
+        "Development preview configuration operator required",
+    )
+    verified = inspect_or_repair(False)
+    require(
+        all(
+            verified.get(key)
+            for key in [
+                "target_verified",
+                "layout_verified",
+                "physical_actuation_disabled",
+                "environment_matches",
+                "turso_mode_selected",
+                "turso_database_matches",
+                "turso_token_configured",
+                "frontend_target_verified",
+            ]
+        ),
+        "Verified isolated Turso staging required before Preview configuration",
+    )
+    result = frontend_binding(repair=True, configuration_dev=True)
+    require(
+        result.get("frontend_target_verified")
+        and result.get("frontend_staging_api_matches"),
+        "Preview API binding readback mismatch",
+    )
+    return {
+        **result,
+        "frontend_configuration_changed": True,
+        "production_modified": False,
+        "credentials_changed": False,
+        "database_modified": False,
+        "deployment_requested": False,
     }
 
 
 if __name__ == "__main__":
     try:
-        print(
-            json.dumps(
-                inspect_or_repair(
-                    os.environ.get("STAGING_OPERATION") == "repair-staging"
-                ),
-                indent=2,
-            )
+        operation = os.environ.get("STAGING_OPERATION")
+        repair = operation == "repair-staging"
+        result = (
+            repair_frontend_only()
+            if operation == "repair-staging-preview"
+            else inspect_or_repair(repair)
         )
+        require(
+            not repair
+            or (
+                result.get("frontend_target_verified")
+                and result.get("frontend_staging_api_matches")
+            ),
+            "Preview API binding readback mismatch",
+        )
+        print(json.dumps(result, indent=2))
     except Rejected as error:
         codes = {
             "Owner hosted staging operator required": "OWNER_CONTEXT",

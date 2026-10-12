@@ -1,5 +1,15 @@
 # Development changelog
 
+## 2026-10-12 — Turso cloud guard and exact staging frontend binding
+
+The durable staging Turso journal uses private in-memory SQLite; its unused filesystem setting must not be treated as a Docker volume requirement. Keep filesystem durability mandatory for production and other storage modes. Native staging requires Turso, exact database identity and physical disable. The owner Preview configuration operator requires complete current dev/staging checks before saving only the known Preview branch API URL, verifies readback and preserves every production environment value and operator credential.
+
+
+## 2026-10-12 — Safe cloud preflight diagnosis
+
+Accept the exact owner repository URL with its standard optional .git suffix. Fixed preflight reason codes and database-path/repository comparison booleans identify remaining target configuration failures without logging provider values; branch, runtime, protection, physical-disable and storage guards remain enforced.
+
+
 ## 2026-10-12 — Release evidence path contract and hosting readback
 
 Correct staging/production/edge preflight outputs and consumers to use preflight/record.json, as required by the evidence writer. A workflow-wide regression rejects other output filenames. The registered owner packaging bridge can perform read-only production/staging inspection; no deployment credentials or settings are changed by inspection. Staging reuses the exact-source native Git Preview rather than issuing a competing CLI deployment; source, protection and ambiguity guards remain mandatory.
