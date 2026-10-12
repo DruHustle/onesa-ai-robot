@@ -57,7 +57,17 @@ def operator_matches(settings):
         return False
 
 
-def frontend_binding():
+def frontend_binding(repair=False):
+    require(
+        not repair
+        or (
+            os.environ.get("GITHUB_REPOSITORY") == REPOSITORY
+            and os.environ.get("GITHUB_REF") == "refs/heads/staging"
+            and os.environ.get("GITHUB_ACTOR") == "DruHustle"
+            and os.environ.get("RUNNER_ENVIRONMENT") == "github-hosted"
+        ),
+        "Owner hosted staging operator required",
+    )
     project, team = (
         os.environ.get("VERCEL_PROJECT_ID", ""),
         os.environ.get("VERCEL_ORG_ID", ""),
@@ -79,6 +89,48 @@ def frontend_binding():
     if not verified:
         return {"frontend_target_verified": False}
     envs = provider(base + "/env?" + query + "&decrypt=true", token)
+    if repair:
+        require(
+            (data.get("ssoProtection") or {}).get("deploymentType")
+            in {
+                "all",
+                "all_except_custom_domains",
+                "preview",
+                "prod_deployment_urls_and_all_previews",
+            },
+            "Protected Preview required",
+        )
+        production = [
+            item
+            for item in envs.get("envs", [])
+            if "production" in item.get("target", [])
+        ]
+        provider(
+            "https://api.vercel.com/v10/projects/"
+            + project
+            + "/env?"
+            + query
+            + "&upsert=true",
+            token,
+            {
+                "key": "ROBOT_API_URL",
+                "value": API,
+                "type": "plain",
+                "target": ["preview"],
+                "gitBranch": "staging",
+            },
+            method="POST",
+        )
+        envs = provider(base + "/env?" + query + "&decrypt=true", token)
+        require(
+            [
+                item
+                for item in envs.get("envs", [])
+                if "production" in item.get("target", [])
+            ]
+            == production,
+            "Production settings changed during Preview repair",
+        )
     matching = [
         item
         for item in envs.get("envs", [])
@@ -86,10 +138,11 @@ def frontend_binding():
         and "preview" in item.get("target", [])
         and item.get("gitBranch") == "staging"
     ]
+    matched = len(matching) == 1 and matching[0].get("value") == API
+    require(not repair or matched, "Preview API binding readback mismatch")
     return {
         "frontend_target_verified": True,
-        "frontend_staging_api_matches": len(matching) == 1
-        and matching[0].get("value") == API,
+        "frontend_staging_api_matches": matched,
     }
 
 
@@ -230,20 +283,23 @@ def inspect_or_repair(repair=False):
         "credentials_changed": False,
         "database_modified": False,
         "deployment_requested": False,
-        **frontend_binding(),
+        **frontend_binding(repair=repair),
     }
 
 
 if __name__ == "__main__":
     try:
-        print(
-            json.dumps(
-                inspect_or_repair(
-                    os.environ.get("STAGING_OPERATION") == "repair-staging"
-                ),
-                indent=2,
-            )
+        repair = os.environ.get("STAGING_OPERATION") == "repair-staging"
+        result = inspect_or_repair(repair)
+        require(
+            not repair
+            or (
+                result.get("frontend_target_verified")
+                and result.get("frontend_staging_api_matches")
+            ),
+            "Preview API binding readback mismatch",
         )
+        print(json.dumps(result, indent=2))
     except Rejected as error:
         codes = {
             "Owner hosted staging operator required": "OWNER_CONTEXT",

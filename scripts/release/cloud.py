@@ -16,6 +16,7 @@ from pathlib import Path
 
 from evidence import REPOSITORY, Rejected, digest, require, save, verify_stage
 from service_runtime import allowed as runtime_allowed
+from service_runtime import kind as runtime_kind
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -95,6 +96,10 @@ def staging_storage(values):
     return mode
 
 
+def filesystem_required(environment, storage_mode):
+    return environment != "Staging" or storage_mode != "turso"
+
+
 def preflight(environment):
     require(environment in {"Staging", "Production"}, "Unknown environment")
     require(
@@ -146,6 +151,11 @@ def preflight(environment):
     )
     values = {entry["envVar"]["key"]: entry["envVar"]["value"] for entry in entries}
     require(
+        runtime_kind(service) != "python"
+        or (environment == "Staging" and values.get("ROBOT_STORAGE_MODE") == "turso"),
+        "Native staging requires reviewed durable Turso journal",
+    )
+    require(
         values.get("ROBOT_ACTUATION_ENABLED") == "false",
         "Physical operation must be disabled",
     )
@@ -153,10 +163,11 @@ def preflight(environment):
         values.get("ROBOT_DEPLOYMENT_ENVIRONMENT") == environment.lower(),
         "Environment mismatch",
     )
-    require(
-        values.get("ROBOT_DATABASE_PATH") == "/app/storage/robot.sqlite3",
-        "Isolated database required",
-    )
+    if filesystem_required(environment, values.get("ROBOT_STORAGE_MODE")):
+        require(
+            values.get("ROBOT_DATABASE_PATH") == "/app/storage/robot.sqlite3",
+            "Isolated database required",
+        )
     require(
         values.get("ROBOT_OPERATOR_PASSWORD_HASH", "").startswith("scrypt$"),
         "Operator auth missing",
