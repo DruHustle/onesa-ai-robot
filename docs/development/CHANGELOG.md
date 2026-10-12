@@ -2,7 +2,7 @@
 
 ## 2026-10-12 — Turso cloud guard and exact staging frontend binding
 
-The durable staging Turso journal uses private in-memory SQLite; its unused filesystem setting must not be treated as a Docker volume requirement. Keep filesystem durability mandatory for production and other storage modes. Native staging requires Turso, exact database identity and physical disable. The owner staging repair saves only the known Preview branch API URL, verifies readback and preserves every production environment value and operator credential.
+The durable staging Turso journal uses private in-memory SQLite; its unused filesystem setting must not be treated as a Docker volume requirement. Keep filesystem durability mandatory for production and other storage modes. Native staging requires Turso, exact database identity and physical disable. The owner Preview configuration operator requires complete current dev/staging checks before saving only the known Preview branch API URL, verifies readback and preserves every production environment value and operator credential.
 
 
 ## 2026-10-12 — Safe cloud preflight diagnosis

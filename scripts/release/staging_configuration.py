@@ -57,12 +57,13 @@ def operator_matches(settings):
         return False
 
 
-def frontend_binding(repair=False):
+def frontend_binding(repair=False, *, configuration_dev=False):
     require(
         not repair
         or (
             os.environ.get("GITHUB_REPOSITORY") == REPOSITORY
-            and os.environ.get("GITHUB_REF") == "refs/heads/staging"
+            and os.environ.get("GITHUB_REF")
+            == ("refs/heads/dev" if configuration_dev else "refs/heads/staging")
             and os.environ.get("GITHUB_ACTOR") == "DruHustle"
             and os.environ.get("RUNNER_ENVIRONMENT") == "github-hosted"
         ),
@@ -287,10 +288,53 @@ def inspect_or_repair(repair=False):
     }
 
 
+def repair_frontend_only():
+    require(
+        os.environ.get("GITHUB_REF") == "refs/heads/dev",
+        "Development preview configuration operator required",
+    )
+    verified = inspect_or_repair(False)
+    require(
+        all(
+            verified.get(key)
+            for key in [
+                "target_verified",
+                "layout_verified",
+                "physical_actuation_disabled",
+                "environment_matches",
+                "turso_mode_selected",
+                "turso_database_matches",
+                "turso_token_configured",
+                "frontend_target_verified",
+            ]
+        ),
+        "Verified isolated Turso staging required before Preview configuration",
+    )
+    result = frontend_binding(repair=True, configuration_dev=True)
+    require(
+        result.get("frontend_target_verified")
+        and result.get("frontend_staging_api_matches"),
+        "Preview API binding readback mismatch",
+    )
+    return {
+        **result,
+        "frontend_configuration_changed": True,
+        "production_modified": False,
+        "credentials_changed": False,
+        "database_modified": False,
+        "deployment_requested": False,
+    }
+
+
 if __name__ == "__main__":
     try:
-        repair = os.environ.get("STAGING_OPERATION") == "repair-staging"
-        result = inspect_or_repair(repair)
+        operation = os.environ.get("STAGING_OPERATION")
+        repair = operation == "repair-staging"
+        result = (
+            repair_frontend_only()
+            if operation == "repair-staging-preview"
+            else inspect_or_repair(repair)
+        )
         require(
             not repair
             or (

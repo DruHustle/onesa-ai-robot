@@ -11,6 +11,7 @@ name: Robot candidate packaging (simulation only)
         - inspect-hosting
         - inspect-staging
         - repair-staging
+        - repair-staging-preview
         - staging
       application:
         description: Application to package after implementation
@@ -58,7 +59,7 @@ jobs:
       STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
       STAGING_VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
   staging-configuration:
-    if: github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && ((inputs.target == 'inspect-staging' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging')) || (inputs.target == 'repair-staging' && github.ref == 'refs/heads/staging'))
+    if: github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && ((inputs.target == 'inspect-staging' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging')) || (inputs.target == 'repair-staging' && github.ref == 'refs/heads/staging') || (inputs.target == 'repair-staging-preview' && github.ref == 'refs/heads/dev'))
     environment: Staging
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -71,17 +72,21 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: test "$RUNNER_ENVIRONMENT" = github-hosted && test "$(gh api repos/DruHustle/onesa-ai-robot --jq '.private')" = false
     - name: Require complete current-source checks before configuration changes
-      if: inputs.target == 'repair-staging'
+      if: inputs.target == 'repair-staging' || inputs.target == 'repair-staging-preview'
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
       with:
         script: |
           const {owner,repo}=context.repo;
-          const ref=await github.rest.git.getRef({owner,repo,ref:'heads/staging'});
-          if(ref.data.object.sha!==context.sha) throw new Error('Staging source changed');
-          for(const workflow_id of ['scaffold.yml','repository-hygiene.yml']) {
-            const runs=await github.rest.actions.listWorkflowRuns({owner,repo,workflow_id,head_sha:context.sha,event:'push',per_page:20});
-            const run=runs.data.workflow_runs[0];
-            if(!run || run.head_sha!==context.sha || run.head_branch!=='staging' || run.head_repository.full_name!==context.payload.repository.full_name || run.status!=='completed' || run.conclusion!=='success') throw new Error('Exact-source checks must pass');
+          const branches=context.ref === 'refs/heads/dev' ? ['dev','staging'] : ['staging'];
+          for(const branch of branches) {
+            const ref=await github.rest.git.getRef({owner,repo,ref:'heads/'+branch});
+            const sha=ref.data.object.sha;
+            if(context.ref === 'refs/heads/'+branch && sha !== context.sha) throw new Error('Current source changed');
+            for(const workflow_id of ['scaffold.yml','repository-hygiene.yml']) {
+              const runs=await github.rest.actions.listWorkflowRuns({owner,repo,workflow_id,head_sha:sha,event:'push',per_page:20});
+              const run=runs.data.workflow_runs[0];
+              if(!run || run.head_sha!==sha || run.head_branch!==branch || run.head_repository.full_name!==context.payload.repository.full_name || run.status!=='completed' || run.conclusion!=='success') throw new Error('Exact-source checks must pass');
+            }
           }
     - name: Inspect or repair only the identified free staging service
       env:
