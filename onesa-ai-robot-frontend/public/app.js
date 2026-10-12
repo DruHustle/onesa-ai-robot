@@ -33,3 +33,9 @@ byId('logout').addEventListener('click',()=>run(async()=>{await client.logout();
 // No localStorage/sessionStorage, token URLs or persistence of operator credentials.
 
 client.me().then(session=>{generation++;csrf=session.csrf;client.csrf=csrf;byId('login-form').hidden=true;byId('operator').hidden=false;timer=setInterval(refresh,500);return refresh();}).catch(error=>{if(error.status!==401)notice(error.message);});
+
+const appearance = document.getElementById("appearance");
+function updateAppearance(){appearance.value=window.OnesaAppearance.getPreference();}
+appearance.addEventListener("change",()=>window.OnesaAppearance.setPreference(appearance.value));
+window.addEventListener("onesa:appearance",updateAppearance);
+updateAppearance();

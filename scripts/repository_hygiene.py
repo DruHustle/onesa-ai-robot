@@ -118,8 +118,10 @@ def secrets(data, name):
                 for m in matches
                 # Reviewed diagnostic redaction sentinel is not an authenticating key.
                 # Keep this exception bound to its exact value and test source path.
-                if not (name == "scripts/test_inspect_hosting.py" and
-                        m.group(1) == b"synthetic-sensitive-fixture-must-not-be-emitted")
+                if not (
+                    name == "scripts/test_inspect_hosting.py"
+                    and m.group(1) == b"synthetic-sensitive-fixture-must-not-be-emitted"
+                )
                 and not any(
                     marker in m.group(1).lower()
                     for marker in (
