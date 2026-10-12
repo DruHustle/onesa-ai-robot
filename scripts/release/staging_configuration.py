@@ -21,8 +21,11 @@ def target(service, *, require_docker=True):
         and service.get("repo", "").removesuffix(".git").rstrip("/")
         == "https://github.com/" + REPOSITORY
         and service.get("type") == "web_service"
-        and service.get("runtime", details.get("runtime", details.get("env")))
-        == "docker"
+        and (
+            not require_docker
+            or service.get("runtime", details.get("runtime", details.get("env")))
+            == "docker"
+        )
         and details.get("plan") == "free"
         and details.get("region") == "frankfurt"
         and details.get("url") == API,
