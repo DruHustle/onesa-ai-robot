@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-10-12 — Verify configured staging secret injection
+
+Add trusted owner-only environment and repository availability modes to the existing
+hosting inspector. Test required names as booleans, without checking out code, calling
+providers or displaying values. Preserve the Staging entries and independently verify
+usable injection and actual repository entitlement. Private-Free repository fallback
+remains documented; secret names alone never prove authentication or data isolation.
+Exercise real diagnostic code with synthetic sentinel values and assert they are never
+logged. Oracle configuration remains independent of GitHub secret entry.
+
+
 ## 2026-10-12 — Automatic day/night styling and private-Free staging preparation
 
 Follow visitor-local 07:00/19:00 transitions without an appearance selector or stored
