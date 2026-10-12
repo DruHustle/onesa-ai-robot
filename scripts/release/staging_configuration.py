@@ -278,6 +278,7 @@ def inspect_or_repair(repair=False):
         "operator_name_matches": settings.get("ROBOT_OPERATOR_NAME")
         == os.environ.get("ROBOT_TEST_OPERATOR", "operator"),
         "operator_password_matches": operator_matches(settings),
+        "automation_bypass_configured": bool(os.environ.get("VERCEL_AUTOMATION_BYPASS_SECRET")),
         "edge_device_configured": bool(settings.get("ROBOT_EDGE_DEVICE_ID")),
         "edge_token_configured": bool(settings.get("ROBOT_EDGE_TOKEN_SHA256")),
         "production_modified": False,

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-12 — Private staging credential diagnostics
+
+Report whether the named Preview automation bypass reaches the direct Staging inspection job as a boolean. Secret-name inventory alone does not establish a usable value or reusable-workflow binding. Preserve the existing operator credentials; reconcile the authorized test secret privately, without resetting the operator or weakening Preview protection.
+
 ## Staging branch and environment configuration
 
 - Standardize remote branches on dev, staging and main; preserve branch history in restricted recovery bundles.
