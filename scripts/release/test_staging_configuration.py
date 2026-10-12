@@ -90,3 +90,11 @@ class StagingConfigurationTests(unittest.TestCase):
         for runtime in ["python", None, "node"]:
             with self.assertRaises(Rejected):
                 stage.target({**service, "runtime": runtime})
+
+    def test_current_runtime_field_takes_precedence_over_empty_legacy_env(self):
+        service = self.service()
+        service["serviceDetails"].update(runtime="docker", env=None)
+        stage.target(service)
+        service["serviceDetails"]["runtime"] = "python"
+        with self.assertRaises(Rejected):
+            stage.target(service)
