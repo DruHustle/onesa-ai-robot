@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-10-12 — Correct verified Turso staging identity
+
+Authenticated resource inspection found the existing database is
+`onesa-ai-robot-backend-staging`; the unhyphenated endpoint returned HTTP502.
+Correct the maintained configuration and initial-setup commands, documenting the
+verified native Render runtime and preservation of the existing operator/token.
+Read-only connectivity to the correct endpoint succeeds with the existing token.
+Hosted application acceptance remains separate from this connectivity result.
+
 ## 2026-10-12 — Verify configured staging secret injection
 
 Add trusted owner-only environment and repository availability modes to the existing
