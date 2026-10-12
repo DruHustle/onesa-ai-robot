@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 class SecretScopeTests(unittest.TestCase):
     def test_environment_and_repository_diagnostics_expose_only_availability(self):
-        workflow = (ROOT / ".github/workflows/inspect-hosting.yml").read_text()
+        workflow = (ROOT / ".github/workflows/release-candidate.yml").read_text()
         expected = set(
             re.findall(
                 r"secrets\.(STAGING_[A-Z0-9_]+)",

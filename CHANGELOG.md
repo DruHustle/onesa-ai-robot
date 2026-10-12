@@ -3,7 +3,7 @@
 ## 2026-10-12 — Verify configured staging secret injection
 
 Add trusted owner-only environment and repository availability modes to the existing
-hosting inspector. Test required names as booleans, without checking out code, calling
+registered Robot candidate workflow. Test required names as booleans, without checking out code, calling
 providers or displaying values. Preserve the Staging entries and independently verify
 usable injection and actual repository entitlement. Private-Free repository fallback
 remains documented; secret names alone never prove authentication or data isolation.

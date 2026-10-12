@@ -15,8 +15,8 @@ checkout, provider requests or secret-value output:
 
 ```sh
 gh secret list --env Staging -R DruHustle/onesa-ai-robot
-gh workflow run inspect-hosting.yml --repo DruHustle/onesa-ai-robot --ref dev -f secret_scope=environment
-gh workflow run inspect-hosting.yml --repo DruHustle/onesa-ai-robot --ref dev -f secret_scope=repository
+gh workflow run release-candidate.yml --repo DruHustle/onesa-ai-robot --ref dev -f target=inspect-environment-secrets -f application=frontend
+gh workflow run release-candidate.yml --repo DruHustle/onesa-ai-robot --ref dev -f target=inspect-repository-secrets -f application=frontend
 ```
 
 The environment diagnostic explicitly declares `environment: Staging`. A missing or
