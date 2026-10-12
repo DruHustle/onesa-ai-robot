@@ -5,6 +5,7 @@ import hmac
 import json
 import os
 import re
+from urllib.parse import urlencode
 
 from cloud import provider
 from evidence import REPOSITORY, Rejected, require
@@ -54,6 +55,42 @@ def operator_matches(settings):
         return hmac.compare_digest(actual, digest)
     except (ValueError, TypeError):
         return False
+
+
+def frontend_binding():
+    project, team = (
+        os.environ.get("VERCEL_PROJECT_ID", ""),
+        os.environ.get("VERCEL_ORG_ID", ""),
+    )
+    if not re.fullmatch(r"prj_[A-Za-z0-9]+", project) or not re.fullmatch(
+        r"(?:team|user)_[A-Za-z0-9]+", team
+    ):
+        return {"frontend_target_verified": False}
+    base = "https://api.vercel.com/v9/projects/" + project
+    query = urlencode({"teamId": team})
+    token = os.environ.get("VERCEL_TOKEN", "")
+    data = provider(base + "?" + query, token)
+    link = data.get("link", {})
+    verified = (
+        link.get("org") == "DruHustle"
+        and link.get("repo") == "onesa-ai-robot"
+        and data.get("rootDirectory") == "onesa-ai-robot-frontend"
+    )
+    if not verified:
+        return {"frontend_target_verified": False}
+    envs = provider(base + "/env?" + query + "&decrypt=true", token)
+    matching = [
+        item
+        for item in envs.get("envs", [])
+        if item.get("key") == "ROBOT_API_URL"
+        and "preview" in item.get("target", [])
+        and item.get("gitBranch") == "staging"
+    ]
+    return {
+        "frontend_target_verified": True,
+        "frontend_staging_api_matches": len(matching) == 1
+        and matching[0].get("value") == API,
+    }
 
 
 def inspect_or_repair(repair=False):
@@ -193,6 +230,7 @@ def inspect_or_repair(repair=False):
         "credentials_changed": False,
         "database_modified": False,
         "deployment_requested": False,
+        **frontend_binding(),
     }
 
 
