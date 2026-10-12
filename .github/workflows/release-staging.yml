@@ -35,15 +35,10 @@ concurrency:
   cancel-in-progress: false
 jobs:
   deploy:
-    if: github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle'
-      && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/staging') || (github.event_name == 'workflow_run'
-      && github.event.repository.private == true && vars.STAGING_AUTOMATION_ENABLED == 'true' && github.event.workflow_run.event
-      == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name
-      == github.repository && github.event.workflow_run.head_sha == github.sha && github.event.workflow_run.conclusion ==
-      'success'))
+    if: (vars.STAGING_SECRET_SCOPE != 'environment' || github.event.repository.private == true) && (github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/staging') || (github.event_name == 'workflow_run' && github.event.repository.private == true && vars.STAGING_AUTOMATION_ENABLED == 'true' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_sha == github.sha && github.event.workflow_run.conclusion == 'success')))
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    steps:
+    steps: &deploy_steps
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         persist-credentials: false
@@ -163,3 +158,10 @@ jobs:
     - name: Remove private provider files
       if: always()
       run: rm -rf -- "$GITHUB_WORKSPACE/.vercel" "$RUNNER_TEMP/reviewed-build" "$RUNNER_TEMP/robot-release/verified-edge-fixture.json"
+  deploy-environment:
+    # Optional verified public-environment binding; private Free always uses repository secrets.
+    if: (vars.STAGING_SECRET_SCOPE == 'environment' && github.event.repository.private == false) && (github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/staging') || (github.event_name == 'workflow_run' && github.event.repository.private == true && vars.STAGING_AUTOMATION_ENABLED == 'true' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_sha == github.sha && github.event.workflow_run.conclusion == 'success')))
+    environment: Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps: *deploy_steps
