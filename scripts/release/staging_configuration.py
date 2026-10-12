@@ -174,6 +174,13 @@ def inspect_or_repair(repair=False):
         == "false",
         "environment_matches": settings.get("ROBOT_DEPLOYMENT_ENVIRONMENT")
         == "staging",
+        "cloud_database_path_matches": settings.get("ROBOT_DATABASE_PATH")
+        == "/app/storage/robot.sqlite3",
+        "cloud_repository_exact_matches": service.get("repo")
+        in {
+            "https://github.com/" + REPOSITORY,
+            "https://github.com/" + REPOSITORY + ".git",
+        },
         "turso_mode_selected": settings.get("ROBOT_STORAGE_MODE") == "turso",
         "turso_database_matches": settings.get("ROBOT_TURSO_DATABASE_URL") == TURSO,
         "turso_token_configured": bool(settings.get("ROBOT_TURSO_AUTH_TOKEN")),

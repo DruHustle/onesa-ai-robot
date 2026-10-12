@@ -116,7 +116,11 @@ def preflight(environment):
     base = "https://api.render.com/v1/services/" + service_id
     service = provider(base, token)
     require(
-        service.get("repo") == "https://github.com/" + REPOSITORY
+        service.get("repo")
+        in {
+            "https://github.com/" + REPOSITORY,
+            "https://github.com/" + REPOSITORY + ".git",
+        }
         and service.get("branch") == ("staging" if environment == "Staging" else "main")
         and service.get("type") == "web_service"
         and service.get("rootDir") == "onesa-ai-robot-backend",
@@ -433,10 +437,38 @@ def main():
         receipt(args.environment, args.directory, args.browser_passed)
 
 
+def safe_failure_code(error):
+    codes = {
+        "Render repository, branch or backend root mismatch": "RENDER_LAYOUT",
+        "Render native auto-deploy must be off": "RENDER_AUTO_DEPLOY",
+        "Reviewed backend runtime and layout required": "RENDER_RUNTIME",
+        "Render API URL binding mismatch": "RENDER_API_BINDING",
+        "Isolated database required": "DATABASE_PATH",
+        "Operator auth missing": "OPERATOR_AUTH",
+        "Environment mismatch": "ENVIRONMENT_SCOPE",
+        "Physical operation must be disabled": "PHYSICAL_DISABLED",
+        "Staging storage binding mismatch": "STORAGE_MODE",
+        "Configure the reviewed staging Turso database origin": "TURSO_CONFIGURATION",
+        "Turso staging database identity mismatch": "TURSO_BINDING",
+        "Turso runtime credential missing": "TURSO_CREDENTIAL",
+        "Dedicated synthetic staging operator missing": "OPERATOR_BINDING",
+        "Vercel root/repository mismatch": "VERCEL_LAYOUT",
+        "Protected Preview required": "PREVIEW_PROTECTION",
+        "Server-only frontend API origin must match its isolated Render target": "FRONTEND_API_BINDING",
+        "Provider readback unavailable; inspect private provider logs": "PROVIDER_READBACK",
+        "No ready native Git staging Preview for the exact candidate": "PREVIEW_NOT_READY",
+    }
+    return (
+        codes.get(str(error), "CLOUD_VALIDATION")
+        if isinstance(error, Rejected)
+        else "CONFIGURATION_INPUT"
+    )
+
+
 if __name__ == "__main__":
     try:
         main()
-    except (Rejected, KeyError, ValueError, OSError, TypeError):
+    except (Rejected, KeyError, ValueError, OSError, TypeError) as error:
         raise SystemExit(
-            "Robot cloud operation blocked; inspect configuration and private provider logs"
+            "Robot cloud operation blocked: " + safe_failure_code(error)
         ) from None

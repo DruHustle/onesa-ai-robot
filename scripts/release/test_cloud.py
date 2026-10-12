@@ -12,6 +12,18 @@ import smoke
 
 
 class CloudTests(unittest.TestCase):
+    def test_cloud_diagnostics_never_echo_arbitrary_provider_values(self):
+        self.assertEqual(
+            cloud.safe_failure_code(evidence.Rejected("Isolated database required")),
+            "DATABASE_PATH",
+        )
+        for error in [
+            evidence.Rejected("private-provider-marker"),
+            KeyError("private-key-marker"),
+            ValueError("private-value-marker"),
+        ]:
+            self.assertNotIn("private", cloud.safe_failure_code(error))
+
     def test_native_preview_reuse_rejects_duplicates_wrong_source_and_production(self):
         candidate = {
             "meta": {"githubCommitSha": "a" * 40, "githubCommitRef": "staging"},
