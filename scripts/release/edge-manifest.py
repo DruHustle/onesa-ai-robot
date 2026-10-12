@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 folder = Path(sys.argv[1])
-preflight = json.loads((folder / "preflight.json").read_text())
+preflight = json.loads((folder / "preflight" / "record.json").read_text())
 files = {
     name: hashlib.sha256((folder / name).read_bytes()).hexdigest()
     for name in ["simulator.tar", "interfaces.tar"]

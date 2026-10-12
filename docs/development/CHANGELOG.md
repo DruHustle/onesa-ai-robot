@@ -1,5 +1,10 @@
 # Development changelog
 
+## 2026-10-12 — Release evidence path contract and hosting readback
+
+Correct staging/production/edge preflight outputs and consumers to use preflight/record.json, as required by the evidence writer. A workflow-wide regression rejects other output filenames. The registered owner packaging bridge can perform read-only production/staging inspection; no deployment credentials or settings are changed by inspection. Staging reuses the exact-source native Git Preview rather than issuing a competing CLI deployment; source, protection and ambiguity guards remain mandatory.
+
+
 
 ## 2026-10-11 — Automated review and CI/CD optimization
 

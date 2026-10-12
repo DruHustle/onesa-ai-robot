@@ -28,7 +28,7 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         APPROVAL_RUN: ${{ inputs.approval_run }}
-      run: python3 scripts/release/evidence.py promote --approval-run "$APPROVAL_RUN" --output "$RUNNER_TEMP/robot-release/preflight.json"
+      run: python3 scripts/release/evidence.py promote --approval-run "$APPROVAL_RUN" --output "$RUNNER_TEMP/robot-release/preflight/record.json"
     - name: Verify isolated provider targets
       env:
         GH_TOKEN: ${{ github.token }}
@@ -66,7 +66,7 @@ jobs:
         VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
         VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
         VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
-      run: python3 scripts/release/monitor.py stage-live --input "$RUNNER_TEMP/robot-release/preflight.json" --output "$RUNNER_TEMP/staging-live/record.json"
+      run: python3 scripts/release/monitor.py stage-live --input "$RUNNER_TEMP/robot-release/preflight/record.json" --output "$RUNNER_TEMP/staging-live/record.json"
     - name: Deploy exact backend source
       env:
         RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
