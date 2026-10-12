@@ -69,6 +69,28 @@ def inspect_or_repair(repair=False):
     token = os.environ.get("RENDER_API_KEY", "")
     base = "https://api.render.com/v1/services/" + SERVICE
     service = provider(base, token)
+    if not repair:
+        details = service.get("serviceDetails", {})
+        print(
+            json.dumps(
+                {
+                    "identity_readback": {
+                        "service_id_matches": service.get("id") == SERVICE,
+                        "repository_matches": service.get("repo", "")
+                        .removesuffix(".git")
+                        .rstrip("/")
+                        == "https://github.com/" + REPOSITORY,
+                        "web_service": service.get("type") == "web_service",
+                        "docker_runtime": details.get("env", details.get("runtime"))
+                        == "docker",
+                        "free_plan": details.get("plan") == "free",
+                        "frankfurt_region": details.get("region") == "frankfurt",
+                        "api_origin_matches": details.get("url") == API,
+                        "wrapped_service_response": "service" in service,
+                    }
+                }
+            )
+        )
     target(service)
     if repair:
         # Disable native auto deploy in the same patch as reviewed nonsecret layout changes.
