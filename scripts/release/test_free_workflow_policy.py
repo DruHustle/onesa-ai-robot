@@ -108,6 +108,40 @@ for (const privateRepo of [false, true]) {
         )
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_registered_staging_entrypoint_supports_private_free_without_production(
+        self,
+    ):
+        name = "release-candidate.yml" if ROOT.name.endswith("robot") else "deploy.yml"
+        text = (ROOT / ".github/workflows" / name).read_text()
+        staging = re.split(
+            r"(?m)^  [A-Za-z0-9_-]+:", text.split("\n  staging:\n", 1)[1], maxsplit=1
+        )[0]
+        condition = re.search(r"^    if: (.+)", staging, re.MULTILINE).group(1)
+        condition = condition.removeprefix("${{ ").removesuffix(" }}")
+        self.assertIn("uses: ./.github/workflows/release-staging.yml", staging)
+        self.assertNotRegex(staging, r"secrets\.(?!STAGING_)[A-Z_]+")
+        program = r"""
+const condition=process.argv[1], repository=process.argv[2];
+for (const privateRepo of [true, false]) {
+ for (const invalid of ['', 'actor', 'ref', 'event', 'target']) {
+  const github={repository,actor:invalid==='actor'?'outsider':'DruHustle',
+   triggering_actor:'DruHustle',ref:invalid==='ref'?'refs/heads/main':'refs/heads/staging',
+   event_name:invalid==='event'?'pull_request':'workflow_dispatch',
+   event:{repository:{private:privateRepo}}};
+  const inputs={target:invalid==='target'?'production':'staging'};
+  const selected=new Function('github','inputs','return ('+condition+')')(github,inputs);
+  if(selected !== (invalid==='')) process.exit(1);
+ }
+}
+"""
+        result = subprocess.run(
+            ["node", "-e", program, condition, "DruHustle/" + ROOT.name],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_git_previews_do_not_enable_native_production_deployment(self):
         config = json.loads(
             (ROOT / (ROOT.name + "-frontend") / "vercel.json").read_text()

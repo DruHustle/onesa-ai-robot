@@ -69,6 +69,28 @@ class InspectionTests(unittest.TestCase):
             record["production"]["configured"]["ROBOT_OPERATOR_PASSWORD_HASH"]
         )
 
+    def test_log_categories_never_return_private_log_messages(self):
+        marker = "synthetic-sensitive-fixture-must-not-be-emitted"
+        cases = [
+            ("ModuleNotFoundError", "startup_import_missing"),
+            (
+                "Remote simulation journal requires recovery",
+                "journal_recovery_required",
+            ),
+            ("CERTIFICATE_VERIFY_FAILED", "tls_certificate_failed"),
+            ("Invalid operator password hash", "operator_configuration_invalid"),
+        ]
+        for message, expected in cases:
+            with self.subTest(expected=expected):
+                output = inspection.log_categories(
+                    {"logs": [{"message": message + " " + marker}]}
+                )
+                self.assertEqual(output, [expected])
+                self.assertNotIn(marker, json.dumps(output))
+        self.assertEqual(
+            inspection.log_categories({"logs": [{"message": marker}, None]}), []
+        )
+
     def test_missing_provider_access_is_not_verified(self):
         with patch.object(inspection, "read", return_value=({}, 403)):
             record = inspection.render("fixture")

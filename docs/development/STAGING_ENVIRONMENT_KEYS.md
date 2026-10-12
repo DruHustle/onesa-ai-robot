@@ -50,6 +50,20 @@ there is one staging deployment authority and no secret values in outputs betwee
 Ordinary PR checks do not invoke these owner-only deployment jobs. Availability never
 establishes provider credential isolation; verify target/scope/authentication separately.
 
+## Existing registered staging entry point
+
+New workflow files cannot be dispatched until registered on the default branch.
+Use the existing owner-only entry point on the qualified staging SHA; it calls the
+same release-staging sequence and preserves exact-source CI, target and acceptance
+gates. The entry point supports public and private repositories. Production jobs
+remain separately gated and disabled for private Actions; no main promotion is
+needed to register a staging workflow. Forwarded named secrets are overridden by
+the selected callee's Staging environment only in the verified public mode.
+
+```sh
+gh workflow run release-candidate.yml --repo DruHustle/onesa-ai-robot --ref staging -f target=staging -f application=frontend
+```
+
 ## Required workflow secret names
 
 - `STAGING_RENDER_API_KEY`

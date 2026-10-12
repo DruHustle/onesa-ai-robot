@@ -49,7 +49,7 @@ jobs:
         VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       run: python3 scripts/inspect_hosting.py
   staging:
-    if: github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/staging' && inputs.target == 'staging'
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/staging' && inputs.target == 'staging'
     uses: ./.github/workflows/release-staging.yml
     secrets:
       STAGING_RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}

@@ -1,5 +1,13 @@
 # Development changelog
 
+## 2026-10-12 — Redacted failed deployment diagnosis
+
+Read bounded Render log metadata and emit fixed startup/Turso/TLS/permissions/port error categories, plus non-secret deployment IDs and commits. Never expose log bodies, credentials or operator hashes. This diagnosis does not repair or redeploy production.
+
+## 2026-10-12 — Registered private-Free staging entry point
+
+Allow the existing manual, owner-only staging bridge on private repositories so the repository-secret fallback is usable before new workflows reach main. Keep production guards, exact-source qualification, named staging secrets and protected Preview checks; test rejection of untrusted actors/events, main refs and production targets.
+
 ## 2026-10-12 — verified staging secret scope
 
 - Select the verified public `Staging` environment through the non-secret `STAGING_SECRET_SCOPE` variable while keeping repository-level `STAGING_*` secrets as the private-Free fallback.
