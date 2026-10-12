@@ -14,7 +14,7 @@ API = "https://onesa-ai-robot-backend-staging.onrender.com"
 TURSO = "libsql://onesa-ai-robot-backendstaging-druhustle.aws-eu-west-1.turso.io"
 
 
-def target(service):
+def target(service, *, require_docker=True):
     details = service.get("serviceDetails", {})
     require(
         service.get("id") == SERVICE
@@ -94,7 +94,7 @@ def inspect_or_repair(repair=False):
                 }
             )
         )
-    target(service)
+    target(service, require_docker=repair)
     if repair:
         # Disable native auto deploy in the same patch as reviewed nonsecret layout changes.
         provider(
@@ -137,6 +137,27 @@ def inspect_or_repair(repair=False):
     require(not repair or layout, "Staging layout readback mismatch")
     return {
         "target_verified": True,
+        "runtime_verified": service.get(
+            "runtime", details.get("runtime", details.get("env"))
+        )
+        == "docker",
+        "runtime_kind": next(
+            (
+                value
+                for value in [
+                    service.get("runtime"),
+                    service.get("env"),
+                    details.get("runtime"),
+                    details.get("env"),
+                ]
+                if value
+                in {"docker", "python", "node", "ruby", "go", "rust", "elixir", "image"}
+            ),
+            "UNRECOGNIZED",
+        ),
+        "dockerfile_configured": bool(runtime.get("dockerfilePath")),
+        "native_build_command_configured": bool(runtime.get("buildCommand")),
+        "native_start_command_configured": bool(runtime.get("startCommand")),
         "layout_verified": layout,
         "layout_changed": repair,
         "physical_actuation_disabled": settings.get("ROBOT_ACTUATION_ENABLED")

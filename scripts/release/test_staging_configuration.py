@@ -98,3 +98,24 @@ class StagingConfigurationTests(unittest.TestCase):
         service["serviceDetails"]["runtime"] = "python"
         with self.assertRaises(Rejected):
             stage.target(service)
+
+    def test_read_only_native_inventory_does_not_authorize_repair(self):
+        service = self.service()
+        service["serviceDetails"].update(runtime="python", env=None)
+        with (
+            patch.dict(os.environ, self.context(), clear=True),
+            patch.object(stage, "provider", side_effect=[service, []]) as provider,
+        ):
+            result = stage.inspect_or_repair(False)
+        self.assertEqual(result["runtime_kind"], "python")
+        self.assertFalse(result["runtime_verified"])
+        self.assertFalse(result["layout_changed"])
+        self.assertEqual(len(provider.call_args_list), 2)
+        self.assertTrue(all(len(call.args) == 2 for call in provider.call_args_list))
+        with (
+            patch.dict(os.environ, self.context(), clear=True),
+            patch.object(stage, "provider", return_value=service) as provider,
+            self.assertRaises(Rejected),
+        ):
+            stage.inspect_or_repair(True)
+        self.assertEqual(len(provider.call_args_list), 1)
