@@ -60,7 +60,6 @@ jobs:
       STAGING_VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
   staging-configuration:
     if: github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && ((inputs.target == 'inspect-staging' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging')) || (inputs.target == 'repair-staging' && github.ref == 'refs/heads/staging') || (inputs.target == 'repair-staging-preview' && github.ref == 'refs/heads/dev'))
-    environment: Staging
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

@@ -2,3 +2,8 @@
 [hidden]{display:none!important}button,input{font:inherit}button{min-height:44px;padding:12px 18px;border:1px solid var(--ink);border-radius:3px;background:var(--navy);color:white;cursor:pointer}button:disabled{opacity:.6;cursor:wait}button:focus-visible,input:focus-visible{outline:3px solid var(--blue);outline-offset:3px}form{max-width:680px;padding:24px;border:1px solid var(--line);margin:24px 0;display:grid;gap:12px}form h3{margin-top:0}form p{line-height:1.6}input{width:100%;min-width:0;min-height:44px;padding:10px;border:1px solid var(--muted);border-radius:3px}label{line-height:1.5}dl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);max-width:680px;gap:14px}dt{font-weight:700}dd{margin:0;overflow-wrap:anywhere}.toolbar{display:flex;flex-wrap:wrap;gap:16px}.stop{background:#a51b21}#history{padding-left:24px;max-width:680px;overflow-wrap:anywhere}#history li{padding:10px 0;line-height:1.6}#notice{min-height:48px;max-width:680px;line-height:1.6}#proposed-id{overflow-wrap:anywhere}@media(max-width:390px){form{padding:16px}dl{grid-template-columns:1fr}h1{font-size:2.8rem}.site-header{padding:24px}.orbit-art{overflow:hidden}}
 
 .site-header nav{align-items:center;flex-wrap:wrap;gap:16px}
+
+/* Automatic visitor-local night palette; no appearance selector. */
+html[data-theme=dark],html[data-theme=dark] body{color-scheme:dark;--ink:#e5edf6;--muted:#b4c4d6;--line:#557a9e;--paper:#14243a;--blue:#83baff;background:#0b1523;color:var(--ink)}
+html[data-theme=dark] :is(input,select){background:#14243a;color:var(--ink);border-color:var(--line)}
+html[data-theme=dark] .skip{background:#14243a;color:var(--ink)}
