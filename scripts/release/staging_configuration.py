@@ -15,7 +15,7 @@ from service_runtime import verified as runtime_layout_verified
 
 SERVICE = "srv-db5k9ft9fdbs73d622cg"
 API = "https://onesa-ai-robot-backend-staging.onrender.com"
-TURSO = "libsql://onesa-ai-robot-backendstaging-druhustle.aws-eu-west-1.turso.io"
+TURSO = "libsql://onesa-ai-robot-backend-staging-druhustle.aws-eu-west-1.turso.io"
 
 
 def target(service, *, require_docker=True):
@@ -278,7 +278,9 @@ def inspect_or_repair(repair=False):
         "operator_name_matches": settings.get("ROBOT_OPERATOR_NAME")
         == os.environ.get("ROBOT_TEST_OPERATOR", "operator"),
         "operator_password_matches": operator_matches(settings),
-        "automation_bypass_configured": bool(os.environ.get("VERCEL_AUTOMATION_BYPASS_SECRET")),
+        "automation_bypass_configured": bool(
+            os.environ.get("VERCEL_AUTOMATION_BYPASS_SECRET")
+        ),
         "edge_device_configured": bool(settings.get("ROBOT_EDGE_DEVICE_ID")),
         "edge_token_configured": bool(settings.get("ROBOT_EDGE_TOKEN_SHA256")),
         "production_modified": False,

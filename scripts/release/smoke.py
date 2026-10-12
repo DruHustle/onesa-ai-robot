@@ -90,9 +90,11 @@ def run(url, environment):
     api = Simulator(url)
     logged_in = False
     checks = record["checks"]
+    phase = "frontend_availability"
     try:
         require(b"Software simulation" in api.call("/"), "Unexpected frontend")
         checks["frontend_availability"] = "PASS"
+        phase = "backend_readiness"
         ready = api.call("/api/v1/ready")
         require(
             ready.get("mode") == "simulation"
@@ -101,6 +103,7 @@ def run(url, environment):
             "Unsafe runtime",
         )
         checks["backend_readiness"] = "PASS"
+        phase = "storage_isolation"
         require(
             ready.get("storage_mode")
             == (
@@ -111,6 +114,7 @@ def run(url, environment):
             "Storage scope mismatch",
         )
         checks["storage_isolation"] = "PASS"
+        phase = "authentication"
         api.call("/api/v1/status", expected=401)
         api.call(
             "/api/v1/auth/login",
@@ -125,8 +129,10 @@ def run(url, environment):
             "Secure cookie required",
         )
         checks["authentication"] = "PASS"
+        phase = "authorization"
         api.call("/api/v1/stop", {}, expected=403, csrf=False)
         checks["authorization"] = "PASS"
+        phase = "edge_telemetry"
         # Independent outbound device identity is telemetry-only; it cannot approve tasks.
         edge_token = os.environ.get("ROBOT_EDGE_TOKEN", "")
         edge_device = os.environ.get("ROBOT_EDGE_DEVICE_ID", "")
@@ -177,6 +183,7 @@ def run(url, environment):
             "Stale edge appears connected",
         )
         checks["edge_telemetry"] = "PASS"
+        phase = "stale_command"
         api.call("/api/v1/stop", {})
 
         def reset():
@@ -201,12 +208,14 @@ def run(url, environment):
         reset()
         api.call("/api/v1/tasks", proposal(issued_at=time.time() - 60), expected=422)
         checks["stale_command"] = "PASS"
+        phase = "safety_denial"
         api.call(
             "/api/v1/tasks",
             proposal(target_radians=0.9, duration_seconds=1),
             expected=422,
         )
         checks["safety_denial"] = "PASS"
+        phase = "simulation"
         value = proposal()
         identifier = create(value)
         api.call("/api/v1/tasks", value, expected=409)
@@ -224,17 +233,20 @@ def run(url, environment):
         else:
             raise Rejected("Simulation did not complete")
         checks["simulation"] = "PASS"
+        phase = "replay_rejection"
         api.call(
             "/api/v1/tasks/" + identifier + "/approve",
             {"password": password},
             expected=409,
         )
         checks["replay_rejection"] = "PASS"
+        phase = "cancellation"
         cancelled = create(proposal(target_radians=0.15, duration_seconds=10))
         approve(cancelled)
         api.call("/api/v1/tasks/" + cancelled + "/cancel", {})
         require(api.call("/api/v1/status")["stopped"], "Cancellation must latch stop")
         checks["cancellation"] = "PASS"
+        phase = "connection_loss"
         reset()
         # Revoke the approving session: execution cannot survive reconnect/login.
         disconnected = create(proposal(target_radians=0.2, duration_seconds=10))
@@ -257,6 +269,7 @@ def run(url, environment):
             "Missing cancellation audit",
         )
         checks["connection_loss"] = "PASS"
+        phase = "audit_history"
         require(
             any(
                 task["id"] == identifier and task["state"] == "completed"
@@ -271,6 +284,7 @@ def run(url, environment):
         checks["audit_history"] = "PASS"
         record["status"] = "PASS"
     except (Rejected, ValueError, KeyError, urllib.error.URLError, TimeoutError):
+        checks[phase] = "FAIL"
         record["status"] = "FAIL"
     finally:
         if logged_in:

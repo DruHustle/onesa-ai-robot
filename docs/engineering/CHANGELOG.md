@@ -1,5 +1,9 @@
 # Engineering changelog
 
+## 2026-10-12 — Staging journal handoff and approved company contacts
+
+Stop the existing synthetic simulation and expire only its observed Turso lease before rolling deployment, preserving operator credentials and history. Reject production, foreign resources and untrusted actors/runners. Use the verified hyphenated staging hostname, report attempted smoke failures as FAIL, and display approved company/contact particulars with central legal/privacy links. Full hosted acceptance remains required.
+
 ## 2026-10-12 — Stop requests when the operator page leaves
 
 A hosted WebKit run caught an old-page task request continuing after reload. The typed client cancels pending requests when the page leaves, bounds request duration, and resumes authentication/polling only after a preserved page returns. Successful HTTP responses with invalid JSON are rejected. Existing session-generation guards and simulation-stop behavior remain intact. Three real HTTP client/proxy tests and 26 Chromium/WebKit browser cases pass; every hosted check remains required.

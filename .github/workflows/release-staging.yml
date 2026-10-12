@@ -98,6 +98,13 @@ jobs:
         ROBOT_TEST_OPERATOR: ${{ vars.STAGING_ROBOT_TEST_OPERATOR || 'operator' }}
         VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
       run: python3 scripts/release/cloud.py bind-preview Staging --directory "$RUNNER_TEMP/robot-release"
+    - name: Stop and fence the existing synthetic staging journal
+      env:
+        RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
+        ROBOT_TEST_PASSWORD: ${{ secrets.STAGING_ROBOT_TEST_PASSWORD }}
+        ROBOT_TEST_OPERATOR: ${{ vars.STAGING_ROBOT_TEST_OPERATOR || 'operator' }}
+      run: python3 scripts/release/journal_handoff.py
     - name: Deploy exact backend source
       id: backend
       env:

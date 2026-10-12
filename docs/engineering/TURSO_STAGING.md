@@ -135,3 +135,23 @@ failure-path tests, Ruff, mypy, generated API/client drift, actionlint, publicat
 hygiene and the hash-locked nonroot Alpine runtime build were checked. Provider
 credentials, actual hosted connectivity and isolated Turso export/restore remain
 pending. Public or physical production is not authorized by these local results.
+
+## Rolling deployment handoff
+
+Actual staging deploy logs on 12 October 2026 report `Simulation journal already has
+a live owner`. The exclusive lease is required; Render keeps the old instance running
+until the new one is healthy, so a second journal owner cannot start during that overlap.
+The owner-only staging release now authenticates the existing operator, stops simulation,
+flushes pending task history, signs out and expires only the observed staging lease using
+an owner comparison. The old instance can no longer renew or write; the new exact-source
+instance acquires authority normally. No task/history rows are deleted, no operator or
+credential is replaced, and no physical actuation is enabled. The handoff is limited to
+the pinned free staging Render service and the verified hyphenated Turso hostname.
+
+All source/security gates precede this operation. Hosted readiness, authentication,
+replay denial and browser tests remain mandatory afterwards. A failed handoff prevents
+deployment. If the deployment subsequently fails, restore the last qualified exact
+commit through the existing owner-controlled staging recovery path; the expired old
+lease is not renewed automatically. This may cause staging downtime and does not claim
+zero-downtime service. Production uses its separate approved deployment controls.
+See [Render deployment sequencing](https://render.com/docs/deploys#zero-downtime-deploys).

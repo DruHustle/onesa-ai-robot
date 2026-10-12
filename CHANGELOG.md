@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-12 — Preserve single-writer staging deployment
+
+Authenticate the existing synthetic operator, stop and drain simulation, then expire only the observed staging journal lease before the exact-source Render deploy. Preserve credentials, history and production. Correct the diagnostic hostname and mark attempted smoke failures accurately. Display owner-approved company contact particulars and legal links.
+
 ## 2026-10-12 — Preserve hosted simulator acceptance evidence
 
 The first live simulator run reached acceptance but the intermediate writer rejected
