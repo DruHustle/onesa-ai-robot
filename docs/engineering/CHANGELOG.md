@@ -1,5 +1,9 @@
 # Engineering changelog
 
+## 2026-10-12 — Stop requests when the operator page leaves
+
+A hosted WebKit run caught an old-page task request continuing after reload. The typed client cancels pending requests when the page leaves, bounds request duration, and resumes authentication/polling only after a preserved page returns. Successful HTTP responses with invalid JSON are rejected. Existing session-generation guards and simulation-stop behavior remain intact. Three real HTTP client/proxy tests and 26 Chromium/WebKit browser cases pass; every hosted check remains required.
+
 ## 2026-10-12 — Visitor-time appearance and protected staging deployment bridge
 
 - The simulation interface supports persisted Auto/Light/Dark at visitor-local 07:00/19:00 boundaries, including blocked storage and mobile controls. Both-mode simulation/a11y coverage now spans all five viewport widths.
