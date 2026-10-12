@@ -21,7 +21,8 @@ def target(service):
         and service.get("repo", "").removesuffix(".git").rstrip("/")
         == "https://github.com/" + REPOSITORY
         and service.get("type") == "web_service"
-        and details.get("env", details.get("runtime")) == "docker"
+        and service.get("runtime", details.get("env", details.get("runtime")))
+        == "docker"
         and details.get("plan") == "free"
         and details.get("region") == "frankfurt"
         and details.get("url") == API,
@@ -81,7 +82,9 @@ def inspect_or_repair(repair=False):
                         .rstrip("/")
                         == "https://github.com/" + REPOSITORY,
                         "web_service": service.get("type") == "web_service",
-                        "docker_runtime": details.get("env", details.get("runtime"))
+                        "docker_runtime": service.get(
+                            "runtime", details.get("env", details.get("runtime"))
+                        )
                         == "docker",
                         "free_plan": details.get("plan") == "free",
                         "frankfurt_region": details.get("region") == "frankfurt",

@@ -82,3 +82,11 @@ class StagingConfigurationTests(unittest.TestCase):
         self.assertFalse(result["credentials_changed"])
         self.assertFalse(result["database_modified"])
         self.assertFalse(result["deployment_requested"])
+
+    def test_top_level_runtime_is_checked_without_admitting_native_or_unknown(self):
+        service = self.service()
+        service["serviceDetails"].pop("env")
+        stage.target({**service, "runtime": "docker"})
+        for runtime in ["python", None, "node"]:
+            with self.assertRaises(Rejected):
+                stage.target({**service, "runtime": runtime})

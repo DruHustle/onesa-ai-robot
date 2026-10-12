@@ -126,7 +126,7 @@ def preflight(environment):
     )
     details = service.get("serviceDetails", {})
     require(
-        details.get("env") == "docker",
+        service.get("runtime", details.get("env", details.get("runtime"))) == "docker",
         "Render must use the reviewed backend Dockerfile",
     )
     require(
