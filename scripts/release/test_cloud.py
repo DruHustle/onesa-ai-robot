@@ -1,5 +1,6 @@
 """Release/provider failure paths with synthetic fixtures only."""
 
+import json
 import os
 import tempfile
 import unittest
@@ -12,6 +13,39 @@ import smoke
 
 
 class CloudTests(unittest.TestCase):
+    def test_failed_cli_acceptance_persists_private_smoke_before_rejection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            (path / "frontend-url.txt").write_text("https://synthetic.vercel.app")
+            record = {"status": "FAIL", "checks": {"authentication": "FAIL"}}
+            with (
+                patch("edge_fixture.restore"),
+                patch.object(smoke, "run", return_value=record),
+                self.assertRaises(evidence.Rejected),
+            ):
+                smoke.main(["Staging", "--directory", directory])
+            self.assertEqual(json.loads((path / "smoke.json").read_text()), record)
+            self.assertEqual((path / "smoke.json").stat().st_mode & 0o777, 0o600)
+            self.assertFalse((path / "record.json").exists())
+            with self.assertRaises(evidence.Rejected):
+                evidence.save(record, path / "smoke.json")
+
+    def test_passed_cli_acceptance_keeps_smoke_and_final_record_distinct(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            (path / "frontend-url.txt").write_text("https://synthetic.vercel.app")
+            record = {"status": "PASS", "checks": {"authentication": "PASS"}}
+            with (
+                patch("edge_fixture.restore"),
+                patch.object(smoke, "run", return_value=record),
+            ):
+                smoke.main(["Staging", "--directory", directory])
+            self.assertEqual(json.loads((path / "smoke.json").read_text()), record)
+            self.assertEqual(
+                sorted(p.name for p in path.iterdir()),
+                ["frontend-url.txt", "smoke.json"],
+            )
+
     def test_only_staging_turso_uses_a_remote_journal_instead_of_a_filesystem(self):
         self.assertFalse(cloud.filesystem_required("Staging", "turso"))
         for environment, mode in [

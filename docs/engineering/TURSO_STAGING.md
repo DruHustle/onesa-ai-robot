@@ -1,7 +1,7 @@
 # Turso task history on Robot staging
 
 Use the owner's existing database:
-`libsql://onesa-ai-robot-backendstaging-druhustle.aws-eu-west-1.turso.io`.
+`libsql://onesa-ai-robot-backend-staging-druhustle.aws-eu-west-1.turso.io`.
 No new resource, paid plan or DNS change is required by this code change. Check the
 existing account's actual free-plan quota and overage policy before activation.
 
@@ -22,11 +22,12 @@ until the reviewed revision has passed the existing code/image/release checks:
 ```dotenv
 ROBOT_DEPLOYMENT_ENVIRONMENT=staging
 ROBOT_STORAGE_MODE=turso
-ROBOT_TURSO_DATABASE_URL=libsql://onesa-ai-robot-backendstaging-druhustle.aws-eu-west-1.turso.io
+ROBOT_TURSO_DATABASE_URL=libsql://onesa-ai-robot-backend-staging-druhustle.aws-eu-west-1.turso.io
 ROBOT_TURSO_AUTH_TOKEN=REPLACE_DIRECTLY_IN_RENDER_WITH_DATABASE_SCOPED_TOKEN
 ROBOT_PUBLIC_ORIGIN=https://REPLACE_WITH_ACTUAL_STAGING_FRONTEND_HOST
 ROBOT_OPERATOR_NAME=operator
-ROBOT_OPERATOR_PASSWORD_HASH=REPLACE_WITH_PRIVATELY_GENERATED_SCRYPT_HASH
+# Preserve the existing operator hash; do not regenerate it for staging automation.
+ROBOT_OPERATOR_PASSWORD_HASH=KEEP_EXISTING_PRIVATE_RENDER_VALUE
 ROBOT_ACTUATION_ENABLED=false
 ROBOT_SESSION_SECONDS=900
 ROBOT_HEARTBEAT_SECONDS=3
@@ -34,24 +35,31 @@ ROBOT_HEARTBEAT_SECONDS=3
 
 Keep `ROBOT_DATABASE_PATH=/app/storage/robot.sqlite3` if present for existing provider
 preflight compatibility; this path is not used in Turso mode. Do not put the libSQL
-URL into that file-path setting. Render supplies PORT. Keep Docker root
-`onesa-ai-robot-backend`, Dockerfile `./Dockerfile`, context `.`, blank Docker Command
-override, health path `/api/v1/ready`, one worker and native Auto Deploy off.
+URL into that file-path setting. Render supplies PORT. The existing staging service
+uses native Python with root `onesa-ai-robot-backend`, start command `sh start.sh`,
+health path `/api/v1/ready`, one worker and native Auto Deploy off. Preserve the
+reviewed build/start settings. Docker artifacts remain independently checked in CI.
 
-In Turso select **this database**, create a read/write database-scoped token with an
-appropriate expiry, and save it directly in Render. Account-management API tokens
-are not database authentication tokens. The CLI alternative is:
+Reuse the existing database token when valid. On 2026-10-12, authenticated resource
+inspection and a read-only SELECT1 verified this hyphenated staging endpoint with
+the existing token. The prior unhyphenated `backendstaging` hostname was a
+configuration error; fixing the URL does not require a token or operator reset.
+
+For an independently authorized initial setup, select **this database** in Turso,
+create a read/write database-scoped token with an appropriate expiry, and save it
+directly in Render. Account-management tokens are not database authentication
+tokens. The private CLI alternative for that initial setup is:
 
 ```sh
-turso db tokens create onesa-ai-robot-backendstaging
+turso db tokens create onesa-ai-robot-backend-staging
 ```
 
 This command prints a credential: run it privately; never paste its output into
 chat, Git, a report or a CI artifact. A read-only token is insufficient for schema
 initialization and task history. Track expiry/rotation with the operational owner.
 
-Generate a new operator hash privately from the installed backend directory:
-`python -m robot_api.security`. This is independent of the Turso token.
+Preserve the existing operator identity, roles and password/hash. Creation or
+rotation requires explicit owner authorization and is independent of the Turso token.
 Set Vercel's server-only `ROBOT_API_URL` in Preview to
 `https://onesa-ai-robot-backend-staging.onrender.com`; use the real frontend origin
 on Render. Keep Preview protection and the same-origin proxy, Origin/CSRF/session
@@ -61,13 +69,15 @@ For the controlled staging workflow, configure these **nonsecret repository vari
 
 ```dotenv
 STAGING_ROBOT_STORAGE_MODE=turso
-STAGING_ROBOT_TURSO_DATABASE_URL=libsql://onesa-ai-robot-backendstaging-druhustle.aws-eu-west-1.turso.io
+STAGING_ROBOT_TURSO_DATABASE_URL=libsql://onesa-ai-robot-backend-staging-druhustle.aws-eu-west-1.turso.io
 ```
 
 Existing separate staging provider IDs/operator/browser credentials still apply.
 Do not add the Turso token to repository Actions: only the Render backend needs it.
-The workflow remains main-only with exact revision/evidence verification; do not
-weaken guards or enable native auto-deploy to publish an unreviewed branch.
+The registered `release-candidate.yml` entrypoint accepts owner-triggered staging
+dispatches on the staging branch. Its exact-source CI/evidence checks and mutually
+exclusive environment/repository secret routing remain enforced. Production has
+separate authorization gates; do not enable native auto-deploy or bypass them.
 
 ## Storage and failure behavior
 
