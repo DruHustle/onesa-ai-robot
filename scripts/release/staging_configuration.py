@@ -221,7 +221,7 @@ def inspect_or_repair(repair=False):
                 "branch": "staging",
                 "rootDir": "onesa-ai-robot-backend",
                 "serviceDetails": {
-                    "healthCheckPath": "/api/v1/ready",
+                    "healthCheckPath": "/api/v1/health",
                     "envSpecificDetails": runtime_layout(service),
                 },
             },
@@ -235,7 +235,7 @@ def inspect_or_repair(repair=False):
         service.get("branch") == "staging"
         and service.get("rootDir") == "onesa-ai-robot-backend"
         and service.get("autoDeployTrigger") == "off"
-        and details.get("healthCheckPath") == "/api/v1/ready"
+        and details.get("healthCheckPath") == "/api/v1/health"
         and runtime_layout_verified(service)
     )
     require(not repair or layout, "Staging layout readback mismatch")

@@ -153,7 +153,7 @@ def test_hosted_acceptance_executes_real_api_and_safety_flows(settings, monkeypa
                 self.csrf = ""
                 self.jar: http.cookiejar.CookieJar = api.cookies.jar
 
-            def call(self, route, body=None, expected=200, csrf=True):
+            def call(self, route, body=None, expected=200, csrf=True, timeout=45):
                 if route == "/":
                     return (
                         Path(__file__).resolve().parents[2]

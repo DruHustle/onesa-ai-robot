@@ -1,5 +1,22 @@
 # Simulator deployment and recovery
 
+## Exclusive journal ownership during staging rollout
+
+Render starts the replacement before stopping the old process. The existing staging
+service must use `/api/v1/health` for rollout liveness. A replacement can wait up to
+90 seconds for the existing journal owner; every other route, including login and
+`/api/v1/ready`, returns 503 until it atomically acquires the lease and restores
+history. It never steals an active lease or resumes a command. The prior instance's
+graceful shutdown releases only its own lease; application acceptance waits for real
+readiness before authenticated tests. A failed or timed-out startup remains
+unavailable. No environment variable, paid disk or additional deployment is needed.
+
+Apply the existing `repair-staging` operation only after exact dev/staging CI passes;
+it selects process health only on the identified Free staging service. Production
+layout, persistence and physical-control gates remain unchanged. Hosted rollout must
+still verify replacement startup, preserved task history and operator authentication;
+local two-instance tests alone do not qualify the service.
+
 ## Existing free native staging — 2026-10-12
 
 The authenticated inspector confirmed that the existing Free/Frankfurt staging service uses native Python and the approved Turso journal. The registered `release-candidate.yml` owner workflow can inspect it from dev/staging, repair only its source/layout from staging after exact-source CI, and qualify the simulator with `target=staging`. Native staging uses the hash-locked requirements command, the repository Python version, and `sh start.sh` for one process. Production retains its separate Docker/durable-storage and owner/hardware gates.

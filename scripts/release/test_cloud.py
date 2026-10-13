@@ -5,7 +5,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import cloud
 import evidence
@@ -297,3 +297,28 @@ class TursoStagingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReadinessWaitTests(unittest.TestCase):
+    def test_rollout_503_waits_but_unexpected_status_is_not_accepted(self):
+        api = Mock()
+        api.call.side_effect = [
+            smoke.ReadinessUnavailable("initializing"),
+            {"status": "ready"},
+        ]
+        with patch.object(smoke.time, "sleep"):
+            self.assertEqual(smoke.wait_readiness(api), {"status": "ready"})
+        self.assertEqual(api.call.call_count, 2)
+        api.call.side_effect = evidence.Rejected("Unexpected simulator HTTP status")
+        with self.assertRaises(evidence.Rejected):
+            smoke.wait_readiness(api)
+
+    def test_readiness_wait_has_a_deadline_without_authenticated_requests(self):
+        api = Mock()
+        api.call.side_effect = smoke.ReadinessUnavailable("initializing")
+        with (
+            patch.object(smoke.time, "monotonic", side_effect=[0, 1, 91]),
+            self.assertRaisesRegex(evidence.Rejected, "deadline"),
+        ):
+            smoke.wait_readiness(api)
+        self.assertEqual(api.call.call_args.args, ("/api/v1/ready",))

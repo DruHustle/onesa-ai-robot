@@ -31,6 +31,10 @@ CHECKS = [
 ]
 
 
+class ReadinessUnavailable(Rejected):
+    """Temporary rollout readiness; no authenticated operation has occurred."""
+
+
 class Simulator:
     def __init__(self, url):
         self.url = origin(url)
@@ -40,7 +44,7 @@ class Simulator:
             NoRedirect(), urllib.request.HTTPCookieProcessor(self.jar)
         )
 
-    def call(self, route, body=None, expected=200, csrf=True):
+    def call(self, route, body=None, expected=200, csrf=True, timeout=45):
         headers = {"Origin": self.url, "Content-Type": "application/json"}
         if self.csrf and csrf:
             headers["X-CSRF-Token"] = self.csrf
@@ -53,15 +57,34 @@ class Simulator:
             data=json.dumps(body).encode() if body is not None else None,
         )
         try:
-            response = self.opener.open(request, timeout=45)
+            response = self.opener.open(request, timeout=timeout)
         except urllib.error.HTTPError as error:
             response = error
         with response:
+            if (
+                route == "/api/v1/ready"
+                and body is None
+                and response.code in {502, 503}
+            ):
+                raise ReadinessUnavailable("Simulator journal is not ready")
             require(response.code == expected, "Unexpected simulator HTTP status")
             raw = response.read(1024 * 1024)
             if response.headers.get_content_type() == "application/json":
                 return json.loads(raw)
             return raw
+
+
+def wait_readiness(api):
+    deadline = time.monotonic() + 90
+    while True:
+        remaining = deadline - time.monotonic()
+        require(remaining > 0, "Simulator readiness deadline exceeded")
+        try:
+            return api.call("/api/v1/ready", timeout=min(10, remaining))
+        except (ReadinessUnavailable, urllib.error.URLError, TimeoutError):
+            remaining = deadline - time.monotonic()
+            require(remaining > 0, "Simulator readiness deadline exceeded")
+            time.sleep(min(2, remaining))
 
 
 def run(url, environment):
@@ -95,7 +118,7 @@ def run(url, environment):
         require(b"Software simulation" in api.call("/"), "Unexpected frontend")
         checks["frontend_availability"] = "PASS"
         phase = "backend_readiness"
-        ready = api.call("/api/v1/ready")
+        ready = wait_readiness(api)
         require(
             ready.get("mode") == "simulation"
             and ready.get("physical_actuation") is False

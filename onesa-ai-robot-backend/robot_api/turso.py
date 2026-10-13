@@ -34,6 +34,10 @@ def endpoint(value: str) -> str:
     return f"https://{url.hostname}/v2/pipeline"
 
 
+class JournalAlreadyOwned(sqlite3.OperationalError):
+    """A healthy prior instance retains the exclusive simulation lease."""
+
+
 class TursoJournal:
     def __init__(self, url: str, token: SecretStr):
         self.owner = secrets.token_hex(16)
@@ -120,7 +124,7 @@ class TursoJournal:
             (self.owner,),
         )
         if rows != [{"owner": self.owner}]:
-            raise sqlite3.OperationalError("Simulation journal already has a live owner")
+            raise JournalAlreadyOwned("Simulation journal already has a live owner")
         await self.execute(
             f"CREATE TABLE IF NOT EXISTS {TABLE} (id TEXT PRIMARY KEY,owner TEXT NOT NULL,"
             "proposal TEXT NOT NULL,state TEXT NOT NULL,reason TEXT NOT NULL,"
