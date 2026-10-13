@@ -1,5 +1,7 @@
 """Staging configuration cannot select production or change private values."""
 
+import hashlib
+import json
 import os
 import unittest
 from unittest.mock import patch
@@ -9,6 +11,23 @@ from evidence import REPOSITORY, Rejected
 
 
 class StagingConfigurationTests(unittest.TestCase):
+    def test_edge_credential_diagnostics_are_boolean_only_and_never_reveal_values(self):
+        token = "placeholder" * 8
+        stored = hashlib.sha256(token.encode()).hexdigest()
+        for supplied, expected in [
+            (token, True),
+            ("wrong-private-marker" * 4, False),
+            ("", False),
+        ]:
+            with patch.dict(os.environ, {"ROBOT_EDGE_TOKEN": supplied}, clear=True):
+                report = stage.edge_credential_report(
+                    {"ROBOT_EDGE_TOKEN_SHA256": stored}
+                )
+            self.assertEqual(report["edge_test_token_matches"], expected)
+            self.assertTrue(all(type(v) is bool for v in report.values()))
+            self.assertNotIn("private", json.dumps(report))
+            self.assertNotIn(stored, json.dumps(report))
+
     def test_frontend_repair_refuses_production_before_any_provider_access(self):
         with (
             patch.dict(

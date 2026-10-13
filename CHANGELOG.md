@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-13 — Diagnose dedicated staging telemetry credentials safely
+
+The corrected hosted gateway passes readiness, storage, login and authorization; telemetry remains a separate failing check. Compare its supplied staging token with the runtime hash using boolean-only diagnostics and retain fixed HTTP/reason codes in acceptance evidence. Preserve credentials and physical-disable safeguards. Classify the exact historical diagnostic test snapshot as non-authenticating; retain all credential rules for changed files and runtime source.
+
 ## 2026-10-13 — Route nested Vercel API paths to the fixed gateway
 
 Replace the native catch-all that compiled to one segment with an explicit gateway rewrite. Remove only matching platform route metadata and retain rejection of other query parameters, unknown routes and unrelated cookies/headers. Verify nested authentication/task routes and forged/duplicate bindings; align the existing Render reference with the reviewed lockfile and rollout health path.

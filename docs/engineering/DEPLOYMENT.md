@@ -2,6 +2,11 @@
 
 ## Vercel gateway routing
 
+The trusted `inspect-staging` action reports only whether the dedicated test edge token
+is available, meets the acceptance length and matches the runtime hash. It never
+displays or replaces that token. A successful operator login does not qualify the
+independent telemetry boundary; preserve its failing result until real tests pass.
+
 The native non-framework catch-all produced a single-segment route and appended a
 query parameter that the fixed proxy correctly rejected. Route `/api/v1/:__onesa_route*`
 to `api/gateway.mjs`. The adapter removes only one metadata value matching the original
