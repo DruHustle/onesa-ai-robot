@@ -1,0 +1,35 @@
+# Reference for the existing Free native Python staging API; no duplicate resource or disk.
+# Production and physical hardware keep their separate qualification/authorization gates.
+services:
+  - type: web
+    name: onesa-ai-robot-backend_staging
+    runtime: python
+    plan: free
+    branch: staging
+    rootDir: onesa-ai-robot-backend
+    buildCommand: python -m pip install --require-hashes -r requirements.lock
+    startCommand: sh start.sh
+    region: frankfurt
+    autoDeployTrigger: 'off'
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: ROBOT_DEPLOYMENT_ENVIRONMENT
+        value: staging
+      - key: ROBOT_STORAGE_MODE
+        value: turso
+      - key: ROBOT_ACTUATION_ENABLED
+        value: "false"
+      - key: ROBOT_TURSO_DATABASE_URL
+        sync: false
+      - key: ROBOT_TURSO_AUTH_TOKEN
+        sync: false
+      - key: ROBOT_PUBLIC_ORIGIN
+        sync: false
+      - key: ROBOT_OPERATOR_NAME
+        sync: false
+      - key: ROBOT_OPERATOR_PASSWORD_HASH
+        sync: false
+      - key: ROBOT_EDGE_DEVICE_ID
+        sync: false
+      - key: ROBOT_EDGE_TOKEN_SHA256
+        sync: false

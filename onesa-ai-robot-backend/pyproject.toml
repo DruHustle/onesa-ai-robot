@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools==83.0.0"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "onesa-robot-simulation"
+version = "0.1.0"
+requires-python = ">=3.11,<3.14"
+dependencies = ["fastapi==0.143.0", "uvicorn==0.54.0", "pydantic-settings==2.15.0", "httpx==0.28.1"]
+[project.optional-dependencies]
+dev = ["pytest==9.1.1", "ruff==0.16.10", "mypy==2.4.0", "pip-tools==7.6.2", "pip-audit==2.10.1"]
+[tool.setuptools.packages.find]
+include = ["robot_api*"]
+[tool.pytest.ini_options]
+pythonpath = ["."]
+[tool.ruff]
+line-length = 100
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]
+python_version = "3.11"
+check_untyped_defs = true

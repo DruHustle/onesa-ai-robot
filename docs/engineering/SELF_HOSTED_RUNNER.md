@@ -127,8 +127,8 @@ AI software fixtures use mock inference/lexical retrieval where specified and di
 real PostgreSQL/pgvector; real model/semantic-host/GPU/training acceptance is separate.
 Robot main remains scaffold-only; audit snapshots have software simulation. ROS2
 compilation/messaging, real sensors/actuators, GPU and physical movement are unverified;
-no physical operation is allowed by this task. Mac native Firefox failed profile creation
-in the isolated simulator check; Linux hosted browser results must be reported separately.
+no physical operation is allowed by this task. The historical Mac-native Firefox profile failure is environment-specific;
+all 18 current Linux-hosted Robot browser cases passed at `6b421ee`.
 The older portal private service/VM restart recovered without a Mac reboot. No AI/robot
 private service restart or actual host reboot/login recovery was tested; current services
 are deliberately absent. For a future privately activated setup, restart each idle unit,
@@ -152,5 +152,19 @@ self-hosted access. Runner policy removal is independent of application rollback
 
 ## Hosted CI evidence — 2026-10-11
 
-Main-based policy candidate `08a4c0f` passed [PR scaffold validation](https://github.com/DruHustle/onesa-ai-robot/actions/runs/38136458315) and hygiene on hosted runners. This establishes scaffold coverage only. Separate implemented snapshot `899476a` [software CI](https://github.com/DruHustle/onesa-ai-robot/actions/runs/38136458386) passed all 18 Linux browser cases and both container/security jobs but failed one backend test (16 passed): `test_session_revocation_cancel_restart_and_expiry`, `sqlite3.OperationalError: cannot commit - no transaction is active` in `robot_api/main.py:203`. Application concurrency repair belongs to the audit session; no test was removed or bypassed. Final documentation/hook-location corrections require fresh scaffold checks before merge.
+Main-based policy checks covered the older scaffold only. The audit branch retains
+18 implemented simulator tests, 18 Chromium/Firefox/WebKit browser cases, contracts,
+startup/shutdown checks and full runtime security scans in both cloud verification
+and the private reusable gate. No private runner is registered or activated.
+
+Historical snapshot `899476a` intermittently failed the session-expiry fixture because
+it edited the application's SQLite connection from the TestClient caller thread
+while the watchdog ran on the application thread. Connection ownership is now enforced,
+and synthetic database edits and online backup execute through the client's portal
+on that application thread. Session expiry, cancellation and restart assertions remain.
+Exact-revision hosted validation must qualify the reconciled commit.
+
 GitHub currently reports no main branch protection (404) and no applicable branch rules ([]); this migration did not change enforcement settings. PR/check discipline and production approvals remain required.
+
+The audit reconciliation retains current startup readiness and full browser/security
+checks. Hosted success does not authorize production, real inference or physical motion.

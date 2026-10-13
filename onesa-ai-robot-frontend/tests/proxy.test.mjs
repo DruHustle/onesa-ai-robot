@@ -1,0 +1,34 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import http from 'node:http';
+import {spawn} from 'node:child_process';
+import {setTimeout as sleep} from 'node:timers/promises';
+test('proxy preserves auth boundaries, strips unrelated secrets and rejects open routes',async()=>{
+ let received;
+ const upstream=http.createServer((req,res)=>{received=req.headers;res.setHeader('Content-Type','application/json');res.setHeader('Set-Cookie',['robot_session=fixture; Path=/api/v1; HttpOnly','unrelated=secret']);res.end('{}');});
+ await new Promise(resolve=>upstream.listen(0,'127.0.0.1',resolve));
+ const child=spawn(process.execPath,['--input-type=module','-e',"import http from 'node:http';import gateway from './api/gateway.mjs';const server=http.createServer(gateway);server.listen(3439,'127.0.0.1');process.on('SIGTERM',()=>server.close(()=>process.exit(0)));"],{env:{...process.env,PORT:'3439',ROBOT_API_URL:`http://127.0.0.1:${upstream.address().port}`},stdio:'ignore'});
+ try {
+  let ready=false;for(let i=0;i<40;i++){try{ready=(await fetch('http://127.0.0.1:3439/')).ok;}catch{}if(ready)break;await sleep(50);}assert.ok(ready);
+  const response=await fetch('http://127.0.0.1:3439/api/v1/status',{headers:{cookie:'robot_session=fixture; vercel-bypass=private','x-vercel-protection-bypass':'private','x-forwarded-for':'spoofed'}});
+  assert.equal(response.status,200);assert.equal(received.cookie,'robot_session=fixture');assert.equal(received['x-vercel-protection-bypass'],undefined);assert.equal(received['x-forwarded-for'],undefined);assert.equal(response.headers.getSetCookie().length,1);
+  assert.equal((await fetch('http://127.0.0.1:3439/api/v1/status?url=https://attacker.invalid')).status,404);
+  assert.equal((await fetch('http://127.0.0.1:3439/api/v1/private')).status,404);
+  // Actual Vercel route metadata must support nested auth/task paths.
+  assert.equal((await fetch('http://127.0.0.1:3439/api/v1/ready?__onesa_route=ready')).status,200);
+  assert.equal((await fetch('http://127.0.0.1:3439/api/v1/auth/me?__onesa_route=auth%2Fme')).status,200);
+  const approval='/api/v1/tasks/00000000-0000-0000-0000-000000000000/approve';
+  assert.equal((await fetch('http://127.0.0.1:3439'+approval+'?__onesa_route='+encodeURIComponent(approval.slice('/api/v1/'.length)),{method:'POST',body:'{}'})).status,200);
+  for (const route of [
+    '/api/v1/status?__onesa_route=tasks',
+    '/api/v1/status?__onesa_route=status&__onesa_route=status',
+    '/api/v1/status?__onesa_route=status&url=https://attacker.invalid',
+    '/api/gateway?__onesa_route=status',
+    '/api/v1/private?__onesa_route=private'
+  ]) assert.equal((await fetch('http://127.0.0.1:3439'+route)).status,404);
+
+  assert.equal((await fetch('http://127.0.0.1:3439/api/v1/stop',{method:'POST',body:'x'.repeat(16385)})).status,413);
+  assert.equal((await fetch('http://127.0.0.1:3439/.env')).status,404);
+  assert.equal((await fetch('http://127.0.0.1:3439/')).headers.get('content-security-policy').includes("frame-ancestors 'none'"),true);
+ } finally {child.kill('SIGTERM');await new Promise(resolve=>child.once('exit',resolve));await new Promise(resolve=>upstream.close(resolve));}
+});

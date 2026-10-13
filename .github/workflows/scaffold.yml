@@ -1,41 +1,245 @@
-# Public: hosted only. Private: full local validation precedes cloud execution.
-name: Robot scaffold checks
+name: Robot software verification
 'on':
-- push
-- pull_request
-- workflow_dispatch
+  push:
+    branches:
+    - main
+    - staging
+    - dev
+  pull_request:
+    branches:
+    - main
+    - staging
+    - dev
+  workflow_dispatch: null
 permissions:
   contents: read
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
-  local-validation:
-    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
-    uses: ./.github/workflows/_local-validation.yml
-  scaffold-check:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.paths.outputs.backend }}
+      frontend: ${{ steps.paths.outputs.frontend }}
+      browser: ${{ steps.paths.outputs.browser }}
+      documentation: ${{ steps.paths.outputs.documentation }}
+      containers: ${{ steps.paths.outputs.containers }}
+      tls: ${{ steps.paths.outputs.tls }}
+      edge: ${{ steps.paths.outputs.edge }}
+      applications: ${{ steps.paths.outputs.applications }}
+      verify: ${{ steps.paths.outputs.verify }}
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - id: paths
+      env:
+        BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+      run: python3 scripts/ci/paths.py
+  backend:
+    needs:
+    - changes
+    if: ${{ needs.changes.result == 'success' && needs.changes.outputs.backend == 'true' }}
     runs-on: ubuntu-latest
     steps:
     - name: Verify GitHub-hosted execution and actual visibility
       env:
         GH_TOKEN: ${{ github.token }}
         EXPECTED_PRIVATE: ${{ github.event.repository.private }}
-      run: |-
-        test "$RUNNER_ENVIRONMENT" = github-hosted
-        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
-        test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Visibility changed; dispatch fresh validation under the current policy'; exit 1; }
-    - uses: actions/checkout@v4
+      run: 'test "$RUNNER_ENVIRONMENT" = github-hosted
+
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq ''.private'')
+
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo ''Repository visibility changed; start fresh validation''; exit 1;
+        }
+
+        '
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         persist-credentials: false
-        ref: ${{ github.sha }}
-    - name: Validate documented independent application boundaries
-      run: |
-        test -f onesa-ai-robot-frontend/README.md
-        test -f onesa-ai-robot-backend/README.md
-        test -f onesa-ai-robot-frontend/.env.example
-        test -f onesa-ai-robot-backend/.env.example
-    - run: echo 'Scaffold only. Application build, test and deployment remain unimplemented.'
+    - name: Install checksum-locked annotation tool
+      run: python3 scripts/ci/install_tools.py --only reviewdog
+    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+      with:
+        python-version: '3.11'
+        cache: pip
+        cache-dependency-path: 'onesa-ai-robot-backend/requirements-dev.lock
+
+          onesa-ai-robot-backend/requirements.lock'
+    - run: python -m pip install --require-hashes -r requirements-dev.lock
+      working-directory: onesa-ai-robot-backend
+    - run: python3 ../scripts/ci/analyze.py ruff -- python -m ruff check robot_api tests --output-format json && python -m
+        ruff format --check robot_api tests && python3 ../scripts/ci/analyze.py mypy -- python -m mypy robot_api && python
+        -m pytest -q
+      working-directory: onesa-ai-robot-backend
+    - run: python -m pip_audit -r requirements.lock --disable-pip --no-deps
+      working-directory: onesa-ai-robot-backend
+    - name: 'Release requirement: qualification failure-path tests'
+      run: python3 -m unittest discover -s scripts/release -p 'test_*.py'
+    - run: python3 -m unittest discover -s scripts/runner -p 'test_*.py'
+    - name: Verify hosting diagnostic redaction and denied access
+      run: python3 -m unittest discover -s scripts -p 'test_inspect_hosting.py'
+    timeout-minutes: 30
+    env:
+      REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      REVIEWDOG_GITHUB_API_TOKEN: ${{ github.token }}
+    permissions:
+      contents: read
+      pull-requests: read
+  frontend:
     needs:
-    - local-validation
-    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
-    timeout-minutes: 45
+    - changes
+    if: ${{ needs.changes.result == 'success' && needs.changes.outputs.frontend == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Verify GitHub-hosted execution and actual visibility
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+      run: 'test "$RUNNER_ENVIRONMENT" = github-hosted
+
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq ''.private'')
+
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo ''Repository visibility changed; start fresh validation''; exit 1;
+        }
+
+        '
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+    - name: Install checksum-locked annotation tool
+      run: python3 scripts/ci/install_tools.py --only reviewdog
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+      with:
+        node-version: '24'
+        cache: npm
+        cache-dependency-path: onesa-ai-robot-frontend/package-lock.json
+    - name: Verify automatic day and night clock boundaries
+      run: node scripts/test_day_night.mjs
+    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+      with:
+        python-version: '3.11'
+        cache: pip
+        cache-dependency-path: 'onesa-ai-robot-backend/requirements-dev.lock
+
+          onesa-ai-robot-backend/requirements.lock'
+    - run: python -m pip install --require-hashes -r onesa-ai-robot-backend/requirements.lock
+    - run: npm ci --ignore-scripts && npm run lint && npm run build && python3 ../scripts/ci/analyze.py tsc -- node_modules/.bin/tsc
+        --noEmit --pretty false && npm test && npm audit --audit-level=high
+      working-directory: onesa-ai-robot-frontend
+    - run: python scripts/check-contracts.py
+    - run: npx playwright install --with-deps chromium firefox webkit
+      working-directory: onesa-ai-robot-frontend
+    - name: Synthetic cross-browser operator acceptance
+      env:
+        ROBOT_DATABASE_PATH: /tmp/robot-browser-test.sqlite3
+        ROBOT_PUBLIC_ORIGIN: http://localhost:3431
+      run: "ROBOT_OPERATOR_PASSWORD_HASH=$(cd onesa-ai-robot-backend && python -c \"from robot_api.security import password_hash;\
+        \ print(password_hash('browser-test-operator-only'))\")\nexport ROBOT_OPERATOR_PASSWORD_HASH\n(cd onesa-ai-robot-backend\
+        \ && sh start.sh) > /tmp/robot-backend-test.log 2>&1 &\nbackend_pid=$!\n(cd onesa-ai-robot-frontend && npm start)\
+        \ > /tmp/robot-frontend-test.log 2>&1 &\nfrontend_pid=$!\ntrap 'kill \"$backend_pid\" \"$frontend_pid\" 2>/dev/null\
+        \ || true' EXIT\nfor attempt in $(seq 1 30); do\n  if curl -fsS http://localhost:3431/api/v1/ready > /dev/null; then\
+        \ break; fi\n  echo \"Waiting for Robot readiness: $attempt\"\n  sleep 1\ndone\ncurl -fsS http://localhost:3431/api/v1/ready\
+        \ > /dev/null\nnpm --prefix onesa-ai-robot-frontend run test:e2e\n"
+    timeout-minutes: 30
+    env:
+      REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      REVIEWDOG_GITHUB_API_TOKEN: ${{ github.token }}
+    permissions:
+      contents: read
+      pull-requests: read
+  containers:
+    needs:
+    - changes
+    if: ${{ needs.changes.result == 'success' && needs.changes.outputs.containers == 'true' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        application: ${{ fromJSON(needs.changes.outputs.applications) }}
+    steps:
+    - name: Verify GitHub-hosted execution and actual visibility
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EXPECTED_PRIVATE: ${{ github.event.repository.private }}
+      run: 'test "$RUNNER_ENVIRONMENT" = github-hosted
+
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq ''.private'')
+
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo ''Repository visibility changed; start fresh validation''; exit 1;
+        }
+
+        '
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+    - run: 'case "$APPLICATION" in frontend|backend) ;; *) exit 1 ;; esac
+
+        docker build -t onesa-robot-runtime:ci "./onesa-ai-robot-$APPLICATION"'
+      env:
+        APPLICATION: ${{ matrix.application }}
+    - name: Actual backend startup and shutdown
+      if: matrix.application == 'backend'
+      run: python3 scripts/test-container-startup.py onesa-robot-runtime:ci
+    - name: Runtime security gate
+      run: 'mkdir -p data/security
+
+        chmod 700 data/security
+
+        docker save onesa-robot-runtime:ci -o data/security/runtime.tar
+
+        docker run --rm --user "$(id -u):$(id -g)" -e TRIVY_CACHE_DIR=/tmp/trivy-cache -v "$PWD/data/security:/reports" aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa
+        image --scanners vuln,secret --format json --output /reports/runtime.json --input /reports/runtime.tar
+
+        python3 scripts/image_gate.py data/security/runtime.json
+
+        '
+    - name: 'Release requirement: record tested runtime digest'
+      run: python3 scripts/release/evidence.py manifest --image "onesa-robot-runtime:ci" --output "$RUNNER_TEMP/runtime/record.json"
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: runtime-onesa-ai-robot-${{ matrix.application }}
+        path: ${{ runner.temp }}/runtime/record.json
+        retention-days: 7
+        if-no-files-found: error
+    timeout-minutes: 30
+  ros-contracts:
+    needs:
+    - changes
+    if: ${{ needs.changes.result == 'success' && needs.changes.outputs.edge == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+    - name: Compile and exchange synthetic ROS 2 Jazzy messages on isolated localhost
+      run: docker run --rm --network none -v "$PWD/ros2:/source:ro" ros:jazzy-ros-base@sha256:066420e07f60aa18262f2479981def87ebcfcec42eefb0c0c57c4a46098348ca
+        sh /source/test-interfaces.sh
+  pipeline-security:
+    uses: ./.github/workflows/_pipeline-review.yml
+    permissions:
+      contents: read
+  ci-summary:
+    needs:
+    - changes
+    - pipeline-security
+    - backend
+    - frontend
+    - containers
+    - ros-contracts
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+    - name: 'Release requirement: required checks summary'
+      env:
+        CI_SELECTION: ${{ toJSON(needs.changes.outputs) }}
+        CI_RESULTS: ${{ toJSON(needs) }}
+      run: python3 scripts/ci/summary.py

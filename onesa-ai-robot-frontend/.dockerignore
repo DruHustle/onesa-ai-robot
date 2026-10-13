@@ -1,0 +1,16 @@
+.git
+.env
+.env.*
+.venv
+node_modules
+storage
+dist
+__pycache__
+.pytest_cache
+.ruff_cache
+test-results
+playwright-report
+*.log
+*.sqlite*
+
+dist-types/

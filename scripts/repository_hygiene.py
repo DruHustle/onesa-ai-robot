@@ -1,6 +1,7 @@
 """Offline publication gate. Print paths/rules only, never secret values."""
 
 import argparse
+import hashlib
 import io
 import json
 import re
@@ -95,6 +96,18 @@ def denied(name):
     )
 
 
+def reviewed_telemetry_fixture(name, data, value):
+    # This exact historical unit-test snapshot contained a deliberately fake marker.
+    # It performed only local SHA256/boolean assertions, never authentication.
+    # Bind all three fields: no runtime source or changed fixture is exempted.
+    return (
+        name == "scripts/release/test_staging_configuration.py"
+        and value == b"synthetic-private-edge-marker"
+        and hashlib.sha256(data).hexdigest()
+        == "0784c4944a08aeca974d35f2e663f9f189deb42307a66e67b4d32d2b51f75244"
+    )
+
+
 def secrets(data, name):
     # Decode PDF text when pypdf is available; otherwise raw-byte scanning only.
     if name.lower().endswith(".pdf"):
@@ -116,7 +129,17 @@ def secrets(data, name):
             matches = [
                 m
                 for m in matches
-                if not any(
+                # Reviewed diagnostic redaction sentinel is not an authenticating key.
+                # Keep this exception bound to its exact value and test source path.
+                if not (
+                    (
+                        name == "scripts/test_inspect_hosting.py"
+                        and m.group(1)
+                        == b"synthetic-sensitive-fixture-must-not-be-emitted"
+                    )
+                    or reviewed_telemetry_fixture(name, data, m.group(1))
+                )
+                and not any(
                     marker in m.group(1).lower()
                     for marker in (
                         b"placeholder",

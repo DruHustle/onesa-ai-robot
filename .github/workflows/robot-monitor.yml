@@ -1,0 +1,39 @@
+name: Robot deployment monitoring
+'on':
+  workflow_dispatch:
+    inputs:
+      staging_run:
+        description: Exact successful owner staging run to observe
+        type: string
+        required: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  observe:
+    if: github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle'
+      && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - name: Verify current providers and simulator readiness
+      env:
+        GH_TOKEN: ${{ github.token }}
+        UPSTREAM_RUN: ${{ inputs.staging_run }}
+        DEPLOYMENT_ENVIRONMENT: Staging
+        RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
+        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+      run: python3 scripts/release/monitor.py observe --output "$RUNNER_TEMP/robot-monitor/record.json"
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: robot-deployment-monitoring
+        path: ${{ runner.temp }}/robot-monitor/record.json
+        retention-days: 7
+        if-no-files-found: error

@@ -1,10 +1,23 @@
-# Public: hosted only. Private: full local validation precedes cloud execution.
-name: Robot candidate packaging (implementation required)
+name: Robot candidate packaging (simulation only)
 'on':
   workflow_dispatch:
     inputs:
+      target:
+        description: Package software, inspect/repair free staging, or qualify the simulator
+        type: choice
+        default: package
+        options:
+        - package
+        - inspect-hosting
+        - inspect-staging
+        - inspect-environment-secrets
+        - inspect-repository-secrets
+        - repair-staging
+        - repair-staging-preview
+        - staging
       application:
         description: Application to package after implementation
+        default: frontend
         type: choice
         options:
         - frontend
@@ -13,59 +26,187 @@ name: Robot candidate packaging (implementation required)
 permissions:
   contents: read
   checks: read
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  actions: read
 jobs:
-  local-validation:
-    if: ${{ github.event.repository.private == true && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login == 'DruHustle')) }}
-    uses: ./.github/workflows/_local-validation.yml
+  hosting-inspection:
+    if: github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/dev' && inputs.target == 'inspect-hosting'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+        ref: ${{ github.sha }}
+    - name: Verify hosted execution and current visibility
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: test "$RUNNER_ENVIRONMENT" = github-hosted && test "$(gh api repos/DruHustle/onesa-ai-robot --jq '.private')" = false
+    - name: Read production and staging settings without changing resources
+      env:
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      run: python3 scripts/inspect_hosting.py
+  staging:
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/staging' && inputs.target == 'staging'
+    uses: ./.github/workflows/release-staging.yml
+    secrets:
+      STAGING_RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+      STAGING_RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
+      STAGING_ROBOT_EDGE_TOKEN: ${{ secrets.STAGING_ROBOT_EDGE_TOKEN }}
+      STAGING_ROBOT_TEST_PASSWORD: ${{ secrets.STAGING_ROBOT_TEST_PASSWORD }}
+      STAGING_VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+      STAGING_VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+      STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+      STAGING_VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+  staging-configuration:
+    if: vars.STAGING_SECRET_SCOPE != 'environment' && (github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && ((inputs.target == 'inspect-staging' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging')) || (inputs.target == 'repair-staging' && github.ref == 'refs/heads/staging') || (inputs.target == 'repair-staging-preview' && github.ref == 'refs/heads/dev')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps: &staging_configuration_steps
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: false
+    - name: Verify hosted execution and current visibility
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: test "$RUNNER_ENVIRONMENT" = github-hosted && test "$(gh api repos/DruHustle/onesa-ai-robot --jq '.private')" = false
+    - name: Require complete current-source checks before configuration changes
+      if: inputs.target == 'repair-staging' || inputs.target == 'repair-staging-preview'
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+      with:
+        script: |
+          const {owner,repo}=context.repo;
+          const branches=context.ref === 'refs/heads/dev' ? ['dev','staging'] : ['staging'];
+          for(const branch of branches) {
+            const ref=await github.rest.git.getRef({owner,repo,ref:'heads/'+branch});
+            const sha=ref.data.object.sha;
+            if(context.ref === 'refs/heads/'+branch && sha !== context.sha) throw new Error('Current source changed');
+            for(const workflow_id of ['scaffold.yml','repository-hygiene.yml']) {
+              const runs=await github.rest.actions.listWorkflowRuns({owner,repo,workflow_id,head_sha:sha,event:'push',per_page:20});
+              const run=runs.data.workflow_runs[0];
+              if(!run || run.head_sha!==sha || run.head_branch!==branch || run.head_repository.full_name!==context.payload.repository.full_name || run.status!=='completed' || run.conclusion!=='success') throw new Error('Exact-source checks must pass');
+            }
+          }
+    - name: Inspect or repair only the identified free staging service
+      env:
+        RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
+        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        ROBOT_STORAGE_MODE: ${{ vars.STAGING_ROBOT_STORAGE_MODE || 'ephemeral-simulation' }}
+        ROBOT_TURSO_DATABASE_URL: ${{ vars.STAGING_ROBOT_TURSO_DATABASE_URL }}
+        ROBOT_API_URL: ${{ vars.STAGING_ROBOT_API_URL || 'https://onesa-ai-robot-backend-staging.onrender.com' }}
+        ROBOT_TEST_OPERATOR: ${{ vars.STAGING_ROBOT_TEST_OPERATOR || 'operator' }}
+        ROBOT_TEST_PASSWORD: ${{ secrets.STAGING_ROBOT_TEST_PASSWORD }}
+        ROBOT_EDGE_TOKEN: ${{ secrets.STAGING_ROBOT_EDGE_TOKEN }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+        STAGING_OPERATION: ${{ inputs.target }}
+      run: python3 scripts/release/staging_configuration.py
+  staging-configuration-environment:
+    if: vars.STAGING_SECRET_SCOPE == 'environment' && (github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && ((inputs.target == 'inspect-staging' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging')) || (inputs.target == 'repair-staging' && github.ref == 'refs/heads/staging') || (inputs.target == 'repair-staging-preview' && github.ref == 'refs/heads/dev')))
+    environment: Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps: *staging_configuration_steps
   candidate:
+    if: inputs.target == 'package' || inputs.target == ''
     runs-on: ubuntu-latest
     steps:
     - name: Verify GitHub-hosted execution and actual visibility
       env:
         GH_TOKEN: ${{ github.token }}
         EXPECTED_PRIVATE: ${{ github.event.repository.private }}
-      run: |-
-        test "$RUNNER_ENVIRONMENT" = github-hosted
-        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.private')
-        test "$actual" = "$EXPECTED_PRIVATE" || { echo 'Visibility changed; dispatch fresh validation under the current policy'; exit 1; }
-    - uses: actions/checkout@v4
+      run: 'test "$RUNNER_ENVIRONMENT" = github-hosted
+
+        actual=$(gh api "repos/$GITHUB_REPOSITORY" --jq ''.private'')
+
+        test "$actual" = "$EXPECTED_PRIVATE" || { echo ''Repository visibility changed; start fresh validation''; exit 1;
+        }
+
+        '
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         persist-credentials: false
-        ref: ${{ github.sha }}
     - name: Require implemented application build context
       env:
         APPLICATION: ${{ inputs.application }}
-      run: |
-        if ! test -f "onesa-ai-robot-${APPLICATION}/Dockerfile"; then
-          echo 'Application not implemented. No candidate can be packaged.'
-          exit 1
-        fi
-    - name: Require exact-revision scaffold and publication checks
-      uses: actions/github-script@v7
+      run: "if ! test -f \"onesa-ai-robot-${APPLICATION}/Dockerfile\"; then\n  echo 'Application not implemented. No candidate\
+        \ can be packaged.'\n  exit 1\nfi\n"
+    - name: Require exact-revision software and publication checks
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
       with:
-        script: |
-          const checks = await github.paginate(github.rest.checks.listForRef, {
-            ...context.repo, ref: context.sha, per_page: 100
-          });
-          for (const name of ['scaffold-check', 'publication-hygiene']) {
-            const check = checks.filter(item => item.name === name).sort((a, b) => b.id - a.id)[0];
-            if (!check || check.conclusion !== 'success') core.setFailed(`Required successful check missing: ${name}`);
-          }
+        script: "const checks = await github.paginate(github.rest.checks.listForRef, {\n  ...context.repo, ref: context.sha,\
+          \ per_page: 100\n});\nfor (const name of ['backend', 'frontend', 'containers (frontend)', 'containers (backend)',\
+          \ 'publication-hygiene']) {\n  const check = checks.filter(item => item.name === name).sort((a, b) => b.id - a.id)[0];\n\
+          \  if (!check || check.conclusion !== 'success') core.setFailed(`Required successful check missing: ${name}`);\n\
+          }\n"
     - name: Package selected application without publication
       env:
         APPLICATION: ${{ inputs.application }}
-      run: |
-        docker build -t "onesa-robot-${APPLICATION}:${GITHUB_SHA}" "onesa-ai-robot-${APPLICATION}"
+      run: 'docker build -t "onesa-robot-${APPLICATION}:${GITHUB_SHA}" "onesa-ai-robot-${APPLICATION}"
+
         docker save "onesa-robot-${APPLICATION}:${GITHUB_SHA}" -o candidate.tar
-    - uses: actions/upload-artifact@v4
+
+        '
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       with:
         name: robot-${{ inputs.application }}-${{ github.sha }}
         path: candidate.tar
-        retention-days: 3
-    needs:
-    - local-validation
-    if: ${{ always() && (github.event.repository.private == false || needs.local-validation.result == 'success') }}
-    timeout-minutes: 45
+        retention-days: 7
+    timeout-minutes: 30
+  staging-environment-availability:
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging') && inputs.target == 'inspect-environment-secrets'
+    environment: Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+    - name: Report only required staging secret availability
+      env:
+        STAGING_SECRET_SCOPE: environment
+        STAGING_RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+        STAGING_RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
+        STAGING_ROBOT_EDGE_TOKEN: ${{ secrets.STAGING_ROBOT_EDGE_TOKEN }}
+        STAGING_ROBOT_TEST_PASSWORD: ${{ secrets.STAGING_ROBOT_TEST_PASSWORD }}
+        STAGING_VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+        STAGING_VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        STAGING_VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+      run: |
+        node <<'NODE'
+        const names=["STAGING_RENDER_API_KEY", "STAGING_RENDER_SERVICE_ID", "STAGING_ROBOT_EDGE_TOKEN", "STAGING_ROBOT_TEST_PASSWORD", "STAGING_VERCEL_AUTOMATION_BYPASS_SECRET", "STAGING_VERCEL_ORG_ID", "STAGING_VERCEL_PROJECT_ID", "STAGING_VERCEL_TOKEN"];
+        const available=Object.fromEntries(names.map(name=>[name,Boolean(process.env[name])]));
+        const all=Object.values(available).every(Boolean);
+        console.log(JSON.stringify({repository:process.env.GITHUB_REPOSITORY,scope:process.env.STAGING_SECRET_SCOPE,available,all_available:all,values_disclosed:false,provider_requests:false}));
+        if(!all) process.exitCode=1;
+        NODE
+  staging-repository-availability:
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging') && inputs.target == 'inspect-repository-secrets'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+    - name: Report only required staging secret availability
+      env:
+        STAGING_SECRET_SCOPE: repository
+        STAGING_RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+        STAGING_RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
+        STAGING_ROBOT_EDGE_TOKEN: ${{ secrets.STAGING_ROBOT_EDGE_TOKEN }}
+        STAGING_ROBOT_TEST_PASSWORD: ${{ secrets.STAGING_ROBOT_TEST_PASSWORD }}
+        STAGING_VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+        STAGING_VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        STAGING_VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+      run: |
+        node <<'NODE'
+        const names=["STAGING_RENDER_API_KEY", "STAGING_RENDER_SERVICE_ID", "STAGING_ROBOT_EDGE_TOKEN", "STAGING_ROBOT_TEST_PASSWORD", "STAGING_VERCEL_AUTOMATION_BYPASS_SECRET", "STAGING_VERCEL_ORG_ID", "STAGING_VERCEL_PROJECT_ID", "STAGING_VERCEL_TOKEN"];
+        const available=Object.fromEntries(names.map(name=>[name,Boolean(process.env[name])]));
+        const all=Object.values(available).every(Boolean);
+        console.log(JSON.stringify({repository:process.env.GITHUB_REPOSITORY,scope:process.env.STAGING_SECRET_SCOPE,available,all_available:all,values_disclosed:false,provider_requests:false}));
+        if(!all) process.exitCode=1;
+        NODE
