@@ -129,6 +129,30 @@ class CloudTests(unittest.TestCase):
         self.assertEqual(result["status"], "BLOCKED")
         self.assertNotIn("PASS", result["checks"].values())
 
+    def test_attempted_readiness_failure_is_fail_instead_of_missing_credentials(self):
+        env = {
+            "ROBOT_TEST_PASSWORD": "synthetic-private-password",
+            "ROBOT_TEST_OPERATOR": "operator",
+            "ROBOT_TEST_SCOPE": "approved-synthetic-staging",
+        }
+        with (
+            patch.dict(os.environ, env, clear=True),
+            patch.object(
+                smoke.Simulator,
+                "call",
+                side_effect=[
+                    b"Software simulation",
+                    evidence.Rejected("private-response-body"),
+                ],
+            ),
+        ):
+            record = smoke.run("https://synthetic.vercel.app", "Staging")
+        self.assertEqual(record["status"], "FAIL")
+        self.assertEqual(record["checks"]["frontend_availability"], "PASS")
+        self.assertEqual(record["checks"]["backend_readiness"], "FAIL")
+        self.assertEqual(record["checks"]["authentication"], "BLOCKED")
+        self.assertNotIn("private", json.dumps(record))
+
     def test_no_redirect_credentials_or_untrusted_origins(self):
         for url in [
             "http://test.vercel.app",
