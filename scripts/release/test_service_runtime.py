@@ -18,6 +18,8 @@ class ServiceRuntimeTests(unittest.TestCase):
         service = self.service()
         self.assertTrue(runtime.allowed(service, "Staging"))
         self.assertFalse(runtime.allowed(service, "Production"))
+        self.assertTrue(runtime.allowed(service, "Production", durable_remote=True))
+        self.assertFalse(runtime.allowed(service, "Unknown", durable_remote=True))
 
     def test_unlocked_dependencies_or_extra_workers_cannot_qualify(self):
         for changes in [

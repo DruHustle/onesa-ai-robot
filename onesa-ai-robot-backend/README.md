@@ -40,13 +40,16 @@ behind the approved same-origin frontend/TLS boundary. No credential is a fronte
 public setting. Physical actuation=true always fails startup. No migration or test
 uses either sibling product's database.
 
-For durable remote task history on Render Free staging, use the staging-only
+For durable remote task history on Render Free, use the explicitly selected
 `ROBOT_STORAGE_MODE=turso`, `ROBOT_TURSO_DATABASE_URL` and server-only
 `ROBOT_TURSO_AUTH_TOKEN` settings. See [Turso staging setup](../docs/engineering/TURSO_STAGING.md).
 Local SQLite remains the default. This is a remote task journal with an in-memory
 SQLite working store, not an embedded replica. Sessions and simulation authority
-remain process-local. It does not enable Turso in production or migrate an existing
-local database. The runtime HTTP client is the already hash-locked httpx 0.28.1
+remain process-local. Production accepts only the owner's existing
+`onesa-ai-robot-backend-druhustle.aws-eu-west-1.turso.io` database with separate
+production credentials and `ROBOT_DEPLOYMENT_ENVIRONMENT=production`; staging
+cannot use that identity. See [production configuration and qualification](../docs/engineering/DEPLOYMENT.md).
+This does not migrate an existing local database. The runtime HTTP client is the already hash-locked httpx 0.28.1
 (BSD-3-Clause); its existing transitive dependencies retain their pins/hashes.
 
 For disposable Render staging, explicitly set `ROBOT_DEPLOYMENT_ENVIRONMENT=staging`

@@ -1,4 +1,4 @@
-"""Reviewed backend layouts; native Python is permitted only for free staging."""
+"""Reviewed backend layouts; production native Python needs verified remote storage."""
 
 NATIVE_BUILD = "python -m pip install --require-hashes -r requirements.lock"
 NATIVE_START = "sh start.sh"
@@ -33,8 +33,14 @@ def verified(service):
     )
 
 
-def allowed(service, environment):
+def allowed(service, environment, *, durable_remote=False):
     return verified(service) and (
         kind(service) == "docker"
-        or (environment == "Staging" and kind(service) == "python")
+        or (
+            kind(service) == "python"
+            and (
+                environment == "Staging"
+                or (environment == "Production" and durable_remote)
+            )
+        )
     )

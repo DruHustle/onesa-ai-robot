@@ -125,6 +125,13 @@ The Blueprint is a reviewed staging template, not a deployment performed here.
 
 ## Storage and production blocker
 
+The owner's 2026-10-13 decision selects the existing separate production Turso
+database. Follow [the production binding and credential-isolation procedure](DEPLOYMENT.md#owner-selected-production-turso-journal--2026-10-13).
+The provider guard now accepts the identified Free Frankfurt native runtime only
+with that exact durable remote binding and credentials distinct from staging.
+Actual production operations and deployment evidence remain required. The historical
+SQLite limitation below remains applicable to filesystem storage on Render Free.
+
 Render Free has an ephemeral filesystem and cannot attach a persistent disk. The
 staging deployment explicitly labels disposable simulation history and uses synthetic
 accounts/data only. A healthy process does not establish durable audit storage.

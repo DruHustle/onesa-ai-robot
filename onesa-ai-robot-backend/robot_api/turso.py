@@ -13,6 +13,7 @@ from pydantic import SecretStr
 
 TABLE = "robot_simulation_tasks_v1"
 LEASE = "robot_simulation_lease_v1"
+PRODUCTION_DATABASE = "libsql://onesa-ai-robot-backend-druhustle.aws-eu-west-1.turso.io"
 COLUMNS = ("id", "owner", "proposal", "state", "reason", "created", "position")
 MAX_RESPONSE_BYTES = 16 * 1024 * 1024
 

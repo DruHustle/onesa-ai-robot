@@ -35,6 +35,12 @@ class ReadinessUnavailable(Rejected):
     """Temporary rollout readiness; no authenticated operation has occurred."""
 
 
+class SimulatorHTTPFailure(Rejected):
+    def __init__(self, status):
+        self.status = status if type(status) is int and 100 <= status <= 599 else 0
+        super().__init__("Unexpected simulator HTTP status")
+
+
 class Simulator:
     def __init__(self, url):
         self.url = origin(url)
@@ -67,7 +73,8 @@ class Simulator:
                 and response.code in {502, 503}
             ):
                 raise ReadinessUnavailable("Simulator journal is not ready")
-            require(response.code == expected, "Unexpected simulator HTTP status")
+            if response.code != expected:
+                raise SimulatorHTTPFailure(response.code)
             raw = response.read(1024 * 1024)
             if response.headers.get_content_type() == "application/json":
                 return json.loads(raw)
@@ -129,10 +136,9 @@ def run(url, environment):
         phase = "storage_isolation"
         require(
             ready.get("storage_mode")
-            == (
-                os.environ.get("ROBOT_STORAGE_MODE", "ephemeral-simulation")
-                if environment == "Staging"
-                else "persistent"
+            == os.environ.get(
+                "ROBOT_STORAGE_MODE",
+                "ephemeral-simulation" if environment == "Staging" else "persistent",
             ),
             "Storage scope mismatch",
         )
@@ -306,9 +312,23 @@ def run(url, environment):
         )
         checks["audit_history"] = "PASS"
         record["status"] = "PASS"
-    except (Rejected, ValueError, KeyError, urllib.error.URLError, TimeoutError):
+    except (
+        Rejected,
+        ValueError,
+        KeyError,
+        urllib.error.URLError,
+        TimeoutError,
+    ) as error:
         checks[phase] = "FAIL"
         record["status"] = "FAIL"
+        record["failure"] = {
+            "phase": phase,
+            "category": "http_status"
+            if isinstance(error, SimulatorHTTPFailure)
+            else "acceptance",
+        }
+        if isinstance(error, SimulatorHTTPFailure):
+            record["failure"]["http_status"] = error.status
     finally:
         if logged_in:
             try:

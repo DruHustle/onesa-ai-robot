@@ -1,5 +1,38 @@
 # Simulator deployment and recovery
 
+## Owner-selected production Turso journal — 2026-10-13
+
+The owner selected the existing `onesa-ai-robot-backend` database at
+`libsql://onesa-ai-robot-backend-druhustle.aws-eu-west-1.turso.io` for the existing
+Free Frankfurt Render production service `srv-db5k88flk1mc73aa9110`. The reviewed
+adapter permits this exact production identity with `ROBOT_STORAGE_MODE=turso`
+and `ROBOT_DEPLOYMENT_ENVIRONMENT=production`; staging rejects that identity.
+Use separate database-scoped `ROBOT_TURSO_AUTH_TOKEN` and
+`ROBOT_OPERATOR_PASSWORD_HASH` values. Provider preflight verifies the existing
+staging binding and rejects either shared credential. The native layout uses
+the hash-locked requirements command and single-process `sh start.sh`.
+
+Set `ROBOT_PUBLIC_ORIGIN=https://robot.onesa.eu`, `ROBOT_OPERATOR_NAME=operator`,
+`ROBOT_ACTUATION_ENABLED=false`, `ROBOT_SESSION_SECONDS=900` and
+`ROBOT_HEARTBEAT_SECONDS=3`. Configure the approved synthetic qualification
+identity with `ROBOT_EDGE_DEVICE_ID` and its independent `ROBOT_EDGE_TOKEN_SHA256`.
+Do not set `ROBOT_DATABASE_PATH` for the remote journal; it uses an in-memory
+working store. Keep Render automatic deployment off, use `/api/v1/health` for
+rollout liveness, and require `/api/v1/ready` for application acceptance. Preserve
+Vercel protection and keep its server-only `ROBOT_API_URL` bound to the production
+Render origin. Changing saved settings does not attest a deployed runtime.
+
+Generated owner credentials belong only in ignored, mode-0600 private runtime
+files and the provider dashboard. A 30-day database token requires rotation
+before expiry through the same private configuration path. Read existing database
+metadata and row counts before activation; preserve records and never copy staging
+data or tokens. The journal preserves history, single-writer ownership, stopped
+restart state and session revocation. Production backup/restore, rollback,
+monitoring, exact-source CI, hosted staging and release qualification remain
+mandatory. Neither adapter tests nor saved credentials establish production PASS.
+Ephemeral SQLite on Render Free remains blocked. No paid disk or physical control
+is enabled. Historical staging-only restrictions below predate this owner decision.
+
 ## Exclusive journal ownership during staging rollout
 
 Render starts the replacement before stopping the old process. The existing staging
