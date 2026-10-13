@@ -62,3 +62,7 @@ register a runner or authorize a persistent host or physical control. See
 
 See [software/simulation qualification](AUTOMATED_QUALIFICATION.md). The artifact
 does not authorize publishing a candidate or physical robot operation.
+
+### Rolling staging origin changes
+
+After resolving the exact-source protected Preview, the workflow authenticates and stops the existing synthetic simulation using the currently deployed origin, drains its history and fences the observed journal lease. Only then does it save the new Preview origin and deploy the backend. Render saved settings are not evidence of the running deployment configuration. If a prior attempt saved the new origin before handoff, reconcile only the staging `ROBOT_PUBLIC_ORIGIN` to a verified origin accepted by the live runtime before retrying. An empty login body returns HTTP422 for the accepted origin and HTTP403 for a rejected origin without attempting credentials. Preserve the existing operator, password and application origin protection.

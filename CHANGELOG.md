@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-13 — Stop the live staging journal before rebinding Preview
+
+The running backend validates its deployed origin, while Render environment changes only affect the next deployment. Stop and fence the existing synthetic journal before saving the new verified Preview origin. Keep operator credentials and the strict origin check unchanged; exercise the workflow ordering as a regression.
+
 ## 2026-10-12 — Preserve single-writer staging deployment
 
 Authenticate the existing synthetic operator, stop and drain simulation, then expire only the observed staging journal lease before the exact-source Render deploy. Preserve credentials, history and production. Correct the diagnostic hostname and mark attempted smoke failures accurately. Display owner-approved company contact particulars and legal links.

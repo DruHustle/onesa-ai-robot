@@ -3,6 +3,7 @@
 import json
 import os
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import journal_handoff as handoff
@@ -11,6 +12,21 @@ from staging_configuration import SERVICE
 
 
 class HandoffTests(unittest.TestCase):
+    def test_running_journal_is_fenced_before_next_deployment_origin_is_saved(self):
+        workflow = (
+            Path(__file__).resolve().parents[2]
+            / ".github/workflows/release-staging.yml"
+        ).read_text()
+        resolve = workflow.index(
+            "run: python3 scripts/release/cloud.py resolve-preview"
+        )
+        stop = workflow.index("run: python3 scripts/release/journal_handoff.py")
+        bind = workflow.index("run: python3 scripts/release/cloud.py bind-preview")
+        deploy = workflow.index("python3 scripts/deploy_render.py")
+        self.assertLess(resolve, stop)
+        self.assertLess(stop, bind)
+        self.assertLess(bind, deploy)
+
     def context(self):
         return {
             "GITHUB_REPOSITORY": REPOSITORY,
