@@ -1,5 +1,6 @@
 """Pipeline regressions using real analyzers/tools and synthetic inputs, never live services."""
 
+import importlib.util
 import io
 import json
 import os
@@ -20,6 +21,33 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class PipelineTests(unittest.TestCase):
+    def test_historical_non_secret_fixture_is_bound_to_snapshot_path_and_literal(self):
+        spec = importlib.util.spec_from_file_location(
+            "publication_hygiene", ROOT / "scripts/repository_hygiene.py"
+        )
+        hygiene = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(hygiene)
+        fixture = b'token = "synthetic-private-edge-marker"'
+        name = "scripts/release/test_staging_configuration.py"
+        self.assertIn("credential-assignment", hygiene.secrets(fixture, name))
+        with patch.object(hygiene.hashlib, "sha256") as digest:
+            digest.return_value.hexdigest.return_value = (
+                "0784c4944a08aeca974d35f2e663f9f189deb42307a66e67b4d32d2b51f75244"
+            )
+            self.assertNotIn("credential-assignment", hygiene.secrets(fixture, name))
+            self.assertIn(
+                "credential-assignment", hygiene.secrets(fixture, "robot_api/main.py")
+            )
+            changed = fixture.replace(b"edge-marker", b"edge-marker-extra")
+            self.assertIn("credential-assignment", hygiene.secrets(changed, name))
+            # Other real credential rules still fire even for the reviewed snapshot.
+            self.assertIn(
+                "github-token",
+                hygiene.secrets(fixture + b"\n" + b"ghp_" + b"x" * 40, name),
+            )
+            digest.return_value.hexdigest.return_value = "0" * 64
+            self.assertIn("credential-assignment", hygiene.secrets(fixture, name))
+
     def test_release_sources_always_run_every_critical_check(self):
         for product in ("onesa-company-portal", "onesa-ai-platform", "onesa-ai-robot"):
             selection = paths.classify(product, ["docs/readme.md"], full=True)

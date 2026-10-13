@@ -2,7 +2,7 @@
 
 ## 2026-10-13 — Diagnose dedicated staging telemetry credentials safely
 
-The corrected hosted gateway passes readiness, storage, login and authorization; telemetry remains a separate failing check. Compare its supplied staging token with the runtime hash using boolean-only diagnostics and retain fixed HTTP/reason codes in acceptance evidence. Preserve credentials and physical-disable safeguards.
+The corrected hosted gateway passes readiness, storage, login and authorization; telemetry remains a separate failing check. Compare its supplied staging token with the runtime hash using boolean-only diagnostics and retain fixed HTTP/reason codes in acceptance evidence. Preserve credentials and physical-disable safeguards. Classify the exact historical diagnostic test snapshot as non-authenticating; retain all credential rules for changed files and runtime source.
 
 ## 2026-10-13 — Route nested Vercel API paths to the fixed gateway
 
