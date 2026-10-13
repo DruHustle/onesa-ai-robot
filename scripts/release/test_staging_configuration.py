@@ -12,7 +12,7 @@ from evidence import REPOSITORY, Rejected
 
 class StagingConfigurationTests(unittest.TestCase):
     def test_edge_credential_diagnostics_are_boolean_only_and_never_reveal_values(self):
-        token = "synthetic-private-edge-marker" * 3
+        token = "placeholder" * 8
         stored = hashlib.sha256(token.encode()).hexdigest()
         for supplied, expected in [
             (token, True),
