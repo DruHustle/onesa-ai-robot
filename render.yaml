@@ -1,14 +1,16 @@
-# Review/apply manually to an authorized isolated target. No production disk is provisioned.
+# Reference for the existing Free native Python staging API; no duplicate resource or disk.
+# Production and physical hardware keep their separate qualification/authorization gates.
 services:
   - type: web
-    name: onesa-robot-simulation-staging
-    runtime: docker
+    name: onesa-ai-robot-backend_staging
+    runtime: python
     plan: free
-    branch: main
+    branch: staging
     rootDir: onesa-ai-robot-backend
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
-    autoDeployTrigger: off
+    buildCommand: python -m pip install --require-hashes -r requirements.txt
+    startCommand: sh start.sh
+    region: frankfurt
+    autoDeployTrigger: 'off'
     healthCheckPath: /api/v1/ready
     envVars:
       - key: ROBOT_DEPLOYMENT_ENVIRONMENT
@@ -17,8 +19,6 @@ services:
         value: turso
       - key: ROBOT_ACTUATION_ENABLED
         value: "false"
-      - key: ROBOT_DATABASE_PATH
-        value: /app/storage/robot.sqlite3
       - key: ROBOT_TURSO_DATABASE_URL
         sync: false
       - key: ROBOT_TURSO_AUTH_TOKEN

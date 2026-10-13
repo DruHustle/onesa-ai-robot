@@ -155,3 +155,5 @@ commit through the existing owner-controlled staging recovery path; the expired 
 lease is not renewed automatically. This may cause staging downtime and does not claim
 zero-downtime service. Production uses its separate approved deployment controls.
 See [Render deployment sequencing](https://render.com/docs/deploys#zero-downtime-deploys).
+
+The verified remote-journal staging profile does not use `ROBOT_DATABASE_PATH`; its erroneous libsql duplicate was removed from Render on 13 October 2026. Keep this supported setting for local/persistent filesystem modes. No existing password, Turso credential or history was changed.

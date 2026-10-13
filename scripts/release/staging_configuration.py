@@ -265,8 +265,12 @@ def inspect_or_repair(repair=False):
         == "false",
         "environment_matches": settings.get("ROBOT_DEPLOYMENT_ENVIRONMENT")
         == "staging",
-        "cloud_database_path_matches": settings.get("ROBOT_DATABASE_PATH")
-        == "/app/storage/robot.sqlite3",
+        "cloud_database_path_required": settings.get("ROBOT_STORAGE_MODE") != "turso",
+        "cloud_database_path_matches": (
+            settings.get("ROBOT_DATABASE_PATH") == "/app/storage/robot.sqlite3"
+            if settings.get("ROBOT_STORAGE_MODE") != "turso"
+            else None
+        ),
         "cloud_repository_exact_matches": service.get("repo")
         in {
             "https://github.com/" + REPOSITORY,
