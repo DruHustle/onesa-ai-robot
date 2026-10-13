@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-13 — Inspect the configured staging secret scope
+
+Reuse the existing read-only provider/operator diagnostic from a separate Staging environment job when that scope is selected. Keep the repository-secret alternative free of an environment dependency. Compare the supplied test password with the existing configured scrypt hash as a boolean; preserve credentials, journal state and production.
+
 ## 2026-10-13 — Stop the live staging journal before rebinding Preview
 
 The running backend validates its deployed origin, while Render environment changes only affect the next deployment. Stop and fence the existing synthetic journal before saving the new verified Preview origin. Keep operator credentials and the strict origin check unchanged; exercise the workflow ordering as a regression. Report failed handoff requests using only a fixed phase and HTTP status; never retain or emit credential values, provider bodies or exception URLs.

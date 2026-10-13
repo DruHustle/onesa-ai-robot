@@ -61,10 +61,10 @@ jobs:
       STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
       STAGING_VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
   staging-configuration:
-    if: github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && ((inputs.target == 'inspect-staging' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging')) || (inputs.target == 'repair-staging' && github.ref == 'refs/heads/staging') || (inputs.target == 'repair-staging-preview' && github.ref == 'refs/heads/dev'))
+    if: vars.STAGING_SECRET_SCOPE != 'environment' && (github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && ((inputs.target == 'inspect-staging' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging')) || (inputs.target == 'repair-staging' && github.ref == 'refs/heads/staging') || (inputs.target == 'repair-staging-preview' && github.ref == 'refs/heads/dev')))
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    steps:
+    steps: &staging_configuration_steps
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         persist-credentials: false
@@ -104,6 +104,12 @@ jobs:
         VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
         STAGING_OPERATION: ${{ inputs.target }}
       run: python3 scripts/release/staging_configuration.py
+  staging-configuration-environment:
+    if: vars.STAGING_SECRET_SCOPE == 'environment' && (github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && ((inputs.target == 'inspect-staging' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging')) || (inputs.target == 'repair-staging' && github.ref == 'refs/heads/staging') || (inputs.target == 'repair-staging-preview' && github.ref == 'refs/heads/dev')))
+    environment: Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps: *staging_configuration_steps
   candidate:
     if: inputs.target == 'package' || inputs.target == ''
     runs-on: ubuntu-latest
