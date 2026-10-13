@@ -3,6 +3,8 @@
 import json
 import os
 import unittest
+import urllib.error
+import urllib.request
 from pathlib import Path
 from unittest.mock import patch
 
@@ -26,6 +28,25 @@ class HandoffTests(unittest.TestCase):
         self.assertLess(resolve, stop)
         self.assertLess(stop, bind)
         self.assertLess(bind, deploy)
+
+    def test_operator_failures_report_only_fixed_phase_and_status(self):
+        sentinel = "synthetic-private-provider-body"
+        for status in [401, 403, 503]:
+            failure = urllib.error.HTTPError(
+                "https://synthetic.invalid/" + sentinel, status, sentinel, {}, None
+            )
+            with patch("journal_handoff.urllib.request.build_opener") as factory:
+                factory.return_value.open.side_effect = failure
+                with self.assertRaises(handoff.HandoffRequestFailure) as caught:
+                    handoff.read_api(
+                        factory.return_value,
+                        urllib.request.Request("https://synthetic.invalid"),
+                        "/api/v1/auth/login",
+                    )
+                self.assertEqual(caught.exception.phase, "operator-login")
+                self.assertEqual(caught.exception.status, status)
+                self.assertNotIn(sentinel, str(caught.exception))
+                self.assertIsNone(caught.exception.__cause__)
 
     def context(self):
         return {

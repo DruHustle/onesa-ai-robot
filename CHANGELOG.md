@@ -2,7 +2,7 @@
 
 ## 2026-10-13 — Stop the live staging journal before rebinding Preview
 
-The running backend validates its deployed origin, while Render environment changes only affect the next deployment. Stop and fence the existing synthetic journal before saving the new verified Preview origin. Keep operator credentials and the strict origin check unchanged; exercise the workflow ordering as a regression.
+The running backend validates its deployed origin, while Render environment changes only affect the next deployment. Stop and fence the existing synthetic journal before saving the new verified Preview origin. Keep operator credentials and the strict origin check unchanged; exercise the workflow ordering as a regression. Report failed handoff requests using only a fixed phase and HTTP status; never retain or emit credential values, provider bodies or exception URLs.
 
 ## 2026-10-12 — Preserve single-writer staging deployment
 
