@@ -4,6 +4,7 @@ import http.cookiejar
 import json
 import os
 import re
+import urllib.error
 import urllib.request
 
 from cloud import NoRedirect, origin, provider
@@ -11,6 +12,36 @@ from evidence import REPOSITORY, Rejected, require
 from staging_configuration import API, SERVICE, TURSO, target
 
 LEASE = "robot_simulation_lease_v1"
+
+
+PHASES = {
+    "/api/v1/auth/login": "operator-login",
+    "/api/v1/stop": "simulation-stop",
+    "/api/v1/status": "simulation-status",
+    "/api/v1/tasks": "history-drain",
+    "/api/v1/auth/logout": "operator-logout",
+}
+
+
+class HandoffRequestFailure(Rejected):
+    def __init__(self, route, status=0):
+        self.phase = PHASES.get(route, "unknown")
+        self.status = status if type(status) is int and 100 <= status <= 599 else 0
+        super().__init__("Staging journal request rejected")
+
+
+def read_api(opener, request, route):
+    try:
+        with opener.open(request, timeout=45) as response:
+            if response.status != 200:
+                raise HandoffRequestFailure(route, response.status)
+            raw = response.read(65537)
+            require(len(raw) <= 65536, "Handoff response exceeds limit")
+            return json.loads(raw)
+    except urllib.error.HTTPError as error:
+        raise HandoffRequestFailure(route, error.code) from None
+    except (urllib.error.URLError, TimeoutError):
+        raise HandoffRequestFailure(route) from None
 
 
 def staging_context():
@@ -162,9 +193,7 @@ def handoff():
             headers=headers,
             data=json.dumps(body).encode() if body is not None else None,
         )
-        with opener.open(request, timeout=45) as response:
-            require(response.status == 200, "Staging operator handoff rejected")
-            return json.loads(response.read(65536))
+        return read_api(opener, request, route)
 
     login = api("/api/v1/auth/login", {"name": name, "password": password})
     csrf = login["csrf"]
@@ -200,6 +229,21 @@ def handoff():
 if __name__ == "__main__":
     try:
         print(json.dumps(handoff()))
+    except HandoffRequestFailure as error:
+        print(
+            json.dumps(
+                {
+                    "handoff_failed": True,
+                    "phase": error.phase,
+                    "http_status": error.status,
+                    "credentials_changed": False,
+                    "provider_body_emitted": False,
+                }
+            )
+        )
+        raise SystemExit(
+            "Staging journal request failed; inspect only the phase and status"
+        ) from None
     except (Rejected, KeyError, ValueError, TypeError, OSError):
         raise SystemExit(
             "Staging journal handoff failed; no credentials or provider response emitted"
