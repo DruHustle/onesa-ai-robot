@@ -7,11 +7,11 @@ services:
     plan: free
     branch: staging
     rootDir: onesa-ai-robot-backend
-    buildCommand: python -m pip install --require-hashes -r requirements.txt
+    buildCommand: python -m pip install --require-hashes -r requirements.lock
     startCommand: sh start.sh
     region: frankfurt
     autoDeployTrigger: 'off'
-    healthCheckPath: /api/v1/ready
+    healthCheckPath: /api/v1/health
     envVars:
       - key: ROBOT_DEPLOYMENT_ENVIRONMENT
         value: staging

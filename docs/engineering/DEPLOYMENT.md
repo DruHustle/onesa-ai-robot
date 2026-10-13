@@ -1,5 +1,16 @@
 # Simulator deployment and recovery
 
+## Vercel gateway routing
+
+The native non-framework catch-all produced a single-segment route and appended a
+query parameter that the fixed proxy correctly rejected. Route `/api/v1/:__onesa_route*`
+to `api/gateway.mjs`. The adapter removes only one metadata value matching the original
+API path, preserving rejection of additional, mismatched and duplicate query values.
+Direct gateway, private paths and arbitrary upstream URLs remain rejected. Authentication,
+Origin/CSRF, cookie filtering and upstream TLS stay in the shared server boundary.
+The explicit Vercel build artifact must contain the nested route and gateway function;
+local proxy/artifact checks remain separate from hosted staging acceptance.
+
 ## Owner-selected production Turso journal — 2026-10-13
 
 The owner selected the existing `onesa-ai-robot-backend` database at

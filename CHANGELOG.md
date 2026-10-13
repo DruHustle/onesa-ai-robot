@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-13 — Route nested Vercel API paths to the fixed gateway
+
+Replace the native catch-all that compiled to one segment with an explicit gateway rewrite. Remove only matching platform route metadata and retain rejection of other query parameters, unknown routes and unrelated cookies/headers. Verify nested authentication/task routes and forged/duplicate bindings; align the existing Render reference with the reviewed lockfile and rollout health path.
+
 ## 2026-10-13 — Bind the owner-selected production simulation journal
 
 Permit the existing separate production Turso database on the identified Free Frankfurt native Render service with hash-locked dependencies, isolated operator/database credentials and unchanged simulation safety. Preserve the ephemeral SQLite production rejection and all real release/operations gates. Record failed hosted acceptance using a fixed phase and HTTP status without provider bodies or credential values.

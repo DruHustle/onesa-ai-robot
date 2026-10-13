@@ -35,5 +35,11 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/v1/:__onesa_route*",
+      "destination": "/api/gateway"
+    }
   ]
 }
