@@ -18,7 +18,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from robot_api.edge import EdgeMonitor, Telemetry
 from robot_api.safety import Proposal, SafetyGate, SafetyViolation
 from robot_api.security import PasswordVerifier, VerificationBusy, token_hash
-from robot_api.turso import COLUMNS, JournalAlreadyOwned, TursoJournal, endpoint
+from robot_api.turso import (
+    COLUMNS,
+    PRODUCTION_DATABASE,
+    JournalAlreadyOwned,
+    TursoJournal,
+    endpoint,
+)
 
 REQUEST_BODY_SECONDS = 5
 JOURNAL_STARTUP_SECONDS = 90
@@ -56,12 +62,21 @@ class Settings(BaseSettings):
                 r"synthetic-[a-z0-9-]{1,48}", self.edge_device_id
             ) or not re.fullmatch(r"[a-f0-9]{64}", self.edge_token_sha256):
                 raise ValueError("Only authenticated synthetic telemetry devices are supported")
-        if self.deployment_environment == "production" and self.storage_mode != "persistent":
+        if self.deployment_environment == "production" and self.storage_mode not in (
+            "persistent",
+            "turso",
+        ):
             raise ValueError("Production requires approved persistent simulation storage")
         if self.storage_mode == "turso":
-            if self.deployment_environment != "staging":
-                raise ValueError("Remote task journal is currently qualified for staging only")
+            if self.deployment_environment not in ("staging", "production"):
+                raise ValueError("Remote task journal requires an explicit cloud environment")
             endpoint(self.turso_database_url)
+            if (self.deployment_environment == "production") != (
+                self.turso_database_url == PRODUCTION_DATABASE
+            ):
+                raise ValueError(
+                    "Production and staging require separate approved journal identities"
+                )
             token = self.turso_auth_token.get_secret_value()
             if not token or len(token) > 8192 or any(ord(c) < 33 or ord(c) > 126 for c in token):
                 raise ValueError("Configure a database-scoped Turso auth token")

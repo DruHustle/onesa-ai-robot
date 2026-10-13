@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from robot_api.main import Settings, create_app
-from robot_api.turso import LEASE, TABLE, TursoJournal
+from robot_api.turso import LEASE, PRODUCTION_DATABASE, TABLE, TursoJournal
 from tests.test_simulation import HASH, PASSWORD, approve, login, proposal, reset
 
 URL = "libsql://synthetic-staging.example.turso.io"
@@ -212,6 +212,22 @@ def test_remote_settings_require_explicit_safe_staging(changes, tmp_path):
     values.update(changes)
     with pytest.raises(ValidationError):
         Settings(**values)
+
+
+def test_production_journal_requires_owner_approved_identity_and_no_actuation(tmp_path):
+    values = config(tmp_path).model_dump()
+    values.update(deployment_environment="production", turso_database_url=PRODUCTION_DATABASE)
+    assert Settings(**values).storage_mode == "turso"
+    for changes in [
+        {"turso_database_url": URL},
+        {"turso_database_url": "libsql://other-production.turso.io"},
+        {"turso_auth_token": ""},
+        {"actuation_enabled": True},
+        {"deployment_environment": "staging"},
+        {"deployment_environment": "local"},
+    ]:
+        with pytest.raises(ValidationError):
+            Settings(**{**values, **changes})
 
 
 def test_stop_during_cloud_approval_cannot_grant_execution_authority(remote, tmp_path):

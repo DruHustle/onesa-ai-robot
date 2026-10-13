@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-13 — Bind the owner-selected production simulation journal
+
+Permit the existing separate production Turso database on the identified Free Frankfurt native Render service with hash-locked dependencies, isolated operator/database credentials and unchanged simulation safety. Preserve the ephemeral SQLite production rejection and all real release/operations gates. Record failed hosted acceptance using a fixed phase and HTTP status without provider bodies or credential values.
+
 ## 2026-10-13 — Wait for exclusive staging journal ownership during rollout
 
 Let a replacement report process liveness while waiting up to 90 seconds for the prior simulation journal owner to release its lease. Keep login and all application routes unavailable until history and exclusive ownership are restored. Use process health for the existing staging Render rollout; retain strict application readiness, bounded read-only acceptance waits, fail-closed storage errors and disabled physical actuation.

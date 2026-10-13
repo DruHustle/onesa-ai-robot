@@ -46,10 +46,10 @@ class CloudTests(unittest.TestCase):
                 ["frontend-url.txt", "smoke.json"],
             )
 
-    def test_only_staging_turso_uses_a_remote_journal_instead_of_a_filesystem(self):
+    def test_turso_uses_a_verified_remote_journal_instead_of_a_filesystem(self):
         self.assertFalse(cloud.filesystem_required("Staging", "turso"))
+        self.assertFalse(cloud.filesystem_required("Production", "turso"))
         for environment, mode in [
-            ("Production", "turso"),
             ("Production", "persistent"),
             ("Staging", "persistent"),
             ("Staging", "ephemeral-simulation"),
@@ -196,7 +196,7 @@ class CloudTests(unittest.TestCase):
                 os.environ,
                 {
                     "GITHUB_REF": "refs/heads/main",
-                    "RENDER_SERVICE_ID": "srv-synthetic",
+                    "RENDER_SERVICE_ID": cloud.PRODUCTION_SERVICE,
                     "ROBOT_API_URL": "https://synthetic.onrender.com",
                     "RENDER_API_KEY": "synthetic",
                 },
@@ -216,6 +216,82 @@ class CloudTests(unittest.TestCase):
             self.assertRaisesRegex(evidence.Rejected, "Production BLOCKED"),
         ):
             cloud.preflight("Production")
+
+    def test_production_turso_requires_exact_binding_and_separate_credentials(self):
+        values = {
+            "ROBOT_STORAGE_MODE": "turso",
+            "ROBOT_TURSO_DATABASE_URL": cloud.PRODUCTION_DATABASE,
+            "ROBOT_TURSO_AUTH_TOKEN": "synthetic-production-token",
+            "ROBOT_OPERATOR_PASSWORD_HASH": "scrypt$synthetic-production",
+        }
+        staging = {
+            "ROBOT_DEPLOYMENT_ENVIRONMENT": "staging",
+            "ROBOT_TURSO_DATABASE_URL": cloud.STAGING_DATABASE,
+            "ROBOT_TURSO_AUTH_TOKEN": "synthetic-staging-token",
+            "ROBOT_OPERATOR_PASSWORD_HASH": "scrypt$synthetic-staging",
+        }
+        with patch.dict(
+            os.environ,
+            {
+                "ROBOT_STORAGE_MODE": "turso",
+                "ROBOT_TURSO_DATABASE_URL": cloud.PRODUCTION_DATABASE,
+            },
+            clear=True,
+        ):
+            self.assertEqual(cloud.production_storage(values, staging), "turso")
+            for changes in [
+                {"ROBOT_TURSO_DATABASE_URL": cloud.STAGING_DATABASE},
+                {"ROBOT_STORAGE_MODE": "ephemeral-simulation"},
+                {"ROBOT_TURSO_AUTH_TOKEN": ""},
+                {"ROBOT_TURSO_AUTH_TOKEN": staging["ROBOT_TURSO_AUTH_TOKEN"]},
+                {
+                    "ROBOT_OPERATOR_PASSWORD_HASH": staging[
+                        "ROBOT_OPERATOR_PASSWORD_HASH"
+                    ]
+                },
+            ]:
+                with (
+                    self.subTest(changes=list(changes)),
+                    self.assertRaises(evidence.Rejected),
+                ):
+                    cloud.production_storage({**values, **changes}, staging)
+            for changes in [
+                {"ROBOT_DEPLOYMENT_ENVIRONMENT": "production"},
+                {"ROBOT_TURSO_DATABASE_URL": cloud.PRODUCTION_DATABASE},
+                {"ROBOT_TURSO_AUTH_TOKEN": ""},
+                {"ROBOT_OPERATOR_PASSWORD_HASH": ""},
+            ]:
+                with (
+                    self.subTest(changes=list(changes)),
+                    self.assertRaises(evidence.Rejected),
+                ):
+                    cloud.production_storage(values, {**staging, **changes})
+
+    def test_hosted_failure_reports_only_fixed_phase_and_http_status(self):
+        env = {
+            "ROBOT_TEST_PASSWORD": "synthetic-private-password",
+            "ROBOT_TEST_OPERATOR": "operator",
+            "ROBOT_TEST_SCOPE": "approved-synthetic-staging",
+        }
+        with (
+            patch.dict(os.environ, env, clear=True),
+            patch.object(
+                smoke.Simulator,
+                "call",
+                side_effect=[b"Software simulation", smoke.SimulatorHTTPFailure(404)],
+            ),
+        ):
+            record = smoke.run("https://synthetic.vercel.app", "Staging")
+        self.assertEqual(record["status"], "FAIL")
+        self.assertEqual(
+            record["failure"],
+            {
+                "phase": "backend_readiness",
+                "category": "http_status",
+                "http_status": 404,
+            },
+        )
+        self.assertNotIn("synthetic-private", json.dumps(record))
 
     def test_canonical_production_origin_rejects_wrong_commit(self):
         with (

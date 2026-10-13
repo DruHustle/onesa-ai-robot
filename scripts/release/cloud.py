@@ -17,6 +17,13 @@ from pathlib import Path
 from evidence import REPOSITORY, Rejected, digest, require, save, verify_stage
 from service_runtime import allowed as runtime_allowed
 from service_runtime import kind as runtime_kind
+from service_runtime import verified as runtime_verified
+
+PRODUCTION_SERVICE = "srv-db5k88flk1mc73aa9110"
+PRODUCTION_DATABASE = "libsql://onesa-ai-robot-backend-druhustle.aws-eu-west-1.turso.io"
+STAGING_DATABASE = (
+    "libsql://onesa-ai-robot-backend-staging-druhustle.aws-eu-west-1.turso.io"
+)
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -97,7 +104,31 @@ def staging_storage(values):
 
 
 def filesystem_required(environment, storage_mode):
-    return environment != "Staging" or storage_mode != "turso"
+    return storage_mode != "turso"
+
+
+def production_storage(values, staging_values):
+    require(
+        os.environ.get("ROBOT_STORAGE_MODE")
+        == values.get("ROBOT_STORAGE_MODE")
+        == "turso"
+        and os.environ.get("ROBOT_TURSO_DATABASE_URL")
+        == values.get("ROBOT_TURSO_DATABASE_URL")
+        == PRODUCTION_DATABASE
+        and bool(values.get("ROBOT_TURSO_AUTH_TOKEN")),
+        "Approved production Turso binding and credential required",
+    )
+    require(
+        staging_values.get("ROBOT_DEPLOYMENT_ENVIRONMENT") == "staging"
+        and staging_values.get("ROBOT_TURSO_DATABASE_URL") == STAGING_DATABASE
+        and bool(staging_values.get("ROBOT_TURSO_AUTH_TOKEN"))
+        and bool(staging_values.get("ROBOT_OPERATOR_PASSWORD_HASH"))
+        and values["ROBOT_TURSO_AUTH_TOKEN"] != staging_values["ROBOT_TURSO_AUTH_TOKEN"]
+        and values.get("ROBOT_OPERATOR_PASSWORD_HASH")
+        != staging_values["ROBOT_OPERATOR_PASSWORD_HASH"],
+        "Production database and operator credentials must be isolated from staging",
+    )
+    return "turso"
 
 
 def preflight(environment):
@@ -116,6 +147,10 @@ def preflight(environment):
         require(
             service_id == "srv-db5k9ft9fdbs73d622cg",
             "Identified staging service required",
+        )
+    else:
+        require(
+            service_id == PRODUCTION_SERVICE, "Identified production service required"
         )
     token = os.environ.get("RENDER_API_KEY", "")
     base = "https://api.render.com/v1/services/" + service_id
@@ -137,7 +172,7 @@ def preflight(environment):
     )
     details = service.get("serviceDetails", {})
     require(
-        runtime_allowed(service, environment),
+        runtime_verified(service),
         "Reviewed backend runtime and layout required",
     )
     require(
@@ -152,8 +187,8 @@ def preflight(environment):
     values = {entry["envVar"]["key"]: entry["envVar"]["value"] for entry in entries}
     require(
         runtime_kind(service) != "python"
-        or (environment == "Staging" and values.get("ROBOT_STORAGE_MODE") == "turso"),
-        "Native staging requires reviewed durable Turso journal",
+        or values.get("ROBOT_STORAGE_MODE") == "turso",
+        "Native runtime requires reviewed durable Turso journal",
     )
     require(
         values.get("ROBOT_ACTUATION_ENABLED") == "false",
@@ -182,21 +217,46 @@ def preflight(environment):
             "Dedicated synthetic staging operator missing",
         )
     else:
-        # Current Free Render architecture cannot satisfy this. No paid upgrade is attempted.
-        require(
-            details.get("plan") == "free"
-            and details.get("disk", {}).get("mountPath") == "/app/storage",
-            "Production BLOCKED: free Render has no durable SQLite volume; owner storage decision required",
-        )
-        require(
-            values.get("ROBOT_STORAGE_MODE") == "persistent",
-            "Durable production storage required",
-        )
+        if values.get("ROBOT_STORAGE_MODE") == "turso":
+            require(
+                details.get("plan") == "free" and details.get("region") == "frankfurt",
+                "Identified free Frankfurt production runtime required",
+            )
+            staging_entries = provider(
+                "https://api.render.com/v1/services/srv-db5k9ft9fdbs73d622cg/env-vars?limit=100",
+                token,
+            )
+            require(
+                isinstance(staging_entries, list) and len(staging_entries) < 100,
+                "Complete staging isolation readback needed",
+            )
+            production_storage(
+                values,
+                {
+                    entry["envVar"]["key"]: entry["envVar"]["value"]
+                    for entry in staging_entries
+                },
+            )
+        else:
+            require(
+                details.get("plan") == "free"
+                and details.get("disk", {}).get("mountPath") == "/app/storage"
+                and values.get("ROBOT_STORAGE_MODE") == "persistent",
+                "Production BLOCKED: free Render has no durable SQLite volume; approved remote storage required",
+            )
         require(
             origin(values.get("ROBOT_PUBLIC_ORIGIN", ""))
             == origin(os.environ["ROBOT_PUBLIC_ORIGIN"]),
             "Production operator origin mismatch",
         )
+    require(
+        runtime_allowed(
+            service,
+            environment,
+            durable_remote=values.get("ROBOT_STORAGE_MODE") == "turso",
+        ),
+        "Reviewed backend runtime and layout required",
+    )
     project = os.environ.get("VERCEL_PROJECT_ID", "")
     team = os.environ.get("VERCEL_ORG_ID", "")
     require(
@@ -366,9 +426,10 @@ def receipt(environment, directory, browser):
         "render_deployment_id": render["deployment_id"],
         "vercel_deployment_id": vercel_id,
         "scope": "software-simulation-only",
-        "storage": os.environ.get("ROBOT_STORAGE_MODE", "ephemeral-simulation")
-        if environment == "Staging"
-        else "persistent",
+        "storage": os.environ.get(
+            "ROBOT_STORAGE_MODE",
+            "ephemeral-simulation" if environment == "Staging" else "persistent",
+        ),
         "physical_hardware_approved": False,
         "frontend_url": url,
         "operator_url": operator_url if environment == "Production" else url,
@@ -379,6 +440,8 @@ def receipt(environment, directory, browser):
         if "FAIL" in checks.values()
         else "BLOCKED",
     }
+    if suite.get("failure"):
+        result["failure"] = suite["failure"]
     save(result, directory / "record.json")
     if environment == "Staging" and result["status"] == "PASS":
         verify_stage(
