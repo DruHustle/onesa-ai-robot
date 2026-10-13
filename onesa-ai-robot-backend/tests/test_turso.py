@@ -167,9 +167,17 @@ def test_network_delay_does_not_block_watchdog_or_local_stop(remote, tmp_path):
 def test_rejects_second_writer_and_expired_lease(remote, tmp_path):
     path, _ = remote
     with client(config(tmp_path)) as first:
-        with pytest.raises(sqlite3.OperationalError, match="live owner"):
-            with client(config(tmp_path)):
-                pass
+        with client(config(tmp_path)) as standby:
+            assert standby.get("/api/v1/health").status_code == 200
+            assert standby.get("/api/v1/ready").status_code == 503
+            assert (
+                standby.post(
+                    "/api/v1/auth/login", json={"name": "operator", "password": PASSWORD}
+                ).status_code
+                == 503
+            )
+            assert standby.post("/api/v1/tasks", json=proposal()).status_code == 503
+        assert first.get("/api/v1/ready").status_code == 200
         login(first)
         reset(first)
         with sqlite3.connect(path) as db:
@@ -285,3 +293,64 @@ def test_anonymous_readiness_cannot_exhaust_database_pool(remote, tmp_path):
         api.portal.call(lambda: setattr(sim, "journal_lease_confirmed_at", time.monotonic() - 16))
         assert api.get("/api/v1/ready").status_code == 503
         assert api.portal.call(lambda: sim.stopped)
+
+
+def test_rolling_replacement_waits_without_stealing_then_restores_history(remote, tmp_path):
+    path, _ = remote
+    settings = config(tmp_path)
+    prior = client(settings)
+    prior.__enter__()
+    closed = False
+    try:
+        login(prior)
+        reset(prior)
+        identifier = approve(prior, proposal(duration_seconds=5))
+        prior.post("/api/v1/stop")
+        with sqlite3.connect(path) as db:
+            owner = db.execute(f"SELECT owner FROM {LEASE}").fetchone()[0]
+        with client(settings) as replacement:
+            assert replacement.get("/api/v1/health").status_code == 200
+            assert replacement.get("/api/v1/ready").status_code == 503
+            with sqlite3.connect(path) as db:
+                assert db.execute(f"SELECT owner FROM {LEASE}").fetchone()[0] == owner
+            prior.__exit__(None, None, None)
+            closed = True
+            deadline = time.monotonic() + 5
+            while replacement.get("/api/v1/ready").status_code != 200:
+                assert time.monotonic() < deadline
+                time.sleep(0.05)
+            login(replacement)
+            state = replacement.get("/api/v1/status").json()
+            assert state["stopped"] and state["active_task"] is None
+            assert state["physical_actuation"] is False
+            history = replacement.get("/api/v1/tasks").json()["tasks"]
+            assert any(row["id"] == identifier and row["state"] == "cancelled" for row in history)
+    finally:
+        if not closed:
+            prior.__exit__(None, None, None)
+
+
+def test_standby_deadline_fails_closed_and_preserves_live_owner(remote, tmp_path, monkeypatch):
+    import robot_api.main as main
+
+    monkeypatch.setattr(main, "JOURNAL_STARTUP_SECONDS", 0)
+    path, _ = remote
+    with client(config(tmp_path)) as first:
+        with client(config(tmp_path)) as standby:
+            deadline = time.monotonic() + 2
+            while standby.get("/api/v1/health").status_code != 503:
+                assert time.monotonic() < deadline
+                time.sleep(0.01)
+            assert standby.get("/api/v1/ready").status_code == 503
+            assert (
+                standby.post(
+                    "/api/v1/auth/login", json={"name": "operator", "password": PASSWORD}
+                ).status_code
+                == 503
+            )
+        assert first.get("/api/v1/ready").status_code == 200
+        with sqlite3.connect(path) as db:
+            assert (
+                db.execute(f"SELECT count(*) FROM {LEASE} WHERE expires>unixepoch()").fetchone()[0]
+                == 1
+            )

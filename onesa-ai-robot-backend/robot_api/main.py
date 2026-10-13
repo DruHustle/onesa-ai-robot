@@ -18,9 +18,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from robot_api.edge import EdgeMonitor, Telemetry
 from robot_api.safety import Proposal, SafetyGate, SafetyViolation
 from robot_api.security import PasswordVerifier, VerificationBusy, token_hash
-from robot_api.turso import COLUMNS, TursoJournal, endpoint
+from robot_api.turso import COLUMNS, JournalAlreadyOwned, TursoJournal, endpoint
 
 REQUEST_BODY_SECONDS = 5
+JOURNAL_STARTUP_SECONDS = 90
 
 
 class Settings(BaseSettings):
@@ -165,6 +166,7 @@ class State:
         self.journal_version = 0
         self.journal_lock = asyncio.Lock()
         self.journal_failed = False
+        self.journal_initialized = self.journal is None
         self.journal_lease_confirmed_at = 0.0
         self.stop_epoch = 0
         self.mutation_lock = asyncio.Lock()
@@ -214,6 +216,7 @@ class State:
         self.cancel("process_restart", stop=True)
         await self.flush_journal()
         await self.refresh_journal_lease()
+        self.journal_initialized = True
 
     async def refresh_journal_lease(self) -> None:
         if not self.journal or self.journal_failed:
@@ -320,6 +323,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         state = State(config)
         try:
             await state.initialize_journal()
+        except JournalAlreadyOwned:
+            # Process liveness lets Render retire the prior instance. All application
+            # routes stay unavailable until this instance owns and restores history.
+            pass
         except BaseException:
             state.db.close()
             if state.journal:
@@ -343,8 +350,22 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         async def journal_watch():
             # Cloud writes occur on events, not on the 20 Hz simulation loop.
             renewed = time.monotonic()
+            startup_deadline = renewed + JOURNAL_STARTUP_SECONDS
             while True:
                 await asyncio.sleep(0.1)
+                if not state.journal_initialized:
+                    if time.monotonic() >= startup_deadline:
+                        state.fail_journal()
+                        return
+                    try:
+                        await state.initialize_journal()
+                        renewed = time.monotonic()
+                    except JournalAlreadyOwned:
+                        await asyncio.sleep(1)
+                    except sqlite3.Error:
+                        state.fail_journal()
+                        return
+                    continue
                 try:
                     await state.flush_journal()
                     if state.journal and time.monotonic() - renewed >= 10:
@@ -408,6 +429,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             request._body = body
         try:
             sim = request.app.state.sim
+            if request.url.path != "/api/v1/health" and not sim.journal_initialized:
+                return Response(status_code=503, headers={"Cache-Control": "no-store"})
             if sim.journal and request.method not in ("GET", "HEAD", "OPTIONS"):
                 # Serialize operator mutations across acknowledgement yields. Stop
                 # and heartbeat are exempt so cloud latency cannot delay local safety.
@@ -503,7 +526,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {"events": list(request.app.state.edge.audit), "retention": "bounded-process-memory"}
 
     @app.get("/api/v1/health")
-    def health():
+    def health(request: Request):
+        sim = request.app.state.sim
+        if not sim.journal_initialized and sim.journal_failed:
+            raise HTTPException(503, "Simulation startup requires recovery")
         return {"status": "live", "mode": "simulation"}
 
     @app.get("/api/v1/ready")

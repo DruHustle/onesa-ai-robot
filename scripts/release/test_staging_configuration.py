@@ -50,7 +50,7 @@ class StagingConfigurationTests(unittest.TestCase):
                 "plan": "free",
                 "region": "frankfurt",
                 "url": stage.API,
-                "healthCheckPath": "/api/v1/ready",
+                "healthCheckPath": "/api/v1/health",
                 "envSpecificDetails": {
                     "dockerfilePath": "./Dockerfile",
                     "dockerContext": ".",

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-13 — Wait for exclusive staging journal ownership during rollout
+
+Let a replacement report process liveness while waiting up to 90 seconds for the prior simulation journal owner to release its lease. Keep login and all application routes unavailable until history and exclusive ownership are restored. Use process health for the existing staging Render rollout; retain strict application readiness, bounded read-only acceptance waits, fail-closed storage errors and disabled physical actuation.
+
 ## 2026-10-13 — Inspect the configured staging secret scope
 
 Reuse the existing read-only provider/operator diagnostic from a separate Staging environment job when that scope is selected. Keep the repository-secret alternative free of an environment dependency. Compare the supplied test password with the existing configured scrypt hash as a boolean; preserve credentials, journal state and production.
