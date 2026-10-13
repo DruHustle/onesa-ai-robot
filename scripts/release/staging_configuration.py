@@ -57,6 +57,18 @@ def operator_matches(settings):
         return False
 
 
+def edge_credential_report(settings):
+    token = os.environ.get("ROBOT_EDGE_TOKEN", "")
+    stored = settings.get("ROBOT_EDGE_TOKEN_SHA256", "")
+    return {
+        "edge_test_token_available": bool(token),
+        "edge_test_token_accepted_length": len(token) >= 64,
+        "edge_test_token_matches": bool(token)
+        and re.fullmatch(r"[a-f0-9]{64}", stored) is not None
+        and hmac.compare_digest(hashlib.sha256(token.encode()).hexdigest(), stored),
+    }
+
+
 def frontend_binding(repair=False, *, configuration_dev=False):
     require(
         not repair
@@ -287,6 +299,7 @@ def inspect_or_repair(repair=False):
         ),
         "edge_device_configured": bool(settings.get("ROBOT_EDGE_DEVICE_ID")),
         "edge_token_configured": bool(settings.get("ROBOT_EDGE_TOKEN_SHA256")),
+        **edge_credential_report(settings),
         "production_modified": False,
         "credentials_changed": False,
         "database_modified": False,

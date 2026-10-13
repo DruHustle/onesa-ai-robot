@@ -181,9 +181,13 @@ def run(url, environment):
                 },
                 data=json.dumps(body).encode() if body is not None else None,
             )
-            with opener.open(request, timeout=10) as response:
-                require(response.code == 200, "Edge telemetry HTTP failure")
-                return json.loads(response.read(16384))
+            try:
+                with opener.open(request, timeout=10) as response:
+                    if response.code != 200:
+                        raise SimulatorHTTPFailure(response.code)
+                    return json.loads(response.read(16384))
+            except urllib.error.HTTPError as error:
+                raise SimulatorHTTPFailure(error.code) from None
 
         challenge = edge_call("/api/v1/edge/challenge")
         edge_call(
@@ -329,6 +333,13 @@ def run(url, environment):
         }
         if isinstance(error, SimulatorHTTPFailure):
             record["failure"]["http_status"] = error.status
+        reasons = {
+            "Synthetic edge identity required": "EDGE_FIXTURE",
+            "Missing edge telemetry": "EDGE_OBSERVATION",
+            "Stale edge appears connected": "EDGE_EXPIRY",
+        }
+        if isinstance(error, Rejected) and str(error) in reasons:
+            record["failure"]["reason"] = reasons[str(error)]
     finally:
         if logged_in:
             try:
