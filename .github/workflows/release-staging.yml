@@ -139,6 +139,7 @@ jobs:
         VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
       run: python3 scripts/release/cloud.py bind-preview Staging --directory "$RUNNER_TEMP/robot-release"
     - name: Deploy exact backend source
+      timeout-minutes: 32
       id: backend
       env:
         RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
@@ -152,7 +153,18 @@ jobs:
         ROBOT_API_URL: ${{ vars.STAGING_ROBOT_API_URL || 'https://onesa-ai-robot-backend-staging.onrender.com' }}
         ROBOT_TEST_OPERATOR: ${{ vars.STAGING_ROBOT_TEST_OPERATOR || 'operator' }}
         VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
-      run: RENDER_RECEIPT_PATH="$RUNNER_TEMP/robot-release/render.json" python3 scripts/deploy_render.py --preflight "$RUNNER_TEMP/robot-release/preflight/record.json"
+      run: RENDER_RECEIPT_PATH="$RUNNER_TEMP/robot-release/render.json" python3 scripts/deploy_render.py --environment Staging --preflight "$RUNNER_TEMP/robot-release/preflight/record.json" --wait-seconds 1800 --request-timeout 20
+    - name: Preserve Render deployment observation before acceptance
+      if: always() && steps.backend.outcome != 'skipped'
+      timeout-minutes: 2
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: render-deployment-observation
+        path: |
+          ${{ runner.temp }}/robot-release/render.json
+          ${{ runner.temp }}/robot-release/render-preflight.json
+        retention-days: 7
+        if-no-files-found: warn
     - name: Synthetic API and safety acceptance
       env:
         ROBOT_EDGE_TOKEN: ${{ secrets.STAGING_ROBOT_EDGE_TOKEN }}
