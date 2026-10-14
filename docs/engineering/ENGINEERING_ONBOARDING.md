@@ -31,12 +31,20 @@ contract changes. No build imports an unversioned sibling checkout.
 
 ## Day 3 — Contribution and release
 
-Use only **dev → staging → main**. Read [release qualification](AUTOMATED_QUALIFICATION.md),
+Keep **dev**, **staging** and **main** as the three permanent branches; normal
+integration follows **dev → staging → main**. Read [release qualification](AUTOMATED_QUALIFICATION.md),
 [deployment](DEPLOYMENT.md), [Free safeguards](../development/PRIVATE_FREE_SAFEGUARDS.md)
 and actual branch-protection evidence. Preserve concurrent work and stage reviewed
 paths. Automated annotations assist review; they are not an independent human verdict.
-Automatic dependency branches are disabled; apply reviewed updates on dev while
-retaining advisory alerts and security scans.
+Temporary Dependabot security-update PRs and narrowly scoped necessary security
+candidates are allowed. Ordinary automatic version PRs remain disabled. Read the
+[security integration procedure](CI_CD.md#security-pr-integration-and-urgent-candidates)
+before using an exception; retain advisory alerts, scans and owner notifications.
+Dependabot security fixes target the default main branch even when version updates
+are configured for dev. Carry reviewed fixes through normal dev/staging/main; a
+necessary urgent candidate starts at the exact deployed production SHA, excludes
+unqualified dev work and receives staged/source-bound owner qualification before
+release. Reconcile the released fix into dev/staging afterward.
 
 Checkpoint: identify exact candidate/artifact/schema evidence, owner authorization,
 hosted staging checks and rollback boundaries. A source change invalidates affected

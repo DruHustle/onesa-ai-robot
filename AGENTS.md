@@ -17,7 +17,11 @@ without explicit budget authorization.
 Keep this repository independent within `onesa-ug`: retain component directories,
 separate releases and no workspace Git repository or sibling submodules.
 
-Use only `dev → staging → main`: develop on dev, qualify the staging candidate, then promote that verified scope to main. Only `dev`, `staging` and `main` are retained under the owner-selected branch policy.
+Keep exactly three permanent branches: `dev`, `staging`, `main`. Normal integration
+is `dev → staging → main`. Temporary Dependabot security-update PR branches and
+necessary narrowly scoped security-release candidates are authorized exceptions,
+not permanent branch families. Ordinary version-update PRs remain disabled. See the
+security integration procedure in `docs/engineering/CI_CD.md` before using an exception.
 Preserve work already staged or modified locally. The verified team currently has one
 developer: require PRs and automated checks, with zero independent approvals until
 an authorized reviewer exists. Then require one independent review; seek two for
@@ -173,5 +177,13 @@ Done means reviewed source, safe cleanup, passing affected checks, accounted evi
 and verified authorized hosted scope. Report the exact genuine blocker and next
 executable action. Only verified production changes enter the root CHANGELOG.
 
-Dependency maintenance uses the verified owner notification path and scheduled existing
-CI described in `docs/engineering/BUILD_AND_TEST.md`; no automatic update branches.
+Dependency maintenance retains alerts, scans, scheduled CI and owner-confirmed
+notifications. Authorized Dependabot security PRs target the unchanged default main;
+version `target-branch: dev` cannot retarget security fixes. PR code runs credential-free
+on GitHub-hosted runners, with no auto-merge, privileged PR event or automatic production.
+A bot label/branch name is not qualification. Normally carry the reviewed fix through
+dev/staging/main. If unfinished dev must be excluded, start the smallest temporary
+security candidate from the exact deployed production SHA; obtain owner-controlled
+staging and exact-source qualification before any release, then reconcile dev/staging.
+Keep existing release and runner guards. Delete a temporary branch only after proven
+incorporation, retained evidence and active-review/work checks; never bulk-delete bots.

@@ -1,5 +1,11 @@
 # CI/CD pipeline implementation and audit — onesa-ai-robot
 
+> Current branch/dependency policy: the owner's latest 14 October 2026 instruction
+> authorizes temporary security PR/candidate branches while retaining dev/staging/main
+> permanently. Ordinary version PRs remain disabled. Follow
+> [the maintained security procedure](../engineering/CI_CD.md#security-pr-integration-and-urgent-candidates).
+> Historical branch/update-count observations below do not override this current policy.
+
 Audit date: 2026-10-11. Prepared locally on `feature/cicd-review-optimization`; no
 remote push, merge, provider setting change or live deployment occurred. The explicitly
 authorized Dependabot security-update PR setting was enabled and read back on all three
@@ -84,8 +90,8 @@ Current published Free limits: 2,000 monthly Actions minutes and 500 MB artifact
 storage per owner/account allowance, 10 GB cache per repository. Do not multiply the
 owner's minute allowance by three repositories. Keep new review/diagnostic artifacts
 three days and release receipts seven days; old large artifacts are unchanged. Use
-monthly Dependabot, on-demand expensive packaging, PR cancellation and measured
-usage alerts/budget-stop settings. Removing feature push duplication saves one full
+scheduled existing scans, on-demand expensive packaging, PR cancellation and measured
+usage alerts/budget-stop settings; ordinary automatic version PRs are disabled. Removing feature push duplication saves one full
 CI invocation per feature push that also produces a PR run; numeric time/percentage
 savings for the new pipeline require authorized remote runs and are not claimed.
 
@@ -132,21 +138,26 @@ passes and local builds do not change that status.
 
 ```mermaid
 flowchart TD
-  F[feature / fix / hotfix branch] --> PR[Owner PR to main or staging]
-  PR --> R[Read-only Reviewdog + lint + types + security]
-  R --> T[Relevant tests / contracts / browser / production builds]
-  T --> S[Always-running CI summary + independent hygiene]
-  S --> M[Owner reviews results and merges to main]
-  M --> C[Full exact-main CI + tested runtime digests]
-  C --> P[Optional isolated staging: one Actions authority]
-  P --> V[Provider revision + authenticated probes + receipts]
-  V --> Q[Automatic immutable technical qualification]
-  Q --> A[Explicit owner approval: exact SHA + evidence digest + reviews]
-  A --> X[External owner-held production credentials + trusted verifier]
-  X --> D[Separately authorized production promotion]
-  D --> O[Exact provider revision / alias + readiness + logs + alerts + rollback record]
-  C --> E[Robot ROS simulation / reviewed edge package]
-  E --> H[Separate operator authorization for physical hardware]
+  Dev[dev / normal reviewed changes] --> PR[Owner-reviewed dev to staging PR]
+  PR --> CI[Credential-free hosted CI / security / contracts / images]
+  CI --> Stage[Exact staged candidate and full source checks]
+  Stage --> Hosted[Protected native Git Preview and exact Render staging deploy]
+  Hosted --> Receipt[Authenticated simulation / all-browser acceptance / source receipts]
+  Receipt --> Promote[Reviewed staging to main promotion]
+  Promote --> Main[Full exact-main CI and tested runtime digests]
+  Main --> Q[Commit/artifact-bound qualification with matching staging source]
+  Q --> A[Current owner authorization / exact evidence digest]
+  A --> X[External owner-held credentials / trusted verifier]
+  X --> Live[Qualified production handoff / hosted verification / rollback evidence]
+  Bot[Temporary Dependabot security PR / default-main proposal] --> Review[Review advisory / dependency scope / provenance]
+  Review --> Dev
+  Review -. necessary urgent exception .-> Temp[Temporary candidate from exact verified production]
+  Temp --> TCI[Credential-free candidate validation]
+  TCI -. separately qualified isolated staging path required .-> Receipt
+  Live --> Reconcile[Reconcile security fix into dev and staging]
+  Reconcile --> Cleanup[Temporary cleanup after incorporation / retained evidence / active review checks]
+  Main --> Edge[Separately reviewed ROS simulation / edge package]
+  Edge --> Hardware[Physical hardware stays disabled / separate authorization]
 ```
 
 These are workflow gates and an operating policy, not private-Free server-side branch
@@ -215,20 +226,26 @@ integration was added, and no CLI capability was claimed as verified.
 
 Dependabot alerts are enabled, with **zero open alerts** in the readback. Automated
 security-fix PRs were **disabled** in the before inventory and are now **enabled** on
-all three remotes, verified by readback after the explicitly requested setting change. The new configuration schedules
-monthly ecosystem updates, at most two version PRs per ecosystem, a seven-day version
-cooldown, and compatible minor/patch version groups. Security updates are ungrouped
-and have no version cooldown. Automatic security-fix PRs were enabled using the user-authorized setting; version
-update schedules activate after the owner publishes and merges the local configuration. Bot PRs run the same read-only CI and
+all three remotes, verified by readback after the explicitly requested setting change. The 2026-10-11 preparation proposed monthly ecosystem updates, up to two version
+PRs per ecosystem, seven-day version cooldown and compatible minor/patch groups.
+That dated proposal is historical: current ordinary version PR limits are zero and
+retained version targets are dev; temporary security PRs remain separately authorized. Security updates are ungrouped
+and have no version cooldown. Security-fix preparation follows the authorized remote
+setting. The old version-PR activation proposal is superseded: retained schedules with
+limit zero do not create ordinary version PRs. Security bot PRs run the same read-only CI and
 never automatically merge or deploy.
 
 ## Optimization and branch policy
 
-Use `feature/*`, `fix/*` and `hotfix/*` PRs targeting `main` or `staging`; preserve
-existing branches, including Portal's established `audit/portal-master-acceptance`.
-Feature push CI duplication is removed: PR activity validates development changes;
-`main`, `staging`, explicit dispatch and the established Portal acceptance branch run
-full critical suites. No native restriction on pushes is asserted.
+Keep dev, staging and main permanently and normally integrate dev → staging → main.
+The authorized temporary Dependabot security PR/candidate exception is described in
+[the current procedure](../engineering/CI_CD.md#security-pr-integration-and-urgent-candidates).
+Default-main bot proposals are reviewed and normally integrated through dev; necessary
+urgent candidates start from exact production and require separately qualified isolated
+staging/source evidence. Ordinary version PR limits are zero. Existing historical
+feature/audit branches and preparation diagrams are not a permanent branch policy.
+PR activity uses credential-free hosted checks; full permanent-branch/explicit trusted
+checks and all release protections remain. No native Git push restriction is asserted.
 
 Superseded PR runs cancel; release-source runs and deployments do not cancel in
 flight. npm download and pip caches key from committed lockfiles; no credentials,
@@ -357,9 +374,9 @@ promised; owner-configured alert delivery remains a production prerequisite.
 1. Resolve the discrepancy: all remote repositories are public, while the requested
    policy is private/Free. Confirm subscription and protection capabilities in billing
    and repository settings. No visibility change, upgrade or paid capacity is authorized.
-2. Review and authorize publishing these feature branches and opening PRs; merge only
+2. Review and authorize publishing the reviewed dev candidate and opening dev-to-staging PRs; merge only
    after the actual new remote CI is green. Reconcile remote job names with evidence
-   policy; preserve all critical gates and validate on a failing feature PR.
+   policy; preserve all critical gates and validate with a failing synthetic PR.
 3. Set default Actions token read-only and disable Actions PR approval where possible;
    restrict write access to the owner. Dependabot automatic security-fix PRs are
    already enabled and verified; the other settings were audited but not changed.

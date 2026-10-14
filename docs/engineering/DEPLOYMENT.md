@@ -43,7 +43,10 @@ custody. Inspect only presence/scope and boolean usability; do not print environ
 values, hashes, tokens or provider bodies. Rotate an expiring database token through
 the approved secure process without disturbing operator passwords or journal data.
 
-Use only **dev → staging → main**. Exact-source CI, hosted staging, artifact/qualification,
+Keep only **dev**, **staging** and **main** permanently. Normal integration is
+**dev → staging → main**; temporary security PR/candidate exceptions follow
+[the scoped security procedure](CI_CD.md#security-pr-integration-and-urgent-candidates).
+Exact-source CI, hosted staging, artifact/qualification,
 applicable operations/content scope and actual current owner authority precede release.
 Do not claim private GitHub Free supports native protection without real readback.
 Provider Git staging previews are the staging frontend authority; production Vercel

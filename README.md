@@ -56,12 +56,15 @@ browser/OS; there is no appearance selector, stored override or clock schedule.
 Shared Onesa foundations are version-pinned while Robot retains its teal engineering
 identity and dedicated operational shell.
 
-Contributions follow **dev → staging → main**, with exact-source CI, hosted staging,
+The permanent branches are **dev**, **staging** and **main**. Normal contributions
+follow **dev → staging → main**, with exact-source CI, hosted staging,
 qualification and the current owner-authorized release process. See
 [engineering policies](AGENTS.md), [onboarding](docs/engineering/ENGINEERING_ONBOARDING.md)
 and [deployment](docs/engineering/DEPLOYMENT.md). GitHub Free conventions do not prove
 server-enforced branch protection. The repositories retain independent deployment,
-authentication and data boundaries.
+authentication and data boundaries. Temporary Dependabot security PRs and necessary
+security release candidates are allowed under the documented security procedure; they
+do not authorize automatic merges or production releases. Ordinary version PRs stay disabled.
 
 [Onesa Developer Docs](https://docs.onesa.eu) contains approved public material.
 Detailed engineering, release evidence and operational instructions require authorized

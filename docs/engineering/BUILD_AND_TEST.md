@@ -42,18 +42,32 @@ The shared foundation digest is verified by the frontend build.
 
 ## Dependency maintenance
 
-Automatic security-update PR creation is disabled under the owner's explicit
-14 October 2026 authorization; Dependabot alerts remain enabled. The owner confirmed
-receipt and review of Actions failure notifications and Dependabot alerts for this
-repository. Existing security PRs and branches remain intact. Version-update config,
-registry settings and compatibility constraints are retained with zero automatic PRs.
-The existing full verification workflow runs weekly on Monday at 06:17 UTC after
-this version reaches main; changes to dev, staging and main retain required checks.
-Dependency/source and final-image scans are mandatory. A session is not a monitor.
+The owner's latest 14 October 2026 instruction authorizes temporary Dependabot
+security-update PR branches and necessary narrowly scoped security-release candidates,
+while retaining exactly three permanent branches: dev, staging and main. It supersedes
+the earlier same-day security-PR disable instruction. The owner confirmed receipt and
+review of Actions failures and Dependabot notifications. Alerts, dependency/source and
+final-image scans, existing security PRs and evidence remain intact. The root coordinating
+session restores and verifies the separate repository security-fix setting; a source
+configuration alone does not prove the remote setting is active. Read-only API
+metadata at 2026-10-14 01:25 UTC returned `enabled: true`, `paused: false`;
+default main and the existing open dev-to-staging PR were preserved.
+
+Ordinary version PRs remain disabled with `open-pull-requests-limit: 0`. Their retained
+configuration targets dev. Security updates always target the unchanged repository
+default main; target-branch does not redirect security fixes, and version-only groups/
+cooldown settings do not constrain them. No auto-merge or automatic production release
+is enabled. Review fixes through [the security integration procedure](CI_CD.md#security-pr-integration-and-urgent-candidates).
+
+The existing full verification workflow runs weekly on Monday at 06:17 UTC once this
+version reaches main; dev/staging/main changes retain required checks. Temporary security
+PR code receives credential-free GitHub-hosted PR checks targeting a permanent branch;
+never send it provider secrets or a persistent privileged runner. A scheduled scan or
+Actions session does not itself establish delivered monitoring.
 
 Review alerts and preserve advisory, severity, affected version, remediation and owner
-in the existing restricted findings register. Apply supported updates on dev, qualify
-staging and main, then verify the deployed artifact. Never dismiss alerts or weaken
-checks to make a release pass. Restore security-fix PR preparation only through an
-authorized repository-level `automated-security-fixes` PUT operation. Direct graph
-SBOM readback returned HTTP404; no dependency-graph setting was changed.
+in the existing restricted register. Normally apply reviewed fixes on dev and qualify
+staging/main; necessary urgent candidates start from exact production and exclude
+unfinished dev work. No alert dismissal, check suppression, credential rotation or
+branch deletion is implied. Direct graph SBOM readback previously returned HTTP404;
+no dependency-graph setting was changed by this source update.
