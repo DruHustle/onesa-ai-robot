@@ -126,11 +126,17 @@ must never be forwarded to Render. Check real Vercel nested artifacts and hosted
 1. Resolve the exact-source protected Preview and inspect the existing running origin.
 2. Authenticate the existing synthetic test operator using its approved private test
    credential. Before stopping, verify simulation mode, disabled physical actuation,
-   no active task, no running/proposed recent history and zero pending rows across the
-   complete existing staging journal. Preserve unknown work and coordinate its owner
-   if any check fails. Recheck the idle runtime, set its stop latch, verify unchanged
-   history and fence only the observed staging journal lease. Preserve credentials
-   and production; never cancel preexisting work to make a release pass.
+   an already latched stop, no active task, no running/proposed recent history and zero
+   pending rows across the complete existing staging journal. The handoff sends no
+   stop or cancellation request. Preserve unknown work and coordinate its owner if
+   any check fails. Recheck the latched idle runtime and unchanged history, then fence
+   only the observed lease using an atomic owner and no-pending-work predicate. Verify
+   that same owner, expired lease and idle journal together. A newly acknowledged
+   pending task prevents fencing; existing backend writes require the live lease.
+   The qualification fixture is owner-coordinated and synthetic; snapshots do not
+   certify arbitrary concurrent operator activity. Only the run-owned acceptance
+   scenario may restore its stop latch after its own completed task and idle readback.
+   Preserve credentials and production; never cancel preexisting work to pass a release.
 3. Save the new verified Preview origin, then deploy the exact qualified source. Saved
    Render environment changes do not attest the running configuration. If an earlier
    attempt changed saved origin prematurely, reconcile only staging to a verified

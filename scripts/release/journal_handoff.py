@@ -12,6 +12,10 @@ from evidence import REPOSITORY, Rejected, digest, require
 from staging_configuration import API, SERVICE, TURSO, target
 
 LEASE = "robot_simulation_lease_v1"
+IDLE_JOURNAL = (
+    "NOT EXISTS(SELECT 1 FROM robot_simulation_tasks_v1 "
+    "WHERE state IN ('running','proposed'))"
+)
 
 
 PHASES = {
@@ -120,27 +124,37 @@ def sql_call(token, sql, arguments=()):
 
 def fence_stopped_lease(token, execute=sql_call):
     rows = execute(
-        token, f"SELECT owner,expires>unixepoch() AS active FROM {LEASE} WHERE id=1"
+        token,
+        f"SELECT owner,expires>unixepoch() AS active,{IDLE_JOURNAL} AS idle "
+        f"FROM {LEASE} WHERE id=1",
     )
     require(
-        len(rows) == 1 and re.fullmatch(r"[a-f0-9]{32}", rows[0].get("owner", "")),
-        "Existing staging lease identity required",
+        len(rows) == 1
+        and re.fullmatch(r"[a-f0-9]{32}", rows[0].get("owner", ""))
+        and rows[0].get("idle") == 1,
+        "Existing idle staging lease required; preserve pending work",
     )
     owner = rows[0]["owner"]
     if rows[0]["active"] == 1:
         changed = execute(
             token,
-            f"UPDATE {LEASE} SET expires=unixepoch()-1 WHERE id=1 AND owner=? RETURNING owner",
+            f"UPDATE {LEASE} SET expires=unixepoch()-1 WHERE id=1 AND owner=? "
+            f"AND {IDLE_JOURNAL} RETURNING owner",
             (owner,),
         )
         require(
             changed == [{"owner": owner}],
-            "Journal owner changed; preserve the new owner",
+            "Journal owner or pending work changed; preserve existing work",
         )
     verified = execute(
-        token, f"SELECT owner,expires>unixepoch() AS active FROM {LEASE} WHERE id=1"
+        token,
+        f"SELECT owner,expires>unixepoch() AS active,{IDLE_JOURNAL} AS idle "
+        f"FROM {LEASE} WHERE id=1",
     )
-    require(verified == [{"owner": owner, "active": 0}], "Journal handoff not verified")
+    require(
+        verified == [{"owner": owner, "active": 0, "idle": 1}],
+        "Journal handoff not verified; preserve existing work",
+    )
 
 
 def handoff():
@@ -202,9 +216,9 @@ def handoff():
         require(
             status.get("mode") == "simulation"
             and status.get("physical_actuation") is False
-            and type(status.get("stopped")) is bool
+            and status.get("stopped") is True
             and status.get("active_task", "missing") is None,
-            "Staging handoff requires an idle simulation; preserve existing work",
+            "Staging handoff requires an already stopped idle simulation; preserve existing work",
         )
         history = api("/api/v1/tasks")["tasks"]
         require(
@@ -226,19 +240,11 @@ def handoff():
         require(
             status.get("mode") == "simulation"
             and status.get("physical_actuation") is False
+            and status.get("stopped") is True
             and status.get("active_task", "missing") is None,
             "Staging runtime changed; preserve existing work",
         )
-        api("/api/v1/stop", {}, csrf)
-        status = api("/api/v1/status")
-        require(
-            status.get("mode") == "simulation"
-            and status.get("physical_actuation") is False
-            and status.get("stopped") is True
-            and status.get("active_task") is None,
-            "Stopped simulation required before handoff",
-        )
-        # Setting an idle stop latch must not cancel proposals or rewrite history.
+        # The handoff never stops or cancels work. Its source must already be latched.
         require(
             digest(api("/api/v1/tasks")["tasks"]) == digest(history),
             "Staging history changed during handoff; preserve and inspect it",

@@ -1,6 +1,7 @@
 """Staging lease transfer must preserve history, credentials and production authority."""
 
 import os
+import sqlite3
 import unittest
 import urllib.error
 import urllib.request
@@ -86,7 +87,7 @@ class HandoffTests(unittest.TestCase):
             if sql.startswith("UPDATE "):
                 self.assertEqual(args, (owner,))
                 return [{"owner": owner}]
-            return [{"owner": owner, "active": 1 if len(calls) == 1 else 0}]
+            return [{"owner": owner, "active": 1 if len(calls) == 1 else 0, "idle": 1}]
 
         handoff.fence_stopped_lease("synthetic-private-token", execute)
         self.assertEqual(len(calls), 3)
@@ -99,7 +100,8 @@ class HandoffTests(unittest.TestCase):
                     "DELETE",
                     "DROP",
                     "TRUNCATE",
-                    "tasks",
+                    "UPDATE robot_simulation_tasks_v1",
+                    "INSERT INTO robot_simulation_tasks_v1",
                     "password",
                     "SET owner",
                 ]
@@ -107,7 +109,7 @@ class HandoffTests(unittest.TestCase):
         )
 
     def test_a_concurrent_owner_change_is_never_overwritten_or_accepted(self):
-        results = [[{"owner": "a" * 32, "active": 1}], []]
+        results = [[{"owner": "a" * 32, "active": 1, "idle": 1}], []]
         with self.assertRaises(Rejected):
             handoff.fence_stopped_lease("synthetic", lambda *_: results.pop(0))
 
@@ -116,10 +118,63 @@ class HandoffTests(unittest.TestCase):
 
         def execute(_token, sql, _args=()):
             calls.append(sql)
-            return [{"owner": "a" * 32, "active": 0}]
+            return [{"owner": "a" * 32, "active": 0, "idle": 1}]
 
         handoff.fence_stopped_lease("synthetic", execute)
         self.assertTrue(all(sql.startswith("SELECT ") for sql in calls))
+
+    def test_an_acknowledged_proposal_appearing_before_atomic_expiry_is_preserved(self):
+        database = sqlite3.connect(":memory:")
+        database.row_factory = sqlite3.Row
+        database.execute(
+            f"CREATE TABLE {handoff.LEASE}(id INTEGER PRIMARY KEY,owner TEXT,expires INTEGER)"
+        )
+        database.execute("CREATE TABLE robot_simulation_tasks_v1(id TEXT,state TEXT)")
+        owner = "a" * 32
+        database.execute(
+            f"INSERT INTO {handoff.LEASE} VALUES(1,?,unixepoch()+30)", (owner,)
+        )
+        statements = []
+
+        def execute(_token, statement, args=()):
+            statements.append(statement)
+            if statement.startswith("UPDATE "):
+                self.assertIn("owner=?", statement)
+                self.assertIn("NOT EXISTS", statement)
+                database.execute(
+                    "INSERT INTO robot_simulation_tasks_v1 VALUES('concurrent-proposal','proposed')"
+                )
+            return [dict(row) for row in database.execute(statement, args)]
+
+        with self.assertRaises(Rejected):
+            handoff.fence_stopped_lease("synthetic", execute)
+        self.assertEqual(
+            database.execute(
+                f"SELECT owner,expires>unixepoch() FROM {handoff.LEASE}"
+            ).fetchone()[:],
+            (owner, 1),
+        )
+        self.assertEqual(
+            database.execute(
+                "SELECT id,state FROM robot_simulation_tasks_v1"
+            ).fetchone()[:],
+            ("concurrent-proposal", "proposed"),
+        )
+        self.assertEqual(len(statements), 2)
+        database.close()
+
+    def test_existing_pending_work_blocks_fencing_before_any_update(self):
+        statements = []
+
+        def execute(_token, statement, _args=()):
+            statements.append(statement)
+            return [{"owner": "a" * 32, "active": 1, "idle": 0}]
+
+        with self.assertRaises(Rejected):
+            handoff.fence_stopped_lease("synthetic", execute)
+        self.assertTrue(
+            all(statement.startswith("SELECT ") for statement in statements)
+        )
 
     def exercise_handoff(self, status, history, pending=0, rechecked=None, after=None):
         service = {
@@ -144,26 +199,28 @@ class HandoffTests(unittest.TestCase):
             "ROBOT_OPERATOR_NAME": "operator",
         }
         calls = []
-        stopped = False
         status_reads = 0
+        history_reads = 0
         queries = []
 
         def read(_opener, request, route):
-            nonlocal stopped, status_reads
+            nonlocal status_reads, history_reads
             calls.append((route, request.get_method()))
             if route == "/api/v1/auth/login":
                 return {"csrf": "synthetic-csrf"}
             if route == "/api/v1/auth/logout":
                 return {"status": "signed_out"}
             if route == "/api/v1/stop":
-                stopped = True
-                return {"status": "stopped"}
+                self.fail("The handoff must never stop existing work")
             if route == "/api/v1/tasks":
-                return {"tasks": after if stopped and after is not None else history}
+                history_reads += 1
+                return {
+                    "tasks": after
+                    if history_reads > 1 and after is not None
+                    else history
+                }
             if route == "/api/v1/status":
                 status_reads += 1
-                if stopped:
-                    return {**status, "stopped": True}
                 return (
                     rechecked if status_reads > 1 and rechecked is not None else status
                 )
@@ -209,7 +266,7 @@ class HandoffTests(unittest.TestCase):
         return {
             "mode": "simulation",
             "physical_actuation": False,
-            "stopped": False,
+            "stopped": True,
             "active_task": None,
         }
 
@@ -219,6 +276,7 @@ class HandoffTests(unittest.TestCase):
             {"physical_actuation": True},
             {"active_task": "existing-active-task"},
             {"stopped": None},
+            {"stopped": False},
         ]:
             with self.subTest(change=change):
                 result, failure, calls, queries, fences = self.exercise_handoff(
@@ -266,7 +324,7 @@ class HandoffTests(unittest.TestCase):
         self.assertEqual(fences, 0)
         self.assertEqual(len(queries), 1)
 
-    def test_idle_unlatched_history_is_unchanged_before_the_lease_is_fenced(self):
+    def test_idle_latched_history_is_unchanged_and_never_stopped_before_fencing(self):
         history = [
             {
                 "id": "existing-completed",
@@ -280,9 +338,13 @@ class HandoffTests(unittest.TestCase):
         self.assertIsNone(failure)
         self.assertTrue(result["history_preserved"])
         self.assertEqual(fences, 1)
-        self.assertEqual(calls.count(("/api/v1/stop", "POST")), 1)
-        self.assertGreater(
-            calls.index(("/api/v1/stop", "POST")), calls.index(("/api/v1/tasks", "GET"))
+        self.assertNotIn(("/api/v1/stop", "POST"), calls)
+        self.assertTrue(
+            all(
+                route in {"/api/v1/auth/login", "/api/v1/auth/logout"}
+                for route, method in calls
+                if method == "POST"
+            )
         )
         self.assertEqual(
             queries,
