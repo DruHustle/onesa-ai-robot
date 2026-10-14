@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import time
 import urllib.error
 import urllib.parse
@@ -14,7 +15,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-from evidence import REPOSITORY, Rejected, digest, require, save, verify_stage
+from evidence import REPOSITORY, GitHub, Rejected, digest, require, save, verify_stage
 from service_runtime import allowed as runtime_allowed
 from service_runtime import kind as runtime_kind
 from service_runtime import verified as runtime_verified
@@ -397,9 +398,11 @@ def receipt(environment, directory, browser):
         base + "/deploys/" + render["deployment_id"], os.environ["RENDER_API_KEY"]
     )
     latest = provider(base + "/deploys?limit=1", os.environ["RENDER_API_KEY"])
+    selected = selected_components(directory, environment)
+    backend_sha = selected["backend_commit"] if selected else os.environ["GITHUB_SHA"]
     require(
         deploy.get("status") == "live"
-        and deploy.get("commit", {}).get("id") == os.environ["GITHUB_SHA"]
+        and deploy.get("commit", {}).get("id") == backend_sha
         and latest
         and latest[0].get("deploy", latest[0]).get("id") == render["deployment_id"],
         "Render exact-candidate verification failed",
@@ -442,6 +445,31 @@ def receipt(environment, directory, browser):
     }
     if suite.get("failure"):
         result["failure"] = suite["failure"]
+    if selected:
+        observed = inspect_backend(environment, backend_sha)
+        before = json.loads((directory / "backend-before" / "private.json").read_text())
+        require(
+            observed["private_context_sha256"] == before["private_context_sha256"],
+            "Retained backend runtime configuration changed during release",
+        )
+        result["component_plan"] = selected
+        result["components"] = {
+            "frontend": {
+                "commit": os.environ["GITHUB_SHA"],
+                "deployment_id": vercel_id,
+            },
+            "backend": {
+                "commit": backend_sha,
+                "deployment_id": render["deployment_id"],
+                "identity_sha256": selected["backend_identity_sha256"],
+                "tested_build": selected["baseline"]["tested_build"],
+                "runtime_context_preserved": True,
+                "runtime_readiness": "PASS",
+                "action": "retained"
+                if environment == "Production"
+                else "restarted-for-preview-origin",
+            },
+        }
     save(result, directory / "record.json")
     if environment == "Staging" and result["status"] == "PASS":
         verify_stage(
@@ -451,6 +479,114 @@ def receipt(environment, directory, browser):
             record["builds"],
         )
     require(result["status"] == "PASS", "Deployment acceptance blocked")
+
+
+def selected_components(directory, environment):
+    """Refresh provenance independently; a local preflight JSON is not authority."""
+    directory = Path(directory)
+    record = json.loads((directory / "preflight" / "record.json").read_text())
+    selected = record.get("component_plan")
+    if not selected:
+        return None
+    import components
+    import evidence as e
+
+    github = GitHub()
+    sha = os.environ["GITHUB_SHA"]
+    if environment == "Staging":
+        actual, run = e.observed_context(github)
+        e.trusted_staging_run(github, run, actual, completed=False)
+        require(
+            run["event"] == "workflow_dispatch"
+            and record["workflow_run_id"] == run["id"]
+            and record["candidate_commit"] == actual
+            and record["valid_for_source_sha256"] == e.source_hash(),
+            "Component staging preflight belongs to another owner run or source",
+        )
+    else:
+        import free_gate
+
+        require(
+            not os.getenv("GITHUB_ACTIONS"),
+            "Component production credentials stay outside repository Actions",
+        )
+        require(
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], cwd=e.ROOT, text=True
+            ).strip()
+            == sha
+            and not subprocess.check_output(
+                ["git", "status", "--porcelain", "--untracked-files=normal"], cwd=e.ROOT
+            ),
+            "Component production requires a clean exact-main checkout",
+        )
+        actor = json.loads(subprocess.check_output(["gh", "api", "user"], text=True))[
+            "login"
+        ]
+        require(actor == e.OWNER, "Component retention requires the external owner")
+        handoff = free_gate.verify(
+            github, sha, os.environ.get("ROBOT_AUTHORIZATION_RUN", "")
+        )
+        qualification_run = github.run(handoff["approval"]["qualification"]["run_id"])
+        qualified, _ = github.artifact(qualification_run, "free-release-qualification")
+        require(
+            record == qualified,
+            "Production component preflight differs from its immutable authorization",
+        )
+    return components.verify(github, sha, selected)
+
+
+def inspect_backend(environment, expected_sha, *, readiness=True):
+    """Read actual live provider identity/readiness, without exposing environment values."""
+    preflight(environment)
+    base = "https://api.render.com/v1/services/" + os.environ["RENDER_SERVICE_ID"]
+    token = os.environ["RENDER_API_KEY"]
+    service = provider(base, token)
+    entries = provider(base + "/env-vars?limit=100", token)
+    values = {entry["envVar"]["key"]: entry["envVar"]["value"] for entry in entries}
+    latest = provider(base + "/deploys?limit=1", token)
+    require(latest, "Retained backend has no provider deployment")
+    deployment = latest[0].get("deploy", latest[0])
+    require(
+        deployment.get("status") == "live"
+        and deployment.get("commit", {}).get("id") == expected_sha,
+        "Actual retained backend source is not its qualified baseline",
+    )
+    url = origin(service["serviceDetails"]["url"], ".onrender.com")
+    from smoke import Simulator, wait_readiness
+
+    if readiness:
+        ready = wait_readiness(Simulator(url))
+        require(
+            ready.get("mode") == "simulation"
+            and ready.get("physical_actuation") is False
+            and ready.get("deployment_environment") == environment.lower(),
+            "Retained backend runtime readiness or environment differs",
+        )
+    # This digest includes credentials solely to detect accidental/concurrent changes.
+    # It stays in a private ephemeral file and is never uploaded/printed in a receipt.
+    context = {
+        "service": {
+            key: service.get(key)
+            for key in [
+                "repo",
+                "branch",
+                "rootDir",
+                "type",
+                "autoDeploy",
+                "autoDeployTrigger",
+            ]
+        },
+        "details": service.get("serviceDetails"),
+        "environment": values,
+    }
+    return {
+        "commit": expected_sha,
+        "deployment_id": deployment["id"],
+        "status": "live",
+        "readiness": "PASS" if readiness else "NOT TESTED",
+        "private_context_sha256": digest(context),
+    }
 
 
 def main():
@@ -463,6 +599,8 @@ def main():
             "bind-preview",
             "operator-origin",
             "receipt",
+            "retain-backend",
+            "component-preflight",
         ],
     )
     parser.add_argument("environment", choices=["Staging", "Production"])
@@ -485,12 +623,58 @@ def main():
             Path(args.directory, "frontend-url.txt").read_text().strip(), ".vercel.app"
         )
         frontend(url, args.environment)
+        selected = selected_components(args.directory, args.environment)
+        if selected:
+            # Verify baseline source and readiness before the isolated origin write.
+            inspect_backend(
+                args.environment, selected["backend_commit"], readiness=False
+            )
         provider(
             "https://api.render.com/v1/services/"
             + service
             + "/env-vars/ROBOT_PUBLIC_ORIGIN",
             os.environ["RENDER_API_KEY"],
             {"value": url},
+        )
+        if selected:
+            # Saved origin changes require a purposeful baseline-source restart.
+            # Capture the saved context after that sole change for post-start comparison.
+            observed = inspect_backend(
+                args.environment, selected["backend_commit"], readiness=False
+            )
+            path = Path(args.directory) / "backend-before" / "private.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(observed))
+            path.chmod(0o600)
+    elif args.mode == "component-preflight":
+        require(
+            args.environment == "Staging",
+            "Pre-origin component inspection is staging-only",
+        )
+        selected = selected_components(args.directory, args.environment)
+        if selected:
+            inspect_backend(args.environment, selected["backend_commit"])
+    elif args.mode == "retain-backend":
+        require(args.environment == "Production", "Production-only component retention")
+        selected = selected_components(args.directory, args.environment)
+        require(selected, "Explicit frontend-only qualification required")
+        observed = inspect_backend(args.environment, selected["backend_commit"])
+        directory = Path(args.directory)
+        path = directory / "backend-before" / "private.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(observed))
+        path.chmod(0o600)
+        (directory / "render.json").write_text(
+            json.dumps(
+                {
+                    "service_id": os.environ["RENDER_SERVICE_ID"],
+                    "deployment_id": observed["deployment_id"],
+                    "commit": observed["commit"],
+                    "status": "live",
+                    "action": "retained",
+                    "verified_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
         )
     elif args.mode == "operator-origin":
         require(

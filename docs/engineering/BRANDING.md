@@ -5,8 +5,8 @@ are preserved independently in this repository:
 
 - `onesa-ai-robot-frontend/public/social/onesa-banner.png`: website/link preview,
   PNG, 1536 × 1024; use Open Graph and Twitter `summary_large_image` metadata.
-- `onesa-ai-robot-frontend/public/brand/onesa-orbit.png`: favicon, PNG, 972 × 882;
-  browsers scale the supplied image. The original screenshot includes the cursor.
+- `onesa-ai-robot-frontend/public/brand/onesa-orbit.png`: original approved PNG,
+  972 × 882, preserved as artwork/provenance. The original screenshot includes the cursor.
 - `onesa-ai-robot-frontend/public/brand/sources.json`: dimensions and SHA-256 provenance.
 
 The public product and authenticated software simulator are implemented. The
@@ -29,6 +29,18 @@ visitor-clock schedule and old stored/selector behavior are superseded. No scrip
 timer or appearance preference is retained. Shared artifact updates require deliberate
 verified adoption and each consumer's independent release.
 
-The owner-supplied favicon bytes remain unchanged. Browser-tab legibility and a
-potential approved square product derivative require separate visual inspection;
-the original non-square image is not claimed to be an optimized multi-size icon set.
+The optimized product-icon family uses the common O traced from the approved source
+geometry, with a circular teal Robot frame. Company, AI and Docs use related distinct
+frames. This is an authorized technical derivative, without asserting a new official
+or registered mark. The original artwork bytes remain unchanged. Versioned provenance
+and exact hashes are in `public/brand/icons/v1/sources.json` and both independent
+consumer manifests; the frontend build verifies every asset before publication.
+
+Both product and console declare a standalone SVG, a real ICO with 16/32/64 frames,
+and a 180px Apple touch icon. PNG exports at 16/32/64 remain available for inspection.
+Local source checks verify actual formats, dimensions, metadata, safe SVG contents
+and hashes; hosted browser checks verify actual asset requests, MIME and bytes.
+Native browser-tab light/dark legibility requires actual chrome captures in the
+restricted evidence register. A headless page screenshot does not attest browser chrome.
+The current production source 1638108 predates this icon followup and uses the original
+PNG; do not claim that new source assets or local checks are already deployed.

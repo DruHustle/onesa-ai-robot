@@ -6,7 +6,21 @@ receipts remain in the restricted release store; local changes are not hosted ac
 
 ## Current deployed baseline and storage
 
-The October 13 production baseline is source
+The October 14 production source is `16381086192dc34c8ad7ea40c43ef6d178b00904`
+at `https://robot.onesa.eu`: Render `dep-db7f3oe7bikc73aldipg` and Vercel
+`dpl_J13jsKeKNGCMqMWbdUV9i45JUcGm`. Exact main CI, fresh hosted staging,
+qualification `38501657824` and owner authorization `38501859388` passed before
+deployment. Actual production API/safety/edge checks are 13/13 PASS. Initial hosted
+browser acceptance is **FAIL: 67/69 passed**, with two Chromium sign-ins returning
+503 Gateway unavailable; Firefox and WebKit each passed all 23. The provider receipt
+remains BLOCKED at the mandatory browser gate. Subsequent bounded readiness samples
+passed, but Render cold wake as the specific cause is not verified. Existing credentials
+and all three earlier history records were retained; the confirmed idle stop latch
+was restored and physical actuation remains disabled. Restricted evidence is in
+`docs/internal/release-audit/evidence/system-design-v2-main-1638108/`; the failed suite
+is retained and a qualified frontend recovery release must pass actual acceptance.
+
+The earlier October 13 recovery baseline is source
 `b0d40c6d2ccab2b1663166ebf311b4a9755ad045` at `https://robot.onesa.eu`. Restricted
 `data/runtime/production-release/hosted-acceptance.json` records all 13 hosted checks
 PASS at 20:03:33 UTC. Render deployment `dep-db78k3a5b2lc73euuvl0`, Vercel deployment
@@ -60,6 +74,46 @@ sign-in shell; its JavaScript contains no private state or credentials, and all
 telemetry/history/control reads require a valid backend operator session. Static shell
 availability does not grant access. Appearance follows OS preference independently.
 Protected status responses supply observation time and trusted deployment environment.
+
+Console sign-in checks credential-free readiness with a 20-second upper bound before
+submitting credentials once. Temporary unavailability retains masked input for an
+explicit retry; successful or rejected authentication clears passwords. These checks
+exist only in the operator shell. Readiness cannot grant authority, and approvals,
+reset, task creation or control commands are never automatically replayed.
+
+## Independent frontend delivery
+
+Full releases remain the default. An owner may explicitly select `release_mode:
+frontend-only` in the existing staging workflow or candidate bridge, with the prior
+`baseline_authorization_run`. The current baseline is owner authorization `38501859388`
+for backend source 1638108. The application packaging choice alone does not enable reuse.
+
+The verifier reads immutable GitHub authorization, qualification, CI/build and staging
+artifacts directly. It rejects stale/superseded/revoked/foreign proofs, incorrect owner
+or branch/event, altered artifacts and chains of retained-component proofs. It derives
+backend tree, Render reference/runtime context, root configuration, generated API/schema,
+hand-owned client contract, ROS and edge identities from exact GitHub commit objects.
+All must be byte-identical and the baseline must be an ancestor. Every new candidate
+still requires exact main CI, fresh hosted staging, new qualification and a new owner
+authorization. No caller-supplied PASS record or substituted repository SHA is accepted.
+
+Staging verifies existing baseline source/readiness before journal handoff, binds only
+the verified new protected Preview origin and purposefully restarts the unchanged
+baseline backend source. Its receipt records the actual baseline backend commit and
+new candidate frontend commit. Production's canonical origin stays fixed: after a
+fresh external gate, set `ROBOT_AUTHORIZATION_RUN` to the new authorization and run
+`cloud.py retain-backend Production --directory <private-release-directory>` from the
+clean reviewed main checkout before the Vercel operation. This command performs no
+provider write; it rederives authorization, verifies actual latest live backend source,
+runtime bindings and readiness, and saves the retained deployment identity.
+
+Preserve the private preflight record from the new trusted qualification. Final receipts
+independently refresh component provenance and actual provider source/readiness, compare
+the release's complete runtime configuration privately, and record both actual component
+versions and prior backend build/authorization provenance. Credential digests remain in
+ephemeral private files, never in Git, printed logs or uploaded receipt artifacts. The
+retained backend must not be redeployed for icons/CSS. Missing/expired baseline proof or
+backend/contract drift blocks this mode; never pass a false SHA to smoke or receipt checks.
 
 Route `/api/v1/:__onesa_route*` to `api/gateway.mjs`. The adapter removes only one
 metadata value matching the original nested API path; reject extra, duplicate or

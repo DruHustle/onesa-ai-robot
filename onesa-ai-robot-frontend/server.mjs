@@ -38,10 +38,12 @@ export async function handler(req, res) {
     }
     if (!['GET','HEAD'].includes(req.method)) {res.writeHead(405).end();return;}
     const files = new Map([['/','index.html'],['/index.html','index.html'],['/console','console.html'],['/console/','console.html'],['/console.html','console.html'],['/onesa-foundation.css','onesa-foundation.css'],['/theme.css','theme.css'],['/app.js','app.js'],['/client.js','client.js'],['/brand/onesa-orbit.png','brand/onesa-orbit.png'],['/robots.txt','robots.txt']]);
+    files.set('/favicon.ico','favicon.ico');
+    for(const file of ['onesa-robot.svg','onesa-robot.ico','onesa-robot-16.png','onesa-robot-32.png','onesa-robot-64.png','onesa-robot-180.png'])files.set('/brand/icons/v1/'+file,'brand/icons/v1/'+file);
     const file = files.get(url.pathname);
     if (!file) {res.writeHead(404).end();return;}
     const body=await readFile(resolve(root,file));
-    const type={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.txt':'text/plain; charset=utf-8'}[extname(file)];
+    const type={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.txt':'text/plain; charset=utf-8','.svg':'image/svg+xml','.ico':'image/vnd.microsoft.icon'}[extname(file)];
     res.setHeader('Content-Type',type);res.setHeader('Cache-Control','no-cache');
     res.writeHead(200).end(req.method==='HEAD'?undefined:body);
   } catch {if (!res.headersSent) res.writeHead(503,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end('{"detail":"Gateway unavailable"}');}
