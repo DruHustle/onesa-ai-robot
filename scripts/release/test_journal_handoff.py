@@ -1,7 +1,7 @@
 """Staging lease transfer must preserve history, credentials and production authority."""
 
-import json
 import os
+import sqlite3
 import unittest
 import urllib.error
 import urllib.request
@@ -87,7 +87,7 @@ class HandoffTests(unittest.TestCase):
             if sql.startswith("UPDATE "):
                 self.assertEqual(args, (owner,))
                 return [{"owner": owner}]
-            return [{"owner": owner, "active": 1 if len(calls) == 1 else 0}]
+            return [{"owner": owner, "active": 1 if len(calls) == 1 else 0, "idle": 1}]
 
         handoff.fence_stopped_lease("synthetic-private-token", execute)
         self.assertEqual(len(calls), 3)
@@ -100,7 +100,8 @@ class HandoffTests(unittest.TestCase):
                     "DELETE",
                     "DROP",
                     "TRUNCATE",
-                    "tasks",
+                    "UPDATE robot_simulation_tasks_v1",
+                    "INSERT INTO robot_simulation_tasks_v1",
                     "password",
                     "SET owner",
                 ]
@@ -108,7 +109,7 @@ class HandoffTests(unittest.TestCase):
         )
 
     def test_a_concurrent_owner_change_is_never_overwritten_or_accepted(self):
-        results = [[{"owner": "a" * 32, "active": 1}], []]
+        results = [[{"owner": "a" * 32, "active": 1, "idle": 1}], []]
         with self.assertRaises(Rejected):
             handoff.fence_stopped_lease("synthetic", lambda *_: results.pop(0))
 
@@ -117,12 +118,65 @@ class HandoffTests(unittest.TestCase):
 
         def execute(_token, sql, _args=()):
             calls.append(sql)
-            return [{"owner": "a" * 32, "active": 0}]
+            return [{"owner": "a" * 32, "active": 0, "idle": 1}]
 
         handoff.fence_stopped_lease("synthetic", execute)
         self.assertTrue(all(sql.startswith("SELECT ") for sql in calls))
 
-    def test_active_or_physical_simulation_cannot_expire_the_lease(self):
+    def test_an_acknowledged_proposal_appearing_before_atomic_expiry_is_preserved(self):
+        database = sqlite3.connect(":memory:")
+        database.row_factory = sqlite3.Row
+        database.execute(
+            f"CREATE TABLE {handoff.LEASE}(id INTEGER PRIMARY KEY,owner TEXT,expires INTEGER)"
+        )
+        database.execute("CREATE TABLE robot_simulation_tasks_v1(id TEXT,state TEXT)")
+        owner = "a" * 32
+        database.execute(
+            f"INSERT INTO {handoff.LEASE} VALUES(1,?,unixepoch()+30)", (owner,)
+        )
+        statements = []
+
+        def execute(_token, statement, args=()):
+            statements.append(statement)
+            if statement.startswith("UPDATE "):
+                self.assertIn("owner=?", statement)
+                self.assertIn("NOT EXISTS", statement)
+                database.execute(
+                    "INSERT INTO robot_simulation_tasks_v1 VALUES('concurrent-proposal','proposed')"
+                )
+            return [dict(row) for row in database.execute(statement, args)]
+
+        with self.assertRaises(Rejected):
+            handoff.fence_stopped_lease("synthetic", execute)
+        self.assertEqual(
+            database.execute(
+                f"SELECT owner,expires>unixepoch() FROM {handoff.LEASE}"
+            ).fetchone()[:],
+            (owner, 1),
+        )
+        self.assertEqual(
+            database.execute(
+                "SELECT id,state FROM robot_simulation_tasks_v1"
+            ).fetchone()[:],
+            ("concurrent-proposal", "proposed"),
+        )
+        self.assertEqual(len(statements), 2)
+        database.close()
+
+    def test_existing_pending_work_blocks_fencing_before_any_update(self):
+        statements = []
+
+        def execute(_token, statement, _args=()):
+            statements.append(statement)
+            return [{"owner": "a" * 32, "active": 1, "idle": 0}]
+
+        with self.assertRaises(Rejected):
+            handoff.fence_stopped_lease("synthetic", execute)
+        self.assertTrue(
+            all(statement.startswith("SELECT ") for statement in statements)
+        )
+
+    def exercise_handoff(self, status, history, pending=0, rechecked=None, after=None):
         service = {
             "id": SERVICE,
             "repo": "https://github.com/" + REPOSITORY,
@@ -144,68 +198,171 @@ class HandoffTests(unittest.TestCase):
             "ROBOT_PUBLIC_ORIGIN": "https://synthetic.vercel.app",
             "ROBOT_OPERATOR_NAME": "operator",
         }
+        calls = []
+        status_reads = 0
+        history_reads = 0
+        queries = []
 
-        class Response:
-            status = 200
+        def read(_opener, request, route):
+            nonlocal status_reads, history_reads
+            calls.append((route, request.get_method()))
+            if route == "/api/v1/auth/login":
+                return {"csrf": "synthetic-csrf"}
+            if route == "/api/v1/auth/logout":
+                return {"status": "signed_out"}
+            if route == "/api/v1/stop":
+                self.fail("The handoff must never stop existing work")
+            if route == "/api/v1/tasks":
+                history_reads += 1
+                return {
+                    "tasks": after
+                    if history_reads > 1 and after is not None
+                    else history
+                }
+            if route == "/api/v1/status":
+                status_reads += 1
+                return (
+                    rechecked if status_reads > 1 and rechecked is not None else status
+                )
+            self.fail("Unexpected handoff request")
 
-            def __init__(self, value):
-                self.value = value
+        def sql(token, statement, args=()):
+            self.assertEqual(token, "synthetic-private-token")
+            self.assertEqual(args, ())
+            queries.append(statement)
+            return [{"pending": pending}]
 
-            def __enter__(self):
-                return self
+        failure = None
+        result = None
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    **self.context(),
+                    "ROBOT_TEST_PASSWORD": "synthetic-private-password",
+                    "ROBOT_TEST_OPERATOR": "operator",
+                },
+                clear=True,
+            ),
+            patch.object(
+                handoff,
+                "provider",
+                side_effect=[
+                    service,
+                    [{"envVar": {"key": k, "value": v}} for k, v in settings.items()],
+                ],
+            ),
+            patch.object(handoff, "read_api", side_effect=read),
+            patch.object(handoff, "sql_call", side_effect=sql),
+            patch.object(handoff, "fence_stopped_lease") as expire,
+        ):
+            try:
+                result = handoff.handoff()
+            except Rejected as error:
+                failure = str(error)
+        return result, failure, calls, queries, expire.call_count
 
-            def __exit__(self, *_):
-                pass
+    def idle(self):
+        return {
+            "mode": "simulation",
+            "physical_actuation": False,
+            "stopped": True,
+            "active_task": None,
+        }
 
-            def read(self, _limit):
-                return json.dumps(self.value).encode()
-
-        for invalid in [
-            {"stopped": False},
+    def test_active_or_unsafe_runtime_fails_before_stop_or_lease_access(self):
+        for change in [
+            {"mode": "physical"},
             {"physical_actuation": True},
-            {"active_task": "running-synthetic-task"},
+            {"active_task": "existing-active-task"},
+            {"stopped": None},
+            {"stopped": False},
         ]:
-            status = {
-                "mode": "simulation",
-                "physical_actuation": False,
-                "stopped": True,
-                "active_task": None,
-                **invalid,
+            with self.subTest(change=change):
+                result, failure, calls, queries, fences = self.exercise_handoff(
+                    {**self.idle(), **change}, []
+                )
+                self.assertIsNone(result)
+                self.assertIn("preserve existing work", failure)
+                self.assertNotIn(("/api/v1/stop", "POST"), calls)
+                self.assertEqual(queries, [])
+                self.assertEqual(fences, 0)
+                self.assertIn(("/api/v1/auth/logout", "POST"), calls)
+
+    def test_proposed_running_and_hidden_pending_history_are_preserved(self):
+        for history, pending in [
+            ([{"id": "existing-proposal", "state": "proposed"}], 0),
+            ([{"id": "existing-running", "state": "running"}], 0),
+            ([{"id": "recent-completed", "state": "completed"}], 1),
+        ]:
+            with self.subTest(history=history, pending=pending):
+                result, failure, calls, queries, fences = self.exercise_handoff(
+                    self.idle(), history, pending
+                )
+                self.assertIsNone(result)
+                self.assertIn("preserv", failure)
+                self.assertNotIn(("/api/v1/stop", "POST"), calls)
+                self.assertEqual(fences, 0)
+                self.assertTrue(all(query.startswith("SELECT ") for query in queries))
+                self.assertTrue(
+                    all(
+                        route in {"/api/v1/auth/login", "/api/v1/auth/logout"}
+                        for route, method in calls
+                        if method == "POST"
+                    )
+                )
+
+    def test_a_new_active_task_during_idle_readback_is_never_stopped(self):
+        result, failure, calls, queries, fences = self.exercise_handoff(
+            self.idle(),
+            [],
+            rechecked={**self.idle(), "active_task": "new-existing-task"},
+        )
+        self.assertIsNone(result)
+        self.assertIn("preserve existing work", failure)
+        self.assertNotIn(("/api/v1/stop", "POST"), calls)
+        self.assertEqual(fences, 0)
+        self.assertEqual(len(queries), 1)
+
+    def test_idle_latched_history_is_unchanged_and_never_stopped_before_fencing(self):
+        history = [
+            {
+                "id": "existing-completed",
+                "state": "completed",
+                "reason": "target_reached",
             }
-            results = [
-                Response({"csrf": "synthetic-csrf"}),
-                Response({"status": "stopped"}),
-                Response(status),
-                Response({"status": "signed_out"}),
-            ]
-            with (
-                patch.dict(
-                    os.environ,
-                    {
-                        **self.context(),
-                        "ROBOT_TEST_PASSWORD": "synthetic-private-password",
-                        "ROBOT_TEST_OPERATOR": "operator",
-                    },
-                    clear=True,
-                ),
-                patch.object(
-                    handoff,
-                    "provider",
-                    side_effect=[
-                        service,
-                        [
-                            {"envVar": {"key": k, "value": v}}
-                            for k, v in settings.items()
-                        ],
-                    ],
-                ),
-                patch.object(handoff.urllib.request, "build_opener") as opener,
-                patch.object(handoff, "fence_stopped_lease") as expire,
-                self.assertRaises(Rejected),
-            ):
-                opener.return_value.open.side_effect = results
-                handoff.handoff()
-            expire.assert_not_called()
+        ]
+        result, failure, calls, queries, fences = self.exercise_handoff(
+            self.idle(), history
+        )
+        self.assertIsNone(failure)
+        self.assertTrue(result["history_preserved"])
+        self.assertEqual(fences, 1)
+        self.assertNotIn(("/api/v1/stop", "POST"), calls)
+        self.assertTrue(
+            all(
+                route in {"/api/v1/auth/login", "/api/v1/auth/logout"}
+                for route, method in calls
+                if method == "POST"
+            )
+        )
+        self.assertEqual(
+            queries,
+            [
+                "SELECT count(*) AS pending FROM robot_simulation_tasks_v1 WHERE state IN ('running','proposed')"
+            ],
+        )
+
+    def test_changed_history_cannot_be_fenced_or_rewritten_to_pass(self):
+        history = [{"id": "existing-completed", "state": "completed"}]
+        result, failure, calls, queries, fences = self.exercise_handoff(
+            self.idle(), history, after=[{"id": "unexpected", "state": "cancelled"}]
+        )
+        self.assertIsNone(result)
+        self.assertIn("history changed", failure)
+        self.assertEqual(fences, 0)
+        self.assertTrue(all(query.startswith("SELECT ") for query in queries))
+        self.assertIn(("/api/v1/auth/logout", "POST"), calls)
 
 
 if __name__ == "__main__":

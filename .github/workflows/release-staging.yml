@@ -1,7 +1,24 @@
 name: Robot staging deployment
 'on': # zizmor: ignore[dangerous-triggers] -- Exact owner main SHA; CI and artifact provenance checked before use; see CI_CD_PIPELINE_REPORT.md
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      release_mode:
+        description: Full release or explicit frontend-only delivery retaining a qualified backend
+        type: choice
+        options: [full, frontend-only]
+        default: full
+      baseline_authorization_run:
+        description: Prior immutable owner authorization run; required only for frontend-only
+        type: string
+        required: false
   workflow_call:
+    inputs:
+      release_mode:
+        type: string
+        default: full
+      baseline_authorization_run:
+        type: string
+        default: ''
     secrets:
       STAGING_RENDER_API_KEY:
         required: true
@@ -46,6 +63,8 @@ jobs:
     - name: Validate exact candidate evidence
       env:
         GH_TOKEN: ${{ github.token }}
+        ROBOT_RELEASE_MODE: ${{ inputs.release_mode || 'full' }}
+        ROBOT_BASELINE_AUTHORIZATION_RUN: ${{ inputs.baseline_authorization_run }}
       run: python3 scripts/release/evidence.py stage-preflight --output "$RUNNER_TEMP/robot-release/preflight/record.json"
     - name: Verify isolated provider targets
       env:
@@ -83,6 +102,20 @@ jobs:
         ROBOT_TEST_OPERATOR: ${{ vars.STAGING_ROBOT_TEST_OPERATOR || 'operator' }}
         VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
       run: python3 scripts/release/cloud.py resolve-preview Staging --directory "$RUNNER_TEMP/robot-release"
+    - name: Verify retained baseline source and readiness before staging handoff
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
+        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        ROBOT_STORAGE_MODE: ${{ vars.STAGING_ROBOT_STORAGE_MODE || 'ephemeral-simulation' }}
+        ROBOT_TURSO_DATABASE_URL: ${{ vars.STAGING_ROBOT_TURSO_DATABASE_URL }}
+        ROBOT_API_URL: ${{ vars.STAGING_ROBOT_API_URL || 'https://onesa-ai-robot-backend-staging.onrender.com' }}
+        ROBOT_TEST_OPERATOR: ${{ vars.STAGING_ROBOT_TEST_OPERATOR || 'operator' }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+      run: python3 scripts/release/cloud.py component-preflight Staging --directory "$RUNNER_TEMP/robot-release"
     - name: Stop and fence the existing synthetic staging journal
       env:
         RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
@@ -110,7 +143,16 @@ jobs:
       env:
         RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
         RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
-      run: RENDER_RECEIPT_PATH="$RUNNER_TEMP/robot-release/render.json" python3 scripts/deploy_render.py
+        GH_TOKEN: ${{ github.token }}
+        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        ROBOT_STORAGE_MODE: ${{ vars.STAGING_ROBOT_STORAGE_MODE || 'ephemeral-simulation' }}
+        ROBOT_TURSO_DATABASE_URL: ${{ vars.STAGING_ROBOT_TURSO_DATABASE_URL }}
+        ROBOT_API_URL: ${{ vars.STAGING_ROBOT_API_URL || 'https://onesa-ai-robot-backend-staging.onrender.com' }}
+        ROBOT_TEST_OPERATOR: ${{ vars.STAGING_ROBOT_TEST_OPERATOR || 'operator' }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
+      run: RENDER_RECEIPT_PATH="$RUNNER_TEMP/robot-release/render.json" python3 scripts/deploy_render.py --preflight "$RUNNER_TEMP/robot-release/preflight/record.json"
     - name: Synthetic API and safety acceptance
       env:
         ROBOT_EDGE_TOKEN: ${{ secrets.STAGING_ROBOT_EDGE_TOKEN }}
@@ -164,7 +206,7 @@ jobs:
         if-no-files-found: error
     - name: Remove private provider files
       if: always()
-      run: rm -rf -- "$GITHUB_WORKSPACE/.vercel" "$RUNNER_TEMP/reviewed-build" "$RUNNER_TEMP/robot-release/verified-edge-fixture.json"
+      run: rm -rf -- "$GITHUB_WORKSPACE/.vercel" "$RUNNER_TEMP/reviewed-build" "$RUNNER_TEMP/robot-release/verified-edge-fixture.json" "$RUNNER_TEMP/robot-release/backend-before"
   deploy-environment:
     # Optional verified public-environment binding; private Free always uses repository secrets.
     if: (vars.STAGING_SECRET_SCOPE == 'environment' && github.event.repository.private == false) && (github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/staging') || (github.event_name == 'workflow_run' && github.event.repository.private == true && vars.STAGING_AUTOMATION_ENABLED == 'true' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.head_sha == github.sha && github.event.workflow_run.conclusion == 'success')))

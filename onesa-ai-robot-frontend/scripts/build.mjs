@@ -5,10 +5,16 @@ const pages=await Promise.all(['index.html','console.html'].map(file=>readFile('
 const html=pages.join('\n');
 const company=JSON.parse(await readFile('public/company.json','utf8'));
 for(const name of ['legalName','address','email','telephone','mailHref','telephoneHref'])if(typeof company[name]!=='string'||!html.includes(company[name]))throw new Error('Company footer differs from the approved snapshot: '+name);
-for(const asset of ['app.js','onesa-foundation.css','theme.css','brand/onesa-orbit.png']){await readFile('public/'+asset);if(!html.includes('/'+asset))throw new Error('Missing linked asset: '+asset);}
+for(const asset of ['app.js','onesa-foundation.css','theme.css','favicon.ico','brand/icons/v1/onesa-robot.svg','brand/icons/v1/onesa-robot-180.png']){await readFile('public/'+asset);if(!html.includes('/'+asset))throw new Error('Missing linked asset: '+asset);}
 const manifest=JSON.parse(await readFile('design-system.consumer.json','utf8'));
 const {createHash}=await import('node:crypto');
 if(createHash('sha256').update(await readFile('public/onesa-foundation.css')).digest('hex')!==manifest.sha256)throw new Error('Shared foundation differs from pinned owner artifact');
+const iconManifest=await readFile('public/brand/icons/v1/sources.json');
+if(createHash('sha256').update(iconManifest).digest('hex')!==manifest.icons.local_manifest_sha256)throw new Error('Product icon provenance differs from reviewed consumer');
+const iconSource=JSON.parse(iconManifest);
+if(iconSource.sourceSha256!==manifest.icons.source_artwork_sha256)throw new Error('Product icon artwork provenance differs');
+for(const file of iconSource.products[0].files)if(createHash('sha256').update(await readFile('public/brand/icons/v1/'+file.name)).digest('hex')!==file.sha256)throw new Error('Product icon bytes differ from provenance');
+if(createHash('sha256').update(await readFile('public/favicon.ico')).digest('hex')!==iconSource.products[0].files.find(file=>file.name.endsWith('.ico')).sha256)throw new Error('Root favicon differs from Robot product icon');
 const compile=spawnSync(process.execPath,['node_modules/typescript/bin/tsc','--noEmit','false','--outDir','dist-types'],{stdio:'inherit'});if(compile.status)process.exit(compile.status);
 await cp('dist-types/client.js','public/client.js');
 await rm('dist',{recursive:true,force:true});await mkdir('dist',{recursive:true});await cp('public','dist',{recursive:true});

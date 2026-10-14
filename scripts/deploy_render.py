@@ -1,8 +1,10 @@
 """Deploy an exact Git commit to Render and wait for its result; never log secrets."""
 
+import argparse
 import json
 import os
 import re
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -34,6 +36,9 @@ def request(path, token, payload=None):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--preflight")
+    args = parser.parse_args()
     token = os.environ.get("RENDER_API_KEY", "")
     service = os.environ.get("RENDER_SERVICE_ID", "")
     sha = os.environ.get("GITHUB_SHA", "")
@@ -43,6 +48,17 @@ def main():
         )
     if not re.fullmatch(r"[a-f0-9]{40}", sha):
         raise SystemExit("Deployment requires an exact GitHub commit SHA")
+    if args.preflight:
+        record = json.loads(Path(args.preflight).read_text())
+        if record.get("component_plan"):
+            sys.path.insert(0, str(Path(__file__).resolve().parent / "release"))
+            import cloud
+
+            selected = cloud.selected_components(
+                Path(args.preflight).parent.parent, "Staging"
+            )
+            cloud.preflight("Staging")
+            sha = selected["backend_commit"]
     deployment = request(
         f"services/{service}/deploys",
         token,

@@ -41,6 +41,14 @@ remain compatible during separate rollouts. Production promotion, remote pushes 
 visibility changes require explicit authorization. See `docs/engineering/DEPLOYMENT.md`. Actual protection status and activation prerequisites are recorded in
 `docs/development/BRANCH_PROTECTION_REPORT.md`; reverify remote enforcement after visibility changes.
 
+For frontend-only delivery use the existing explicit owner-selected component mode,
+with independently derived prior immutable backend authorization/build/source proof.
+Do not redeploy an unchanged qualified production backend for CSS/icons. Exact new
+main CI, fresh hosted staging, qualification and a new owner authorization remain
+mandatory. Record actual component commits; never substitute a false repository SHA,
+accept caller-supplied PASS, weaken expiry or chain retained-component proofs. Keep
+private runtime digests out of Git, artifact receipts and logs.
+
 ## Security policy
 
 Supported software: the latest reviewed revision of `main`; no historical release

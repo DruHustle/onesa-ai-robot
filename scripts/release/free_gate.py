@@ -81,7 +81,7 @@ def qualification(github, sha, run, staging_run):
         e.verify_stage(stage, sha, fingerprint, builds) == "PASS",
         "Staging qualification missing",
     )
-    return {
+    result = {
         "schema_version": 1,
         "repository": e.REPOSITORY,
         "candidate_commit": sha,
@@ -112,6 +112,11 @@ def qualification(github, sha, run, staging_run):
         "scope": "cloud-software-only",
         "physical_hardware_authorized": False,
     }
+    if stage.get("component_plan"):
+        from components import verify
+
+        result["component_plan"] = verify(github, sha, stage["component_plan"])
+    return result
 
 
 def live_qualification(github, sha, identifier):

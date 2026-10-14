@@ -1,5 +1,7 @@
 import {test,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
 test.afterEach(async({page,baseURL})=>{await page.unrouteAll({behavior:'ignoreErrors'});const me=await page.request.get('/api/v1/auth/me');if(me.ok()){const session=await me.json();await page.request.post('/api/v1/auth/logout',{headers:{Origin:baseURL,'X-CSRF-Token':session.csrf},data:{}});}});
 for(const [hour,mode] of [[20,'light'],[12,'dark']]) for(const width of [320,390,768,1024,1440]) test(`simulation ${mode} flows and accessibility at ${width}`,async({page})=>{
  await page.addInitScript(hour=>{Date.prototype.getHours=()=>hour;},hour);
@@ -12,7 +14,7 @@ for(const [hour,mode] of [[20,'light'],[12,'dark']]) for(const width of [320,390
  await page.keyboard.press('Tab');
  await expect(page.getByRole('link',{name:'Skip to content'})).toBeFocused();
  await page.getByLabel('Operator name').fill(process.env.ROBOT_TEST_OPERATOR || 'operator');await page.getByLabel('Password',{exact:true}).fill((process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only'));await page.getByRole('button',{name:'Sign in',exact:true}).click();
- await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible();for(let navigation=0;navigation<3;navigation++){await page.reload();await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible();}
+ await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible({timeout:25000});for(let navigation=0;navigation<3;navigation++){await page.reload();await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible();}
  await page.getByLabel('Confirm password to reset').fill((process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only'));await page.getByRole('button',{name:'Reset simulation stop'}).click();
  await expect(page.locator('#stop-state')).toContainText('Ready');
  await page.getByRole('button',{name:'Create proposal'}).click();await expect(page.locator('#approval-form')).toBeVisible();await expect(page.locator('#proposed-id')).toContainText(/[a-f0-9-]{36}/);const taskId=await page.locator('#proposed-id').textContent();await page.getByLabel('Confirm operator password',{exact:true}).fill((process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only'));await page.getByRole('button',{name:'Approve simulation task'}).click();
@@ -56,7 +58,40 @@ test('system preference change preserves a proposal draft, focus and simulation 
  const target=page.getByLabel('Target position');await target.fill('0.08');await target.focus();await page.emulateMedia({colorScheme:'dark'});await expect(target).toHaveValue('0.08');await expect(target).toBeFocused();await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible();
  await page.getByRole('button',{name:'Create proposal'}).click();await expect(page.locator('#proposed-id')).toContainText(/[a-f0-9-]{36}/);const taskId=await page.locator('#proposed-id').textContent();await page.getByLabel('Confirm operator password',{exact:true}).fill(process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only');await page.getByRole('button',{name:'Approve simulation task'}).click();await expect(page.locator('#notice')).toContainText('Simulation running');
  const mutations=[];page.on('request',request=>{if(request.method()==='POST'&&!request.url().endsWith('/heartbeat'))mutations.push(new URL(request.url()).pathname);});await page.emulateMedia({colorScheme:'light'});await expect(page.locator('#history li').filter({hasText:taskId})).toContainText('completed',{timeout:6000});expect(mutations).toEqual([]);await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible();
+ // This owner-coordinated synthetic fixture restores only its own completed scenario.
+ // Recent-history snapshots do not certify arbitrary concurrent operator activity.
+ const state=await(await page.request.get('/api/v1/status')).json();const history=(await(await page.request.get('/api/v1/tasks')).json()).tasks;
+ expect(state.mode).toBe('simulation');expect(state.physical_actuation).toBe(false);expect(state.active_task).toBe(null);expect(history.find(task=>task.id===taskId)?.state).toBe('completed');expect(history.filter(task=>['running','proposed'].includes(task.state))).toEqual([]);
+ await page.getByRole('button',{name:'Stop simulation',exact:true}).click();await expect(page.locator('#stop-state')).toContainText('Stopped');expect((await(await page.request.get('/api/v1/tasks')).json()).tasks).toEqual(history);
 });
 test('forced colors and reduced motion keep operator navigation and focus accessible',async({page})=>{
  await page.emulateMedia({forcedColors:'active',reducedMotion:'reduce',colorScheme:'dark'});await page.goto('/console');await page.keyboard.press('Tab');await expect(page.getByRole('link',{name:'Skip to content'})).toBeFocused();await expect(page.getByLabel('Operator name')).toBeVisible();expect(await page.evaluate(()=>getComputedStyle(document.querySelector('.skip')).outlineStyle)).not.toBe('none');
+});
+test('readiness recovery sends credentials once and never starts a task',async({page})=>{
+ let readiness=0,logins=0;const mutations=[];
+ await page.route('**/api/v1/ready',async route=>{readiness++;if(readiness<=2)await route.fulfill({status:503,contentType:'application/json',body:'{"detail":"Gateway unavailable"}'});else await route.continue();});
+ page.on('request',request=>{if(request.method()==='POST'){const path=new URL(request.url()).pathname;if(path.endsWith('/auth/login'))logins++;else if(!path.endsWith('/heartbeat'))mutations.push(path);}});
+ await page.goto('/console');await page.getByLabel('Operator name').fill(process.env.ROBOT_TEST_OPERATOR||'operator');await page.getByLabel('Password',{exact:true}).fill(process.env.ROBOT_TEST_PASSWORD||'browser-test-operator-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();
+ await expect(page.locator('#notice')).toContainText('Checking simulator readiness');await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible({timeout:25000});expect(readiness).toBeGreaterThanOrEqual(3);expect(logins).toBe(1);expect(mutations).toEqual([]);await expect(page.getByLabel('Password',{exact:true})).toHaveValue('');
+});
+test('unavailable sign in retains masked input for an explicit retry without replay',async({page})=>{
+ test.setTimeout(45000);let logins=0;
+ const password=process.env.ROBOT_TEST_PASSWORD||'browser-test-operator-only';
+ await page.route('**/api/v1/ready',route=>route.fulfill({status:503,contentType:'application/json',body:'{"detail":"Gateway unavailable"}'}));
+ page.on('request',request=>{if(request.method()==='POST'&&request.url().endsWith('/auth/login'))logins++;});
+ await page.goto('/console');await page.getByLabel('Operator name').fill(process.env.ROBOT_TEST_OPERATOR||'operator');await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Sign in',exact:true}).click();
+ await expect(page.locator('#notice')).toContainText('Your sign-in entries are retained',{timeout:25000});expect(logins).toBe(0);expect(await page.getByLabel('Password',{exact:true}).inputValue()===password).toBe(true);await expect(page.getByLabel('Password',{exact:true})).toHaveAttribute('type','password');await expect(page.getByRole('button',{name:'Sign in',exact:true})).toBeEnabled();
+ await page.unroute('**/api/v1/ready');await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible({timeout:25000});expect(logins).toBe(1);
+});
+test('a failed credential submission needs a manual retry and preserves masked input',async({page})=>{
+ let logins=0;const password=process.env.ROBOT_TEST_PASSWORD||'browser-test-operator-only';
+ await page.route('**/api/v1/auth/login',async route=>{logins++;if(logins===1)await route.fulfill({status:503,contentType:'application/json',body:'{"detail":"Gateway unavailable"}'});else await route.continue();});
+ await page.goto('/console');await page.getByLabel('Operator name').fill(process.env.ROBOT_TEST_OPERATOR||'operator');await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.locator('#notice')).toContainText('select Sign in again');expect(logins).toBe(1);expect(await page.getByLabel('Password',{exact:true}).inputValue()===password).toBe(true);
+ await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible({timeout:25000});expect(logins).toBe(2);
+});
+test('actual public and console icon requests match their declared MIME and approved bytes',async({page})=>{
+ const provenance=JSON.parse(await readFile(new URL('../../public/brand/icons/v1/sources.json',import.meta.url),'utf8'));
+ for(const route of ['/','/console']){await page.goto(route);const icons=await page.locator('link[rel="icon"],link[rel="apple-touch-icon"]').evaluateAll(nodes=>nodes.map(node=>({href:node.getAttribute('href'),type:node.getAttribute('type')})));expect(icons).toHaveLength(3);
+  for(const icon of icons){const response=await page.request.get(icon.href);expect(response.status()).toBe(200);const type=response.headers()['content-type'];const bytes=await response.body();const name=icon.href==='/favicon.ico'?'onesa-robot.ico':icon.href.split('/').pop();const expected=provenance.products[0].files.find(file=>file.name===name);expect(createHash('sha256').update(bytes).digest('hex')).toBe(expected.sha256);expect(type.split(';')[0]).toMatch(name.endsWith('.svg')?/^image\/svg\+xml$/:name.endsWith('.ico')?/^image\/(?:vnd.microsoft.icon|x-icon)$/:/^image\/png$/);}
+ }
 });

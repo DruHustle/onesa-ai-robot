@@ -40,10 +40,21 @@ def live(record, environment):
     latest = provider(base + "/deploys?limit=1", os.environ["RENDER_API_KEY"])
     require(latest, "No live deployment")
     deployment = latest[0].get("deploy", latest[0])
+    backend_sha = os.environ["GITHUB_SHA"]
+    if record.get("component_plan"):
+        from components import verify
+
+        selected = verify(GitHub(), backend_sha, record["component_plan"])
+        backend_sha = selected["backend_commit"]
+        require(
+            record["components"]["backend"]["commit"] == backend_sha
+            and record["components"]["frontend"]["commit"] == os.environ["GITHUB_SHA"],
+            "Observed component versions differ",
+        )
     require(
         deployment.get("id") == record["render_deployment_id"]
         and deployment.get("status") == "live"
-        and deployment.get("commit", {}).get("id") == os.environ["GITHUB_SHA"],
+        and deployment.get("commit", {}).get("id") == backend_sha,
         "Backend replaced/failed",
     )
     service = provider(base, os.environ["RENDER_API_KEY"])
