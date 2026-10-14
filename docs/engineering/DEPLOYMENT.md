@@ -125,8 +125,12 @@ must never be forwarded to Render. Check real Vercel nested artifacts and hosted
 
 1. Resolve the exact-source protected Preview and inspect the existing running origin.
 2. Authenticate the existing synthetic test operator using its approved private test
-   credential. Stop the simulator, drain task history and fence only the observed
-   staging journal lease. Preserve records, credentials and production.
+   credential. Before stopping, verify simulation mode, disabled physical actuation,
+   no active task, no running/proposed recent history and zero pending rows across the
+   complete existing staging journal. Preserve unknown work and coordinate its owner
+   if any check fails. Recheck the idle runtime, set its stop latch, verify unchanged
+   history and fence only the observed staging journal lease. Preserve credentials
+   and production; never cancel preexisting work to make a release pass.
 3. Save the new verified Preview origin, then deploy the exact qualified source. Saved
    Render environment changes do not attest the running configuration. If an earlier
    attempt changed saved origin prematurely, reconcile only staging to a verified

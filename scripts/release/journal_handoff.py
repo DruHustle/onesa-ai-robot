@@ -8,7 +8,7 @@ import urllib.error
 import urllib.request
 
 from cloud import NoRedirect, origin, provider
-from evidence import REPOSITORY, Rejected, require
+from evidence import REPOSITORY, Rejected, digest, require
 from staging_configuration import API, SERVICE, TURSO, target
 
 LEASE = "robot_simulation_lease_v1"
@@ -198,6 +198,37 @@ def handoff():
     login = api("/api/v1/auth/login", {"name": name, "password": password})
     csrf = login["csrf"]
     try:
+        status = api("/api/v1/status")
+        require(
+            status.get("mode") == "simulation"
+            and status.get("physical_actuation") is False
+            and type(status.get("stopped")) is bool
+            and status.get("active_task", "missing") is None,
+            "Staging handoff requires an idle simulation; preserve existing work",
+        )
+        history = api("/api/v1/tasks")["tasks"]
+        require(
+            all(task["state"] not in {"running", "proposed"} for task in history),
+            "Staging handoff preserves pending history; coordinate existing work",
+        )
+        # The protected recent-history view intentionally returns only 50 rows.
+        # Read the complete existing staging journal before a stop can cancel work.
+        pending = sql_call(
+            values["ROBOT_TURSO_AUTH_TOKEN"],
+            "SELECT count(*) AS pending FROM robot_simulation_tasks_v1 "
+            "WHERE state IN ('running','proposed')",
+        )
+        require(
+            pending == [{"pending": 0}],
+            "Staging handoff preserves pending journal work; coordinate its owner",
+        )
+        status = api("/api/v1/status")
+        require(
+            status.get("mode") == "simulation"
+            and status.get("physical_actuation") is False
+            and status.get("active_task", "missing") is None,
+            "Staging runtime changed; preserve existing work",
+        )
         api("/api/v1/stop", {}, csrf)
         status = api("/api/v1/status")
         require(
@@ -207,10 +238,10 @@ def handoff():
             and status.get("active_task") is None,
             "Stopped simulation required before handoff",
         )
-        # This authenticated read flushes pending history before authority is expired.
+        # Setting an idle stop latch must not cancel proposals or rewrite history.
         require(
-            all(task["state"] != "running" for task in api("/api/v1/tasks")["tasks"]),
-            "Pending running history must drain",
+            digest(api("/api/v1/tasks")["tasks"]) == digest(history),
+            "Staging history changed during handoff; preserve and inspect it",
         )
     finally:
         api("/api/v1/auth/logout", {}, csrf)
