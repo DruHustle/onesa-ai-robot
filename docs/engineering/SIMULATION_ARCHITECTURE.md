@@ -51,7 +51,7 @@ hardware-specific safety rules regardless of cloud state. Follow the separate
 
 ## Public product, operator context and system appearance
 
-The public product root renders a static labeled illustration without JavaScript or
+The public product root renders a static concept image without JavaScript or
 private API subscriptions. `/console` has a task-oriented operator shell; backend
 session/CSRF and ownership decide access. Status observation times and deployment
 labels come from protected runtime responses, independently of simulation mode.
