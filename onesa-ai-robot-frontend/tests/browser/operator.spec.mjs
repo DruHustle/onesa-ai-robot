@@ -72,7 +72,7 @@ test('independent Stop and Sign out work while another form response is pending'
 });
 for(const mode of ['light','dark'])for(const width of [320,390,768,1024,1440])test(`public Robot identity and telemetry isolation ${mode} at ${width}`,async({page})=>{
  await page.emulateMedia({colorScheme:mode});await page.setViewportSize({width,height:1000});const privateRequests=[];page.on('request',request=>{if(request.url().includes('/api/v1/'))privateRequests.push(request.url());});
- await page.goto('/');await expect(page).toHaveTitle('Product | Onesa AI Robot');await expect(page.getByRole('heading',{name:/Explore motion/})).toBeVisible();await expect(page.getByRole('img',{name:'Illustrated synthetic single-joint simulator'})).toBeVisible();await expect(page.locator('#operator')).toHaveCount(0);expect(privateRequests).toEqual([]);
+ await page.goto('/');await expect(page).toHaveTitle('Product | Onesa AI Robot');await expect(page.getByRole('heading',{name:/Explore motion/})).toBeVisible();await expect(page.getByRole('img',{name:'Concept illustration of a titanium humanoid robot holding a luminous sphere in a futuristic sunrise city.'})).toBeVisible();await expect(page.locator('#operator')).toHaveCount(0);expect(privateRequests).toEqual([]);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa']).analyze()).violations).toEqual([]);
  if(process.env.ONESA_VISUAL_EVIDENCE_DIR&&[390,1440].includes(width))await page.screenshot({path:`${process.env.ONESA_VISUAL_EVIDENCE_DIR}/${test.info().project.name}/robot-product-${mode}-${width}.png`,fullPage:true});
 });
