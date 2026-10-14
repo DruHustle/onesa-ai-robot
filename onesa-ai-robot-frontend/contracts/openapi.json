@@ -191,6 +191,15 @@
           "capabilities": {
             "$ref": "#/components/schemas/Capabilities"
           },
+          "deployment_environment": {
+            "enum": [
+              "local",
+              "staging",
+              "production"
+            ],
+            "title": "Deployment Environment",
+            "type": "string"
+          },
           "mode": {
             "const": "simulation",
             "title": "Mode",
@@ -209,6 +218,10 @@
             "title": "Position Radians",
             "type": "number"
           },
+          "sampled_at": {
+            "title": "Sampled At",
+            "type": "number"
+          },
           "stopped": {
             "title": "Stopped",
             "type": "boolean"
@@ -221,7 +234,9 @@
           "position_radians",
           "operator",
           "active_task",
-          "capabilities"
+          "capabilities",
+          "sampled_at",
+          "deployment_environment"
         ],
         "title": "StatusResponse",
         "type": "object"

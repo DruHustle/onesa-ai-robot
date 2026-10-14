@@ -1,5 +1,9 @@
 # CI/CD development workflow
 
+Current branch/security procedure reviewed 2026-10-14. The preparation-status table
+below is the historical 2026-10-11 snapshot; current Robot deployment and exact receipts
+are maintained in [DEPLOYMENT.md](DEPLOYMENT.md), not inferred from this table.
+
 | Repository | Frontend CI | Backend CI | Automated review | Staging | Qualification | Production release | Monitoring | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Company Portal | Next.js lint/types/build/browser/contracts | Node tests/DB/contracts/image/startup | Read-only annotations + blocking scans | Scoped manual + opt-in auto; not deployed | Exact technical artifact + owner reviews | External owner handoff; blocked pending controls | Receipt/probes configured; live not run | Local implementation; owner activation pending |
@@ -10,23 +14,31 @@
 
 ```mermaid
 flowchart TD
-  F[feature / fix / hotfix branch] --> PR[Owner PR to main or staging]
-  PR --> R[Read-only Reviewdog + lint + types + security]
-  R --> T[Relevant tests / contracts / browser / production builds]
-  T --> S[Always-running CI summary + independent hygiene]
-  S --> M[Owner reviews results and merges to main]
-  M --> C[Full exact-main CI + tested runtime digests]
-  C --> P[Optional isolated staging: one Actions authority]
-  P --> V[Provider revision + authenticated probes + receipts]
-  V --> Q[Automatic immutable technical qualification]
-  Q --> A[Explicit owner approval: exact SHA + evidence digest + reviews]
-  A --> X[External owner-held production credentials + trusted verifier]
-  X --> D[Separately authorized production promotion]
-  D --> O[Exact provider revision / alias + readiness + logs + alerts + rollback record]
-  C --> E[Robot ROS simulation / reviewed edge package]
-  E --> H[Separate operator authorization for physical hardware]
+  Dev[dev / normal reviewed changes] --> PR[Owner-reviewed dev to staging PR]
+  PR --> CI[Credential-free hosted CI / security / contracts / images]
+  CI --> Stage[Exact staged candidate and full source checks]
+  Stage --> Hosted[Protected native Git Preview and exact Render staging deploy]
+  Hosted --> Receipt[Authenticated simulation / all-browser acceptance / source receipts]
+  Receipt --> Promote[Reviewed staging to main promotion]
+  Promote --> Main[Full exact-main CI and tested runtime digests]
+  Main --> Q[Commit/artifact-bound qualification with matching staging source]
+  Q --> A[Current owner authorization / exact evidence digest]
+  A --> X[External owner-held credentials / trusted verifier]
+  X --> Live[Qualified production handoff / hosted verification / rollback evidence]
+  Bot[Temporary Dependabot security PR / default-main proposal] --> Review[Review advisory / dependency scope / provenance]
+  Review --> Dev
+  Review -. necessary urgent exception .-> Temp[Temporary candidate from exact verified production]
+  Temp --> TCI[Credential-free candidate validation]
+  TCI -. separately qualified isolated staging path required .-> Receipt
+  Live --> Reconcile[Reconcile security fix into dev and staging]
+  Reconcile --> Cleanup[Temporary cleanup after incorporation / retained evidence / active review checks]
+  Main --> Edge[Separately reviewed ROS simulation / edge package]
+  Edge --> Hardware[Physical hardware stays disabled / separate authorization]
 ```
 
+The solid normal path uses implemented staging/main source gates. The dashed urgent
+security path is an authorized procedure requiring separately qualified isolated
+staging; direct temporary-ref deployment is not implemented by the current lane.
 These are workflow gates and an operating policy, not private-Free server-side branch
 protection. GitHub Free cannot prevent a write-authorized user pushing directly to
 private `main`. Such a push still runs full CI but is ineligible for production
@@ -91,22 +103,73 @@ is assumed or required. An optional review of the diff through the user's alread
 authorized Codex session remains nonblocking; no Codex API subscription or runner
 integration was added, and no CLI capability was claimed as verified.
 
-Dependabot alerts are enabled, with **zero open alerts** in the readback. Automated
-security-fix PRs were **disabled** in the before inventory and are now **enabled** on
-all three remotes, verified by readback after the explicitly requested setting change. The new configuration schedules
-monthly ecosystem updates, at most two version PRs per ecosystem, a seven-day version
-cooldown, and compatible minor/patch version groups. Security updates are ungrouped
-and have no version cooldown. Automatic security-fix PRs were enabled using the user-authorized setting; version
-update schedules activate after the owner publishes and merges the local configuration. Bot PRs run the same read-only CI and
-never automatically merge or deploy.
+## Current dependency and branch policy — 2026-10-14
+
+The owner's latest instruction permits temporary Dependabot security-update PRs and
+necessary narrowly scoped security candidates, superseding the earlier same-day
+security-PR disable instruction. Root coordinates the remote security-fix setting and
+retains readback in restricted evidence. Alerts/scans, scheduled verification and
+owner-confirmed notifications remain mandatory. Ordinary version PRs stay disabled
+with `open-pull-requests-limit: 0`; retained version configuration targets dev.
+The current default branch was read back as **main**; no default-branch change is
+part of this policy. GitHub security fixes always target the default branch, even
+with `target-branch: dev`. Version-specific grouping/cooldown options do not apply
+to security updates when a non-default target is configured. Do not interpret a
+security PR targeting main as authorization to merge or deploy it automatically.
+
+### Security PR integration and urgent candidates
+
+Keep exactly **dev**, **staging**, **main** as permanent branches. Temporary branches
+are allowed only for actual Dependabot security-update PRs and necessary scoped
+security release candidates. A branch prefix, bot label or green unit test alone
+cannot prove a security need or qualify a release; inspect advisory/dependency
+metadata, lockfile provenance, fix scope and current production applicability.
+
+1. Inspect the alert and existing bot PR before creating another candidate. Record
+   advisory, severity, affected/fixed versions, current deployed SHA and intended scope.
+   Preserve useful alerts, existing PRs/branches, evidence and active review.
+2. Normal work carries the reviewed fix into dev, validates the complete affected
+   application/security/contract/image checks, then uses dev → staging → main. A
+   Dependabot PR's default-main target does not replace this integration procedure.
+3. If unfinished dev must be excluded from an urgent release, start a temporary,
+   narrowly scoped candidate from the **exact verified production commit/artifact**.
+   Include only the required security fix and compatible dependencies; compare against
+   production and review every additional change. Do not branch from a moving dev head,
+   reset permanent branches, discard concurrent work or merge unrelated staging code.
+4. Obtain owner-controlled isolated staging acceptance, exact source/artifact evidence,
+   applicable recovery and current approval before promotion. The existing automated
+   release lane still requires staging/main refs; a temporary candidate is not a
+   bypass. If current staging contains unqualified work, preserve it in its existing
+   worktrees/recovery evidence and prepare an independently tested, candidate-bound
+   staging/source-equivalence path before release. Do not broaden branch allowlists,
+   edit PASS fields, claim different artifacts match, or reuse unrelated stage receipts.
+5. Keep production handoff under the existing external owner-controlled mechanism;
+   verify deployed source, private API/storage/simulation behavior and rollback. A
+   necessary security release remains software/simulation only and cannot enable
+   physical actuation or reset operator identities/passwords.
+6. Reconcile the released fix into dev and staging through reviewed compatible merges
+   or exact recorded fix adoption, verifying that neither branch reintroduces it.
+7. Delete a temporary branch only after proving the fix is incorporated where required,
+   retaining PR/release/rollback evidence and checking open review, worktrees and
+   active automation. No bulk bot cleanup, history rewrite or force push is authorized.
+
+All temporary PR code runs on credential-free **GitHub-hosted** validation. No local
+persistent runner, production/provider credential, `pull_request_target`, auto-merge,
+automatic approval or automatic production deployment is introduced. Source CI jobs
+remain read-only. Existing application, telemetry, release and runner safeguards apply
+unchanged; authorization is not evidence that qualification passed.
+
+Official behavior rechecked 2026-10-14: [Dependabot target-branch reference](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#target-branch)
+and [security PR customization](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/customizing-dependabot-security-prs).
+These establish provider behavior, not the user's actual account setting or deployment.
 
 ## Optimization and branch policy
 
-Use `feature/*`, `fix/*` and `hotfix/*` PRs targeting `main` or `staging`; preserve
-existing branches, including Portal's established `audit/portal-master-acceptance`.
-Feature push CI duplication is removed: PR activity validates development changes;
-`main`, `staging`, explicit dispatch and the established Portal acceptance branch run
-full critical suites. No native restriction on pushes is asserted.
+PR checks targeting permanent branches admit the authorized temporary security heads.
+Permanent-branch pushes and explicit trusted dispatches run full critical suites;
+PR activity validates candidate changes without duplicating ordinary temporary push
+jobs. No native restriction on arbitrary Git pushes is asserted. Existing historical
+feature/audit branches are not automatically authorized permanent branch families.
 
 Superseded PR runs cancel; release-source runs and deployments do not cancel in
 flight. npm download and pip caches key from committed lockfiles; no credentials,
@@ -235,9 +298,9 @@ promised; owner-configured alert delivery remains a production prerequisite.
 1. Resolve the discrepancy: all remote repositories are public, while the requested
    policy is private/Free. Confirm subscription and protection capabilities in billing
    and repository settings. No visibility change, upgrade or paid capacity is authorized.
-2. Review and authorize publishing these feature branches and opening PRs; merge only
+2. Review and authorize publishing the reviewed dev candidate and opening dev-to-staging PRs; merge only
    after the actual new remote CI is green. Reconcile remote job names with evidence
-   policy; preserve all critical gates and validate on a failing feature PR.
+   policy; preserve all critical gates and validate with a failing synthetic PR.
 3. Set default Actions token read-only and disable Actions PR approval where possible;
    restrict write access to the owner. Dependabot automatic security-fix PRs are
    already enabled and verified; the other settings were audited but not changed.

@@ -10,7 +10,7 @@ flowchart LR
  Approval --> Gate[Independent deterministic motion gate]
  Gate --> Simulation[Synthetic joint trajectory]
  Watchdog[Session/heartbeat watchdog] --> Gate
- API --> DB[Private persistent SQLite history]
+ API --> DB[Private local SQLite or exclusive remote Turso task journal]
  ROS[ROS 2 proposed messages] -. target qualification required .-> Proposal
  Hardware[Physical actuators: no implemented driver]
 ```
@@ -42,9 +42,39 @@ cannot create/approve/reset tasks or change the safety gate. Stale/disconnected
 telemetry becomes `not_connected`. Bounded telemetry audit is in process memory;
 it is not durable compliance logging. Task history remains in private SQLite.
 
-No inbound edge listener, DDS exposure, tunnel, router change or automatic retry
+No inbound edge listener, DDS exposure, Robot control tunnel, router change or automatic retry
 is introduced. A failed agent stops and requires operator restart. There is no
 cloud-to-edge motion/action transport: the cloud simulator retains its existing
 independent motion gate, while a future real edge adapter must enforce its own
 hardware-specific safety rules regardless of cloud state. Follow the separate
 [release process](AUTOMATED_QUALIFICATION.md) before packaging/installing any adapter.
+
+## Public product, operator context and system appearance
+
+The public product root renders a static labeled illustration without JavaScript or
+private API subscriptions. `/console` has a task-oriented operator shell; backend
+session/CSRF and ownership decide access. Status observation times and deployment
+labels come from protected runtime responses, independently of simulation mode.
+Both shells consume the exact shared foundation recorded in
+`design-system.consumer.json`. CSS follows browser/OS preference without a clock,
+selector or stored theme. A preference transition cannot reconnect telemetry, submit
+commands, clear a draft, change focus or revoke a session.
+
+## Separate PC–VM administrative tunnel
+
+```mermaid
+flowchart LR
+ PC[Owner PC / approved identity] -->|Tailscale encrypted administrative tunnel| VM[Approved VM / approved node]
+ Console[Tailscale administrative console] -. identity and scoped ACL/grants .-> PC
+ Console -. device policy .-> VM
+ Operator[Robot operator] -->|HTTPS and session/CSRF| Robot[Cloud simulation API]
+ Edge[Synthetic edge agent] -->|HTTPS and independent device identity| Robot
+```
+
+The owner-reported PC–VM tunnel is included as an administrative dependency; active
+node/ACL/transport state still requires actual read-only account/host evidence. Robot
+simulation and its edge telemetry retain their separate authorization and transport.
+A tailnet connection grants no operator role or physical readiness. Do not expose
+public controller/DDS/model ports, alter unrelated access or put Tailscale node keys
+in docs. Current policy decisions remain in the Portal governance database rather
+than a competing mutable Markdown policy store.

@@ -1,134 +1,110 @@
-# Simulator deployment and recovery
+# Robot simulator deployment and recovery
 
-## Vercel gateway routing
+Audience/classification: authorized engineering / INTERNAL. Owner: Robot engineering.
+Reviewed: 2026-10-14. Scope: software simulation only. Existing immutable deployment
+receipts remain in the restricted release store; local changes are not hosted acceptance.
 
-The trusted `inspect-staging` action reports only whether the dedicated test edge token
-is available, meets the acceptance length and matches the runtime hash. It never
-displays or replaces that token. A successful operator login does not qualify the
-independent telemetry boundary; preserve its failing result until real tests pass.
+## Current deployed baseline and storage
 
-The native non-framework catch-all produced a single-segment route and appended a
-query parameter that the fixed proxy correctly rejected. Route `/api/v1/:__onesa_route*`
-to `api/gateway.mjs`. The adapter removes only one metadata value matching the original
-API path, preserving rejection of additional, mismatched and duplicate query values.
-Direct gateway, private paths and arbitrary upstream URLs remain rejected. Authentication,
-Origin/CSRF, cookie filtering and upstream TLS stay in the shared server boundary.
-The explicit Vercel build artifact must contain the nested route and gateway function;
-local proxy/artifact checks remain separate from hosted staging acceptance.
+The October 13 production baseline is source
+`b0d40c6d2ccab2b1663166ebf311b4a9755ad045` at `https://robot.onesa.eu`. Restricted
+`data/runtime/production-release/hosted-acceptance.json` records all 13 hosted checks
+PASS at 20:03:33 UTC. Render deployment `dep-db78k3a5b2lc73euuvl0`, Vercel deployment
+`dpl_2xe3R4Nphug6xBZ317onVEiPwJP7`; owner authorization run `38410878463` binds the
+qualification run `38410516546`. These receipts attest that baseline, not a later diff.
+Physical actuation is disabled. Scheduled journal recovery, alerts and physical safety
+remain separate gates; the baseline does not manufacture their approval.
 
-## Owner-selected production Turso journal — 2026-10-13
+The owner-selected production service `srv-db5k88flk1mc73aa9110` uses the existing
+`libsql://onesa-ai-robot-backend-druhustle.aws-eu-west-1.turso.io` task journal on Free
+Frankfurt native Render. `ROBOT_STORAGE_MODE=turso` and
+`ROBOT_DEPLOYMENT_ENVIRONMENT=production` permit only that production database.
+Staging uses its separate verified hyphenated `onesa-ai-robot-backend-staging`
+database. Production and staging database-scoped tokens and operator-password hashes
+must remain distinct. Never reset operator credentials to make a test pass.
 
-The owner selected the existing `onesa-ai-robot-backend` database at
-`libsql://onesa-ai-robot-backend-druhustle.aws-eu-west-1.turso.io` for the existing
-Free Frankfurt Render production service `srv-db5k88flk1mc73aa9110`. The reviewed
-adapter permits this exact production identity with `ROBOT_STORAGE_MODE=turso`
-and `ROBOT_DEPLOYMENT_ENVIRONMENT=production`; staging rejects that identity.
-Use separate database-scoped `ROBOT_TURSO_AUTH_TOKEN` and
-`ROBOT_OPERATOR_PASSWORD_HASH` values. Provider preflight verifies the existing
-staging binding and rejects either shared credential. The native layout uses
-the hash-locked requirements command and single-process `sh start.sh`.
+Ephemeral SQLite remains blocked for production. Turso uses an in-memory SQLite
+working store and exclusive remote journal, with process-local revoked-on-restart
+sessions. Do not set an unused cloud filesystem database path, attach either sibling's
+database, claim a paid disk or silently fall back to ephemeral history.
 
-Set `ROBOT_PUBLIC_ORIGIN=https://robot.onesa.eu`, `ROBOT_OPERATOR_NAME=operator`,
-`ROBOT_ACTUATION_ENABLED=false`, `ROBOT_SESSION_SECONDS=900` and
-`ROBOT_HEARTBEAT_SECONDS=3`. Configure the approved synthetic qualification
-identity with `ROBOT_EDGE_DEVICE_ID` and its independent `ROBOT_EDGE_TOKEN_SHA256`.
-Do not set `ROBOT_DATABASE_PATH` for the remote journal; it uses an in-memory
-working store. Keep Render automatic deployment off, use `/api/v1/health` for
-rollout liveness, and require `/api/v1/ready` for application acceptance. Preserve
-Vercel protection and keep its server-only `ROBOT_API_URL` bound to the production
-Render origin. Changing saved settings does not attest a deployed runtime.
+## Configuration and authority
 
-Generated owner credentials belong only in ignored, mode-0600 private runtime
-files and the provider dashboard. A 30-day database token requires rotation
-before expiry through the same private configuration path. Read existing database
-metadata and row counts before activation; preserve records and never copy staging
-data or tokens. The journal preserves history, single-writer ownership, stopped
-restart state and session revocation. Production backup/restore, rollback,
-monitoring, exact-source CI, hosted staging and release qualification remain
-mandatory. Neither adapter tests nor saved credentials establish production PASS.
-Ephemeral SQLite on Render Free remains blocked. No paid disk or physical control
-is enabled. Historical staging-only restrictions below predate this owner decision.
+Inspect current providers and private bindings before a write. Native builds use
+`python -m pip install --require-hashes -r requirements.lock` and single-process
+`sh start.sh` with the repository Python version. Render automatic deployment remains
+off. Use `/api/v1/health` for rollout liveness and `/api/v1/ready` for acceptance.
+Preserve the actual existing operator, session/heartbeat limits, independent synthetic
+edge identity and `ROBOT_ACTUATION_ENABLED=false`. Set the exact browser origin; server-only
+Vercel `ROBOT_API_URL` targets the corresponding Render origin.
 
-## Exclusive journal ownership during staging rollout
+Credentials stay in the approved private provider configuration and external release
+custody. Inspect only presence/scope and boolean usability; do not print environment
+values, hashes, tokens or provider bodies. Rotate an expiring database token through
+the approved secure process without disturbing operator passwords or journal data.
 
-Render starts the replacement before stopping the old process. The existing staging
-service must use `/api/v1/health` for rollout liveness. A replacement can wait up to
-90 seconds for the existing journal owner; every other route, including login and
-`/api/v1/ready`, returns 503 until it atomically acquires the lease and restores
-history. It never steals an active lease or resumes a command. The prior instance's
-graceful shutdown releases only its own lease; application acceptance waits for real
-readiness before authenticated tests. A failed or timed-out startup remains
-unavailable. No environment variable, paid disk or additional deployment is needed.
+Keep only **dev**, **staging** and **main** permanently. Normal integration is
+**dev → staging → main**; temporary security PR/candidate exceptions follow
+[the scoped security procedure](CI_CD.md#security-pr-integration-and-urgent-candidates).
+Exact-source CI, hosted staging, artifact/qualification,
+applicable operations/content scope and actual current owner authority precede release.
+Do not claim private GitHub Free supports native protection without real readback.
+Provider Git staging previews are the staging frontend authority; production Vercel
+and Render use the established controlled external handoff. See
+[AUTOMATED_QUALIFICATION.md](AUTOMATED_QUALIFICATION.md) and current restricted receipts.
 
-Apply the existing `repair-staging` operation only after exact dev/staging CI passes;
-it selects process health only on the identified Free staging service. Production
-layout, persistence and physical-control gates remain unchanged. Hosted rollout must
-still verify replacement startup, preserved task history and operator authentication;
-local two-instance tests alone do not qualify the service.
+## Gateway and product routes
 
-## Existing free native staging — 2026-10-12
+The public `/` product page has no private API scripts. `/console` serves the operator
+sign-in shell; its JavaScript contains no private state or credentials, and all
+telemetry/history/control reads require a valid backend operator session. Static shell
+availability does not grant access. Appearance follows OS preference independently.
+Protected status responses supply observation time and trusted deployment environment.
 
-The authenticated inspector confirmed that the existing Free/Frankfurt staging service uses native Python and the approved Turso journal. The registered `release-candidate.yml` owner workflow can inspect it from dev/staging, repair only its source/layout from staging after exact-source CI, and qualify the simulator with `target=staging`. Native staging uses the hash-locked requirements command, the repository Python version, and `sh start.sh` for one process. Production retains its separate Docker/durable-storage and owner/hardware gates.
+Route `/api/v1/:__onesa_route*` to `api/gateway.mjs`. The adapter removes only one
+metadata value matching the original nested API path; reject extra, duplicate or
+mismatched values, arbitrary upstreams and direct gateway/private paths. Preserve
+session-cookie filtering, exact Origin/CSRF, TLS and no-store. Provider bypass secrets
+must never be forwarded to Render. Check real Vercel nested artifacts and hosted routes.
 
-Repair verifies the exact service/repository/region/plan, staging namespace and physical=false before writing branch/root/health/runtime commands and disabling automatic deployment. It preserves every private value and database record. The existing operator credentials must be preserved. A mismatched staging test password remains an authentication blocker until an approved existing test credential is supplied privately to CI. Direct Staging inspection reports only whether the named automation bypass resolves; secret-name metadata does not prove a usable value. Provider-bound staging edge identity stays in a private candidate-bound runner file and is removed after verification.
+## Safe staging origin handoff and rolling journal ownership
 
-> Current private-Free release policy: [safeguards and external owner authorization](../development/PRIVATE_FREE_SAFEGUARDS.md). Legacy JSON approval is retired; native protection requirements below apply only to a verified supported configuration.
+1. Resolve the exact-source protected Preview and inspect the existing running origin.
+2. Authenticate the existing synthetic test operator using its approved private test
+   credential. Stop the simulator, drain task history and fence only the observed
+   staging journal lease. Preserve records, credentials and production.
+3. Save the new verified Preview origin, then deploy the exact qualified source. Saved
+   Render environment changes do not attest the running configuration. If an earlier
+   attempt changed saved origin prematurely, reconcile only staging to a verified
+   origin accepted by the live runtime; never weaken the origin check.
+4. The replacement may report liveness while waiting up to 90 seconds for the old
+   instance to release its lease. Login/readiness/all application routes return 503
+   until exclusive ownership and history are restored. It never steals an active lease.
+5. Verify actual readiness, preserved history, operator authentication and complete
+   simulation/edge/browser acceptance. A login PASS cannot qualify independent device
+   telemetry. Failing startup stays unavailable; no automatic resume occurs.
 
-Cloud staging/release workflows, provider settings, secret locations, approval gates,
-telemetry-only edge transport, monitoring and rollback are now documented in
-[AUTOMATED_QUALIFICATION.md](AUTOMATED_QUALIFICATION.md). Render Free staging is
-explicitly disposable simulation; durable cloud production remains blocked. The
-private persistent-host procedure below remains a separately controlled alternative.
+Render Free wake-up can produce a bounded initial 503 through the gateway. Record cold
+and warm observations separately; do not hide an unresolved persistent outage behind
+retry or keep a free instance artificially awake.
 
-For remote durable task history on the existing Free Render staging service, see
-[Turso staging](TURSO_STAGING.md). This staging-only journal avoids reliance on
-Render's local filesystem. It does not satisfy or bypass production release gates.
+## Recovery, rollback and administrative tunnel
 
-For exact owner steps on an existing private persistent Docker host, see
-[staging host setup](STAGING_HOST_SETUP.md). This does not create cloud resources
-or promote the existing public interface.
+Stop tasks before rollback, preserve the private journal and retain the stop latch.
+Sessions revoke and unfinished tasks cancel on restart. Recheck origin/API/schema/
+artifact compatibility. Do not restore active sessions or automatically replay commands.
+Test backup/restoration only in an isolated authorized destination; prove retained
+history, fenced single-writer ownership, revoked authority and no resumed task. Scheduled
+backup execution, key recovery, retention and alert delivery need their own actual evidence.
 
-Frontend/backend are independent release units. Existing public `robot.onesa.eu`
-serves a static preview; the new simulator has not been promoted to that domain.
-No new paid resource, production DNS change or physical control is authorized.
+The owner reports a **Tailscale tunnel between the PC and VM** for private administration.
+Its console is `https://console.tailscale.com/`. Treat it as a distinct encrypted
+administrative boundary, with existing identity/device approval and scoped tailnet
+policy; verify actual node identity, ACL/grants, expiry and active transport through
+read-only inspection before claiming runtime PASS. Do not disclose node keys or enlarge
+SSH/firewall access. The tunnel is not cloud-to-edge Robot motion transport, does not
+replace operator/device authorization and must not expose DDS, actuators or model listeners.
 
-For durable storage, deploy the backend to an approved private simulator/edge host
-with Python 3.11 or its Docker image, one process and a private persistent volume mounted at
-`/app/storage`. Render Free does not supply this persistent SQLite volume; it must
-not be represented as durable storage for this gateway. An independently qualified
-free edge host or architecture-specific persistence decision is still required.
-Do not attach the Portal or AI database to this simulator to bypass the missing host.
-
-For HTTPS set the exact `ROBOT_PUBLIC_ORIGIN` and privately generated
-`ROBOT_OPERATOR_PASSWORD_HASH`, operator name, database path, session/heartbeat
-bounds and `ROBOT_ACTUATION_ENABLED=false`. Expose only the approved TLS gateway;
-do not trust proxy headers or publish a ROS/DDS graph. The frontend needs only its
-server-only credential-free `ROBOT_API_URL`. Keep API secrets out of frontend bundles.
-
-Qualification: exact-SHA CI/security passes, protected target, liveness/core readiness,
-authenticated login/proposal/approval/cancellation/stop/watchdog, restart persistence,
-isolated backup restore, operator/alert ownership and independent security review.
-Vercel Git deployment is disabled. Owner-dispatched cloud workflows are installed
-locally but have not been activated or run.
-Rollback must stop tasks, preserve its private database and retain the stop state;
-never restore active sessions or resume a command from a prior process.
-
-Backup SQLite using its online backup API into a restricted encrypted destination;
-do not copy an open main file without WAL consistency. Test restoration only in an
-isolated simulator: history persists, sessions revoke, stop stays latched, no task
-resumes. Production restoration/retention and alert delivery need owner acceptance.
-ROS 2 Jazzy interface definitions are preparatory, not a connected control adapter.
-
-Public CI uses GitHub-hosted Ubuntu exclusively. The private-only reusable validation
-gate includes the full simulator, cross-browser and container checks; it does not
-register a runner or authorize a persistent host or physical control. See
-[runner operations](SELF_HOSTED_RUNNER.md).
-
-## Automatic software evidence
-
-See [software/simulation qualification](AUTOMATED_QUALIFICATION.md). The artifact
-does not authorize publishing a candidate or physical robot operation.
-
-### Rolling staging origin changes
-
-After resolving the exact-source protected Preview, the workflow authenticates and stops the existing synthetic simulation using the currently deployed origin, drains its history and fences the observed journal lease. Only then does it save the new Preview origin and deploy the backend. Render saved settings are not evidence of the running deployment configuration. If a prior attempt saved the new origin before handoff, reconcile only the staging `ROBOT_PUBLIC_ORIGIN` to a verified origin accepted by the live runtime before retrying. An empty login body returns HTTP422 for the accepted origin and HTTP403 for a rejected origin without attempting credentials. Preserve the existing operator, password and application origin protection.
+No physical driver, camera/STT/VLM/TTS/VLA integration or installed edge-control update
+is authorized by a software release. Keep separate software, ROS compatibility, edge
+installation, real-model and physical-hardware verdicts.

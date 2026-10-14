@@ -26,6 +26,31 @@ flowchart TD
     Hardware[Physical hardware: disabled; separate safety authorization]
 ```
 
+## Current release lane — 2026-10-14
+
+Normal integration is dev → staging → main. The staging dispatcher is
+`release-candidate.yml` with ref staging, target staging and application frontend;
+it delegates to `release-staging.yml`. That lane reuses an exact-source protected
+native Vercel Git Preview and deploys the matching native Python/Turso Render service.
+Saved settings and provider Live badges do not qualify operator/safety/browser flows.
+
+Production uses the existing Free qualification, owner authorization and external
+handoff. Both qualification and final authorization require current main with an
+owner-merged PR, successful exact-main CI and fresh exact-SHA staging receipts. A new
+main merge SHA needs its own matching acceptance; do not reuse an earlier staged SHA
+by relabeling evidence. The native protected-main release workflow is a separate path
+and cannot bypass missing branch protection. Owner-approved simulation is not hardware
+approval. See [current deployment and storage](DEPLOYMENT.md#current-deployed-baseline-and-storage).
+
+Temporary security PR/candidate branches are allowed by latest owner steering but do
+not activate staging/production credentials. Existing automated provider gates require
+staging/main; a necessary isolated urgent candidate needs separately qualified
+candidate-bound staging before release. Follow [the security procedure](CI_CD.md#security-pr-integration-and-urgent-candidates).
+
+The remaining preparation details below are historical where they describe Docker,
+ephemeral staging or blocked pre-Turso production. Preserve their safety constraints,
+but use current runtime/provider readback and the deployment guide for actual targets.
+
 ## Workflows and evidence
 
 | Workflow | Purpose |
@@ -41,11 +66,11 @@ flowchart TD
 | `robot-monitor.yml` | After successful cloud deployment: verify latest provider commit and current readiness; no repair/promotion |
 | `release-candidate.yml` | Existing independent application packaging retained |
 
-Feature CI detects paths without external Actions dependencies. Frontend-only changes
+PR CI detects paths without external Actions dependencies. Frontend-only changes
 skip backend/ROS rebuilding; backend schema/safety or shared scripts/contracts trigger
 frontend checks as well. Every main push and manual CI dispatch runs the complete
 release set, including both runtime digest artifacts. Skipped or absent exact-commit
-checks cannot qualify a release. Before merging a feature PR, dispatch full CI on its SHA when path-filtered push jobs
+checks cannot qualify a release. Before merging a dev-to-staging PR, dispatch full CI on its SHA when path-filtered push jobs
 leave a required context absent. Exact main release checks always run in full.
 Main protection requires the existing checks plus
 `ros-contracts`; workflows never infer success from a skipped job.
@@ -66,7 +91,8 @@ identity with the locally scanned Docker image is not claimed.
 `ROS2_INTERFACE_VERIFIED`. `ROS2_VERIFIED` (integrated robotics runtime) and
 `EDGE_DEPLOYMENT_VERIFIED` remain NOT TESTED. `PHYSICAL_HARDWARE_APPROVED`
 and `PHYSICAL_HARDWARE_READY` remain BLOCKED even after a cloud approval.
-Operations/legal gates require explicit owner review. No physical PASS is generated.
+Operations/legal gates require real evidence and current scope-specific owner authority;
+reuse recorded authorization when applicable without fabricating new review. No physical PASS is generated.
 Robot had no legacy `RELEASE_QUALIFICATION_JSON` deploy gate; no secret is removed.
 The sibling products have retired their legacy JSON fallback; private Free uses external owner authorization.
 
@@ -112,7 +138,9 @@ CLI commands run from repository root, respecting Vercel's configured root direc
 Production authentication/browser checks use the configured canonical public origin
 only after Vercel confirms it serves the same exact deployment as the returned
 deployment URL. This preserves exact-Origin CSRF checks on custom domains.
-Native Git deployments remain disabled in `vercel.json`.
+Native Git deployment remains disabled for production; the exact-source staging
+Preview is the only permitted native frontend deployment authority. Read current
+per-branch configuration and provider settings before claiming enforcement.
 
 In **Render service → Environment**, configure the settings in `render.yaml`:
 `ROBOT_OPERATOR_NAME`, `ROBOT_OPERATOR_PASSWORD_HASH`, exact `ROBOT_PUBLIC_ORIGIN`,
@@ -126,7 +154,7 @@ The Blueprint is a reviewed staging template, not a deployment performed here.
 ## Storage and production blocker
 
 The owner's 2026-10-13 decision selects the existing separate production Turso
-database. Follow [the production binding and credential-isolation procedure](DEPLOYMENT.md#owner-selected-production-turso-journal--2026-10-13).
+database. Follow [the production binding and credential-isolation procedure](DEPLOYMENT.md#current-deployed-baseline-and-storage).
 The provider guard now accepts the identified Free Frankfurt native runtime only
 with that exact durable remote binding and credentials distinct from staging.
 Actual production operations and deployment evidence remain required. The historical

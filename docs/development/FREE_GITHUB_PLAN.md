@@ -4,8 +4,10 @@
 
 The requested operating model is private repositories on GitHub Free. GitHub cannot
 enforce native branch protection, rulesets or production environment approvals for
-that combination. The retained dev branch and PRs targeting main remain the development
-policy. Credential-free hosted PR checks use the included private Actions quota;
+that combination. Keep dev, staging and main permanently and normally integrate dev → staging → main.
+Temporary Dependabot security PRs and necessary scoped security candidates follow the
+owner-authorized procedure in [CI/CD](../engineering/CI_CD.md#security-pr-integration-and-urgent-candidates).
+They do not bypass source qualification or production custody. Credential-free hosted PR checks use the included private Actions quota;
 quota exhaustion blocks qualification rather than authorizing paid execution.
 Production credentials belong outside editable repository Actions.
 
