@@ -68,10 +68,23 @@ jobs:
         VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
       run: python3 scripts/release/monitor.py stage-live --input "$RUNNER_TEMP/robot-release/preflight/record.json" --output "$RUNNER_TEMP/staging-live/record.json"
     - name: Deploy exact backend source
+      id: backend
+      timeout-minutes: 32
       env:
         RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
         RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
-      run: RENDER_RECEIPT_PATH="$RUNNER_TEMP/robot-release/render.json" python3 scripts/deploy_render.py
+      run: RENDER_RECEIPT_PATH="$RUNNER_TEMP/robot-release/render.json" python3 scripts/deploy_render.py --environment Production --preflight "$RUNNER_TEMP/robot-release/preflight/record.json" --wait-seconds 1800 --request-timeout 20
+    - name: Preserve Render deployment observation before acceptance
+      if: always() && steps.backend.outcome != 'skipped'
+      timeout-minutes: 2
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: render-deployment-observation
+        path: |
+          ${{ runner.temp }}/robot-release/render.json
+          ${{ runner.temp }}/robot-release/render-preflight.json
+        retention-days: 7
+        if-no-files-found: warn
     - name: Revalidate approval before frontend promotion
       env:
         GH_TOKEN: ${{ github.token }}

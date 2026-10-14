@@ -6,8 +6,24 @@ receipts remain in the restricted release store; local changes are not hosted ac
 
 ## Current deployed baseline and storage
 
-The October 14 production source is `16381086192dc34c8ad7ea40c43ef6d178b00904`
-at `https://robot.onesa.eu`: Render `dep-db7f3oe7bikc73aldipg` and Vercel
+The current October 14 production frontend is
+`56ce52f20ddf7a491de0b33a3805d0c02cc0d345`, Vercel
+`dpl_ENwtg1yhAww2dZURnrabR4b5NraD`, at `https://robot.onesa.eu`.
+It retains backend `16381086192dc34c8ad7ea40c43ef6d178b00904`, Render
+`dep-db7f3oe7bikc73aldipg`. The source-bound qualification and owner authorization
+preceded this frontend-only delivery; actual API acceptance passed 13/13, while
+mandatory browser acceptance **failed at 80/81**. Preserve the failed WebKit
+sign-out observation; the precise original focus state was not captured. The later
+explicit originating-form correction has passed source/local and earlier hosted
+staging checks but has not been deployed to production. Journal recovery-required
+503s were observed separately at 09:09 and 09:32 UTC; a bounded read-only readiness
+observation passed at 09:59, followed by stable complete-history/idle checks at
+10:05. These observations neither explain the latch nor qualify a new release.
+No production restart was performed. Restricted records are in
+`docs/internal/release-audit/evidence/system-design-v2-main-56ce52f/`.
+
+The earlier October 14 production source was
+`16381086192dc34c8ad7ea40c43ef6d178b00904`: the same Render deployment and Vercel
 `dpl_J13jsKeKNGCMqMWbdUV9i45JUcGm`. Exact main CI, fresh hosted staging,
 qualification `38501657824` and owner authorization `38501859388` passed before
 deployment. Actual production API/safety/edge checks are 13/13 PASS. Initial hosted
@@ -152,9 +168,136 @@ Render Free wake-up can produce a bounded initial 503 through the gateway. Recor
 and warm observations separately; do not hide an unresolved persistent outage behind
 retry or keep a free instance artificially awake.
 
+## Journal availability diagnosis and prepared full release
+
+The exact-main staging run `38555383546` for
+`53803249d27de78af4ed971dac10feb139370266` failed its mandatory hosted suite at
+**59/84** (Chromium 28/28, Firefox 18/28, WebKit 13/28). Its source tree matches
+the earlier `826e65e` staging run that passed 15 API/safety checks and all 84 browser
+cases. That earlier PASS does not qualify this failed run. No trusted staging
+receipt artifact was generated. Preserve the complete failed log and sanitized
+diagnosis in the existing restricted `system-design-v2-form-origin-ca75187` audit.
+
+At 11:43 UTC a bounded read-only direct staging check returned the fixed
+recovery-required 503. Two complete SELECT-only snapshots of the current journal
+matched: 348 rows, zero pending tasks and one expired lease. These compare only
+that observed window; no complete before-suite comparator survived the failed run.
+The sampled provider logs contained no exception type or operation phase. The
+underlying trigger remains unproven. Source inspection disproved the hypothesis
+that reset marks all historical tasks dirty: reset changes the safety flag, and
+cancellation marks only running/proposed tasks. Flush-before-renewal is a source
+timing observation, not evidence of this incident's cause.
+
+The prepared diagnostic change emits one warning in the existing protected backend
+log when journal failure first latches. It records only an allowlisted category,
+an explicit operation phase, clamped integer monotonic elapsed milliseconds and an
+optional numeric HTTP status. It excludes exception text, SQL, URLs, tokens, task
+identifiers, row contents, raw responses and tracebacks. Anonymous 503 responses
+remain unchanged. A timeout category identifies a timed-out boundary; ownership
+means a guarded statement did not return the expected owner. Neither proves a
+provider outage or permits automatic recovery. A stale-lease warning identifies
+the existing readiness freshness check, not the cause of missed renewal.
+
+The patch preserves the one-second HTTP budget, two-second overall RPC budget,
+10-second renewal, 15-second readiness freshness and 30-second lease, together
+with existing flush order, fencing, cancellation, watchdog and no-retry behavior.
+Lifecycle cancellation propagates; an ambiguous write is never replayed. This
+backend change requires a **full** release with new exact-source CI, fresh hosted
+staging, immutable artifacts, qualification and owner authorization. Earlier
+frontend-only retained-backend proofs and prepared builds do not attest it.
+
+Before any provider operation, present the reviewed source, isolated negative
+tests, actual failed-run evidence and narrowly scoped plan to the release owner.
+Confirm the exact existing staging service, source/configuration, complete history,
+already-stopped idle state, zero pending work and current lease/deployment/Actions
+state. Preserve unknown work and hold if any check is inconclusive. A failed journal
+does not authorize a stop, lease edit, token rotation, history deletion or production
+restart. No recovery or additional hosted attempt is automatic. Record attempts
+for the same unresolved episode and stop by the master limit of three; the failed
+exact-main suite above is attempt one, with zero recovery restarts or retries.
+After any separately authorized staging cutover, require actual history/readiness
+and the complete 15/84 hosted gates before normal main qualification. Production
+provider writes require a new concrete owner-reviewed plan and fresh external gate.
+
+## Render deployment receipts and bounded observation
+
+`scripts/deploy_render.py` separates a single create request from observation of
+the accepted deployment. It saves an owner-only sanitized receipt before the
+request, immediately after acceptance, on status transitions and on observation
+failure. The adjacent `render-preflight.json` contains only the source/run binding;
+it grants no deployment or acceptance authority. Both existing cloud workflows
+upload these two exact files as `render-deployment-observation` immediately after
+the backend step, including on failure, before application acceptance. They never
+upload a directory containing credentials, runtime configuration or task data.
+
+The initial observation window remains 1,800 seconds, including provider preflight
+and submission. Each complete HTTP operation, including its response body, has a
+20-second deadline. GET rate-limit recovery permits at most three requests with a
+bounded delay; POST is never retried. Polling backs off from five to thirty seconds
+and reports transitions or a summary every ninety seconds. The backend step has
+a 32-minute limit and the immediate artifact step two minutes; the existing outer
+job stays at sixty minutes. No provider build limit was increased: Render documents
+up to 120 minutes for a build command. Longer work needs a controlled observation
+continuation, not a runner waiting indefinitely or another build request.
+
+An observation timeout exits nonzero, blocks subsequent deployment/acceptance and
+records that Render may continue independently. `build_failed`, `update_failed`
+and `pre_deploy_failed` are confirmed provider failures; `canceled` and
+`deactivated` are distinct non-success outcomes. `live` succeeds only when the
+exact source is still the latest live deployment. It still records application
+acceptance as NOT TESTED and grants no promotion authority. Unknown states,
+wrong sources, changed targets and malformed responses fail closed.
+
+To observe an existing version-2 receipt, first retrieve the exact original
+`render-deployment-observation` artifact from the independently verified owner run.
+Keep the downloaded original and artifact digest in the restricted evidence store.
+Copy its two files into a new owner-only continuation directory, set the receipt
+to mode 0600, and independently pin the copied receipt's SHA256. Using the existing
+authorized Render credential in private operator custody, run:
+
+```sh
+python3 scripts/deploy_render.py --environment Staging \
+  --observe-id dep-EXACT_DEPLOYMENT_ID --candidate EXACT_REQUESTED_CANDIDATE_SHA \
+  --preflight /private/continuation/render-preflight.json \
+  --receipt /private/continuation/render.json --receipt-sha256 EXACT_RECEIPT_SHA256 \
+  --wait-seconds 1800 --request-timeout 20
+```
+
+The existing `RENDER_SERVICE_ID` and `GITHUB_REF` must match that environment's
+fixed service and permanent branch. The observer validates the receipt hash,
+original source/run binding, service configuration and actual deployment commit;
+its transport rejects every POST. It makes no application, operator, SQL,
+cancellation, restart or cache-clear request. Resuming observation consumes no
+full hosted qualification attempt and cannot resume skipped acceptance jobs.
+After any actual live result, follow the existing source-bound staging, approval
+and hosted acceptance process within its separately authorized attempt budget.
+
+For an ambiguous create response, preserve the request intent and reconcile the
+provider's exact recent deployments before any further submission. An existing
+active deployment or matching source blocks a duplicate full create. Do not erase
+the receipt to evade that guard. The older script saved a receipt only on success;
+a failed legacy run may have no receipt. Never fabricate its original preflight
+or claim it can be resumed through the version-2 path. Reconcile its immutable
+workflow log and exact provider record separately in the existing restricted audit.
+
+The October 14 run `38628644160` targeted the fixed **staging** service and commit
+`0299570`, not production. Its local 1,800-second timeout did not cancel Render.
+The subsequent operator-owned cancellation was separately verified; no hosted
+API/browser acceptance started. Current restricted evidence preserves provider
+times, serving source, the zero-entry build-log readback and Render's reported
+regional build incident. No dependency, model, hardware package, memory, cache or
+quota cause is inferred without actual build evidence. No build file or hosting
+plan change is justified by that empty log result.
+
+Sources: [Render deploy states](https://api-docs.render.com/reference/retrieve-deploy),
+[rate limits](https://api-docs.render.com/reference/rate-limiting),
+[build pipeline limits](https://render.com/docs/build-pipeline).
+
 ## Recovery, rollback and administrative tunnel
 
-Stop tasks before rollback, preserve the private journal and retain the stop latch.
+Require an already-stopped, confirmed idle runtime before rollback; preserve unknown
+active or proposed work and coordinate its owner rather than cancelling it to release.
+Preserve the private journal and retain the stop latch.
 Sessions revoke and unfinished tasks cancel on restart. Recheck origin/API/schema/
 artifact compatibility. Do not restore active sessions or automatically replay commands.
 Test backup/restoration only in an isolated authorized destination; prove retained

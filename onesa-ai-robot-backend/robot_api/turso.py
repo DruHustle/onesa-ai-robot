@@ -6,6 +6,7 @@ import math
 import re
 import secrets
 import sqlite3
+import time
 from urllib.parse import urlsplit
 
 import httpx
@@ -16,6 +17,57 @@ LEASE = "robot_simulation_lease_v1"
 PRODUCTION_DATABASE = "libsql://onesa-ai-robot-backend-druhustle.aws-eu-west-1.turso.io"
 COLUMNS = ("id", "owner", "proposal", "state", "reason", "created", "position")
 MAX_RESPONSE_BYTES = 16 * 1024 * 1024
+DIAGNOSTIC_CATEGORIES = frozenset(
+    {
+        "timeout",
+        "transport",
+        "http_status",
+        "protocol",
+        "ownership",
+        "schema",
+        "capacity",
+        "sqlite",
+        "startup_deadline",
+        "lease_stale",
+        "unknown",
+    }
+)
+DIAGNOSTIC_PHASES = frozenset(
+    {
+        "query",
+        "lease_schema",
+        "lease_acquire",
+        "history_schema",
+        "history_read",
+        "history_validate",
+        "task_save",
+        "lease_renew",
+        "lease_probe",
+        "lease_release",
+        "initialize",
+        "flush",
+        "ready",
+        "unknown",
+    }
+)
+
+
+class JournalFailure(sqlite3.OperationalError):
+    """Fixed diagnostic metadata; never copy exception or provider contents."""
+
+    def __init__(self, category: str, phase: str, elapsed_ms: int = 0, http_status: int = 0):
+        messages = {
+            "ownership": "Simulation journal ownership expired",
+            "capacity": "Simulation history capacity exceeded",
+            "schema": "Invalid simulation journal schema or history",
+        }
+        super().__init__(messages.get(category, "Remote simulation journal unavailable"))
+        self.category = category if category in DIAGNOSTIC_CATEGORIES else "unknown"
+        self.phase = phase if phase in DIAGNOSTIC_PHASES else "unknown"
+        self.elapsed_ms = min(120_000, max(0, elapsed_ms)) if type(elapsed_ms) is int else 0
+        self.http_status = (
+            http_status if type(http_status) is int and 100 <= http_status <= 599 else 0
+        )
 
 
 def endpoint(value: str) -> str:
@@ -51,7 +103,7 @@ class TursoJournal:
             trust_env=False,
         )
 
-    async def execute(self, sql: str, args: tuple = ()) -> list[dict]:
+    async def execute(self, sql: str, args: tuple = (), *, phase: str = "query") -> list[dict]:
         # No implicit retries: a timeout may follow a committed write.
         def encode(value):
             if value is None:
@@ -70,6 +122,7 @@ class TursoJournal:
                 {"type": "close"},
             ]
         }
+        started = time.monotonic()
         try:
             async with asyncio.timeout(2):
                 async with self.client.stream("POST", self.url, json=body) as response:
@@ -109,31 +162,55 @@ class TursoJournal:
                         raise ValueError("Unsupported journal cell")
                 rows.append(dict(zip(columns, values, strict=True)))
             return rows
-        except (httpx.HTTPError, TimeoutError, ValueError, KeyError, TypeError, OverflowError):
+        except (
+            httpx.HTTPError,
+            TimeoutError,
+            ValueError,
+            KeyError,
+            TypeError,
+            OverflowError,
+        ) as error:
             # Never include a provider response, token, SQL arguments or URL in errors.
-            raise sqlite3.OperationalError("Remote simulation journal unavailable") from None
+            category, status = "protocol", 0
+            if isinstance(error, (httpx.TimeoutException, TimeoutError)):
+                category = "timeout"
+            elif isinstance(error, httpx.HTTPStatusError):
+                category, status = "http_status", error.response.status_code
+            elif isinstance(error, httpx.HTTPError):
+                category = "transport"
+            raise JournalFailure(
+                category, phase, int((time.monotonic() - started) * 1000), status
+            ) from None
 
     async def initialize(self) -> list[dict]:
+        started = time.monotonic()
         await self.execute(
             f"CREATE TABLE IF NOT EXISTS {LEASE} "
-            "(id INTEGER PRIMARY KEY CHECK(id=1),owner TEXT NOT NULL,expires INTEGER NOT NULL)"
+            "(id INTEGER PRIMARY KEY CHECK(id=1),owner TEXT NOT NULL,expires INTEGER NOT NULL)",
+            phase="lease_schema",
         )
         rows = await self.execute(
             f"INSERT INTO {LEASE}(id,owner,expires) VALUES(1,?,unixepoch()+30) "
             "ON CONFLICT(id) DO UPDATE SET owner=excluded.owner,expires=excluded.expires "
             f"WHERE {LEASE}.expires<unixepoch() RETURNING owner",
             (self.owner,),
+            phase="lease_acquire",
         )
         if rows != [{"owner": self.owner}]:
             raise JournalAlreadyOwned("Simulation journal already has a live owner")
         await self.execute(
             f"CREATE TABLE IF NOT EXISTS {TABLE} (id TEXT PRIMARY KEY,owner TEXT NOT NULL,"
             "proposal TEXT NOT NULL,state TEXT NOT NULL,reason TEXT NOT NULL,"
-            "created REAL NOT NULL,position REAL NOT NULL DEFAULT 0)"
+            "created REAL NOT NULL,position REAL NOT NULL DEFAULT 0)",
+            phase="history_schema",
         )
-        rows = await self.execute(f"SELECT {','.join(COLUMNS)} FROM {TABLE} LIMIT 10001")
+        rows = await self.execute(
+            f"SELECT {','.join(COLUMNS)} FROM {TABLE} LIMIT 10001", phase="history_read"
+        )
         if len(rows) > 10000:
-            raise sqlite3.OperationalError("Simulation history capacity exceeded")
+            raise JournalFailure(
+                "capacity", "history_validate", int((time.monotonic() - started) * 1000)
+            )
         for row in rows:
             if (
                 set(row) != set(COLUMNS)
@@ -142,10 +219,13 @@ class TursoJournal:
                 or len(row["proposal"]) > 16384
                 or not all(isinstance(row[col], (int, float)) for col in COLUMNS[5:])
             ):
-                raise sqlite3.OperationalError("Invalid simulation journal schema or history")
+                raise JournalFailure(
+                    "schema", "history_validate", int((time.monotonic() - started) * 1000)
+                )
         return rows
 
     async def save(self, row: dict) -> None:
+        started = time.monotonic()
         saved = await self.execute(
             f"INSERT INTO {TABLE}({','.join(COLUMNS)}) SELECT ?,?,?,?,?,?,? "
             f"WHERE EXISTS(SELECT 1 FROM {LEASE} WHERE id=1 AND owner=? AND expires>unixepoch()) "
@@ -153,32 +233,43 @@ class TursoJournal:
             "state=excluded.state,reason=excluded.reason,created=excluded.created,"
             "position=excluded.position RETURNING id",
             (*[row[col] for col in COLUMNS], self.owner),
+            phase="task_save",
         )
         if saved != [{"id": row["id"]}]:
-            raise sqlite3.OperationalError("Simulation journal ownership expired")
+            raise JournalFailure("ownership", "task_save", int((time.monotonic() - started) * 1000))
 
     async def renew(self) -> None:
+        started = time.monotonic()
         rows = await self.execute(
             f"UPDATE {LEASE} SET expires=unixepoch()+30 "
             "WHERE id=1 AND owner=? AND expires>unixepoch() RETURNING owner",
             (self.owner,),
+            phase="lease_renew",
         )
         if rows != [{"owner": self.owner}]:
-            raise sqlite3.OperationalError("Simulation journal ownership expired")
+            raise JournalFailure(
+                "ownership", "lease_renew", int((time.monotonic() - started) * 1000)
+            )
 
     async def probe(self) -> None:
+        started = time.monotonic()
         rows = await self.execute(
             f"SELECT owner FROM {LEASE} WHERE id=1 AND owner=? AND expires>unixepoch()",
             (self.owner,),
+            phase="lease_probe",
         )
         if rows != [{"owner": self.owner}]:
-            raise sqlite3.OperationalError("Simulation journal ownership expired")
+            raise JournalFailure(
+                "ownership", "lease_probe", int((time.monotonic() - started) * 1000)
+            )
 
     async def close(self) -> None:
         # All local writers have been joined before shutdown. Owner scoping and
         # guarded writes prevent an obsolete process from touching a new owner.
         try:
-            await self.execute(f"DELETE FROM {LEASE} WHERE id=1 AND owner=?", (self.owner,))
+            await self.execute(
+                f"DELETE FROM {LEASE} WHERE id=1 AND owner=?", (self.owner,), phase="lease_release"
+            )
         except sqlite3.Error:
             pass  # An unreachable/expired owner is fenced by the 30-second lease.
         finally:
