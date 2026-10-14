@@ -376,6 +376,31 @@ if __name__ == "__main__":
 
 
 class ReadinessWaitTests(unittest.TestCase):
+    def test_preview_bypass_never_reaches_direct_render_readiness(self):
+        for host, expected in [
+            ("https://synthetic.vercel.app", True),
+            ("https://synthetic.onrender.com", False),
+            ("https://robot.synthetic.example.com", False),
+        ]:
+            api = smoke.Simulator(host)
+            response = Mock()
+            response.code = 200
+            response.read.return_value = b'{"status":"ready"}'
+            response.__enter__ = Mock(return_value=response)
+            response.__exit__ = Mock(return_value=False)
+            api.opener = Mock()
+            api.opener.open.return_value = response
+            with patch.dict(
+                os.environ,
+                {"VERCEL_AUTOMATION_BYPASS_SECRET": "synthetic-preview-only"},
+                clear=True,
+            ):
+                api.call("/api/v1/ready")
+            request = api.opener.open.call_args.args[0]
+            self.assertEqual(
+                request.get_header("X-vercel-protection-bypass") is not None, expected
+            )
+
     def test_rollout_503_waits_but_unexpected_status_is_not_accepted(self):
         api = Mock()
         api.call.side_effect = [

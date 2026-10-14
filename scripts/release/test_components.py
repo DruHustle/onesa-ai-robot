@@ -3,6 +3,7 @@
 import copy
 import hashlib
 import os
+import re
 import unittest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
@@ -58,6 +59,38 @@ class GitHub(ExistingGitHub):
 class ComponentTests(unittest.TestCase):
     def setUp(self):
         self.github = GitHub()
+
+    def test_backend_restart_step_passes_the_full_preflight_configuration(self):
+        text = (e.ROOT / ".github/workflows/release-staging.yml").read_text()
+        step = text.split("    - name: Deploy exact backend source\n", 1)[1].split(
+            "\n    - name:", 1
+        )[0]
+        environment = dict(re.findall(r"^        ([A-Z_]+): (.+)$", step, re.MULTILINE))
+        required = {
+            "RENDER_API_KEY",
+            "RENDER_SERVICE_ID",
+            "GH_TOKEN",
+            "VERCEL_TOKEN",
+            "VERCEL_ORG_ID",
+            "VERCEL_PROJECT_ID",
+            "ROBOT_STORAGE_MODE",
+            "ROBOT_TURSO_DATABASE_URL",
+            "ROBOT_API_URL",
+            "ROBOT_TEST_OPERATOR",
+            "VERCEL_AUTOMATION_BYPASS_SECRET",
+        }
+        self.assertTrue(required <= environment.keys())
+        self.assertIn("STAGING_ROBOT_API_URL", environment["ROBOT_API_URL"])
+        for key in (
+            "RENDER_API_KEY",
+            "RENDER_SERVICE_ID",
+            "VERCEL_TOKEN",
+            "VERCEL_ORG_ID",
+            "VERCEL_PROJECT_ID",
+            "VERCEL_AUTOMATION_BYPASS_SECRET",
+        ):
+            self.assertIn("secrets.STAGING_", environment[key])
+        self.assertIn("--preflight", step)
 
     def test_reuse_records_actual_new_frontend_and_old_backend_provenance(self):
         result = c.plan(self.github, NEW, 40)
