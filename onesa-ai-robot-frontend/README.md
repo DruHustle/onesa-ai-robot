@@ -27,13 +27,18 @@ build verifies its digest; the engineering manifest is an identical reviewed cop
 `npm run test:e2e` requires an isolated simulator, synthetic operator
 `browser-test-operator-only`, and matching installed Chromium/Firefox/WebKit binaries.
 The suite checks five viewport widths, keyboard entry, login/reset/proposal/approval/
-completion/stop/logout and automated WCAG rules. Manual accessibility acceptance
+completion/stop/logout and automated WCAG rules. The current matrix has 28 cases per
+browser (84 total), including a test-owned held-response fixture that verifies
+independent Stop/Sign out and originating-form duplicate suppression. Four offline
+module regressions also exercise Stop, cancel, logout and duplicate submission.
+Manual accessibility acceptance
 remains separate. Do not use a real operator password or live hardware for tests.
 
 `docker build -t onesa-robot-interface:local .` builds a separate non-root Node image.
 The Vercel adapter reuses the same proxy boundary, but an actual Vercel build and
-protected staged deployment still need qualification. `git.deploymentEnabled=false`
-prevents automatic Git deployment; no public release is implied by a branch push.
+protected staged deployment still need qualification. The Git allowlist defaults to
+false and permits only staging's protected native Preview. Production uses the
+separately authorized prebuilt release; no public release is implied by a branch push.
 API schema/types are generated from the backend, checked with
 `python scripts/check-contracts.py` from the repository root using the backend venv.
 
