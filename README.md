@@ -9,8 +9,9 @@ not implemented. Simulation results do not certify physical robot safety.
 The public [Robot product](https://robot.onesa.eu) explains that scope. The operator
 console serves protected simulation data through an independently authenticated API;
 an ordinary Onesa AI account grants no Robot operator permission. Production source
-1638108 has passed the 13 API/safety checks; initial hosted browser acceptance remains
-incomplete after two transient gateway failures. The current result and earlier
+56ce52f frontend with retained 1638108 backend passed the 13 API/safety checks;
+hosted acceptance remains blocked after one WebKit sign-out failure and subsequent
+fail-closed journal unavailability. The current result and earlier
 October 13 recovery baseline are recorded in [CHANGELOG.md](CHANGELOG.md) and
 [the protected deployment guide](docs/engineering/DEPLOYMENT.md). Changes in a local
 checkout need their own qualification before deployment.

@@ -50,9 +50,8 @@ async function waitForSimulator() {
   }
   const error=new Error(unavailableSignIn);Object.assign(error,{status:503});throw error;
 }
-async function run(action, success) {
+async function run(action, success, form=null) {
   if(suspended)return;
-  const form=document.activeElement?.closest('form');
   if(form&&busyForms.has(form))return;
   const controls=form?[...form.querySelectorAll('button[type="submit"]')]:[];
   if(form){busyForms.add(form);form.setAttribute('aria-busy','true');controls.forEach(control=>control.disabled=true);}
@@ -60,10 +59,10 @@ async function run(action, success) {
   catch(error){if(suspended)return;if(error.status===401) signedOut();notice(form?.id==='login-form'&&([502,503,504].includes(error.status)||['AbortError','TimeoutError','TypeError'].includes(error.name))?unavailableSignIn:error.message);}
   finally{if(form){busyForms.delete(form);form.removeAttribute('aria-busy');controls.forEach(control=>control.disabled=false);}}
 }
-byId('login-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{await waitForSimulator();const session=await client.login({name:byId('name').value,password:byId('password').value});byId('password').value='';generation++;csrf=session.csrf;client.csrf=csrf;byId('login-form').hidden=true;byId('operator').hidden=false;timer=setInterval(refresh,500);},'Signed in. Physical actuation remains disabled.');});
-byId('reset-form').addEventListener('submit',event=>{event.preventDefault();const password=byId('reset-password').value;byId('reset-password').value='';run(()=>client.reset({password}),'Simulation stop reset.');});
-byId('proposal-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{const data=await client.propose({command_id:crypto.randomUUID(),issued_at:Date.now()/1000,target_radians:Number(byId('target').value),duration_seconds:Number(byId('duration').value)});proposalId=data.id;byId('proposed-id').textContent=proposalId;byId('approval-form').hidden=false;byId('approve-password').focus();},'Proposal created. Confirm within 15 seconds.');});
-byId('approval-form').addEventListener('submit',event=>{event.preventDefault();const password=byId('approve-password').value;byId('approve-password').value='';run(async()=>{await client.approve(proposalId,{password});byId('approval-form').hidden=true;proposalId='';},'Simulation running; heartbeat must remain connected.');});
+byId('login-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{await waitForSimulator();const session=await client.login({name:byId('name').value,password:byId('password').value});byId('password').value='';generation++;csrf=session.csrf;client.csrf=csrf;byId('login-form').hidden=true;byId('operator').hidden=false;timer=setInterval(refresh,500);},'Signed in. Physical actuation remains disabled.',event.currentTarget);});
+byId('reset-form').addEventListener('submit',event=>{event.preventDefault();const password=byId('reset-password').value;byId('reset-password').value='';run(()=>client.reset({password}),'Simulation stop reset.',event.currentTarget);});
+byId('proposal-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{const data=await client.propose({command_id:crypto.randomUUID(),issued_at:Date.now()/1000,target_radians:Number(byId('target').value),duration_seconds:Number(byId('duration').value)});proposalId=data.id;byId('proposed-id').textContent=proposalId;byId('approval-form').hidden=false;byId('approve-password').focus();},'Proposal created. Confirm within 15 seconds.',event.currentTarget);});
+byId('approval-form').addEventListener('submit',event=>{event.preventDefault();const password=byId('approve-password').value;byId('approve-password').value='';run(async()=>{await client.approve(proposalId,{password});byId('approval-form').hidden=true;proposalId='';},'Simulation running; heartbeat must remain connected.',event.currentTarget);});
 byId('cancel').addEventListener('click',()=>run(async()=>{await client.cancel(proposalId);byId('approval-form').hidden=true;proposalId='';},'Proposal cancelled.'));
 byId('stop').addEventListener('click',()=>run(()=>client.stop(),'Simulation stopped. Reset requires confirmation.'));
 byId('logout').addEventListener('click',()=>run(async()=>{await client.logout();signedOut();},'Signed out; this session cannot authorize further tasks.'));
