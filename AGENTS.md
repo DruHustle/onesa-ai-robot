@@ -185,6 +185,14 @@ Done means reviewed source, safe cleanup, passing affected checks, accounted evi
 and verified authorized hosted scope. Report the exact genuine blocker and next
 executable action. Only verified production changes enter the root CHANGELOG.
 
+Render observation timeout is an unresolved local observation, not a confirmed
+provider failure or cancellation. Preserve the immediate sanitized deployment
+receipt and its source binding through the existing artifact channel. Continue an
+existing deployment only with the pinned-receipt GET-only observer described in
+DEPLOYMENT; never recreate a deployment, clear its cache, cancel it, or consume a
+hosted qualification attempt merely to test monitoring. Actual live source and all
+hosted acceptance gates remain separate requirements.
+
 Dependency maintenance retains alerts, scans, scheduled CI and owner-confirmed
 notifications. Authorized Dependabot security PRs target the unchanged default main;
 version `target-branch: dev` cannot retarget security fixes. PR code runs credential-free

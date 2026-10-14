@@ -219,6 +219,80 @@ After any separately authorized staging cutover, require actual history/readines
 and the complete 15/84 hosted gates before normal main qualification. Production
 provider writes require a new concrete owner-reviewed plan and fresh external gate.
 
+## Render deployment receipts and bounded observation
+
+`scripts/deploy_render.py` separates a single create request from observation of
+the accepted deployment. It saves an owner-only sanitized receipt before the
+request, immediately after acceptance, on status transitions and on observation
+failure. The adjacent `render-preflight.json` contains only the source/run binding;
+it grants no deployment or acceptance authority. Both existing cloud workflows
+upload these two exact files as `render-deployment-observation` immediately after
+the backend step, including on failure, before application acceptance. They never
+upload a directory containing credentials, runtime configuration or task data.
+
+The initial observation window remains 1,800 seconds, including provider preflight
+and submission. Each complete HTTP operation, including its response body, has a
+20-second deadline. GET rate-limit recovery permits at most three requests with a
+bounded delay; POST is never retried. Polling backs off from five to thirty seconds
+and reports transitions or a summary every ninety seconds. The backend step has
+a 32-minute limit and the immediate artifact step two minutes; the existing outer
+job stays at sixty minutes. No provider build limit was increased: Render documents
+up to 120 minutes for a build command. Longer work needs a controlled observation
+continuation, not a runner waiting indefinitely or another build request.
+
+An observation timeout exits nonzero, blocks subsequent deployment/acceptance and
+records that Render may continue independently. `build_failed`, `update_failed`
+and `pre_deploy_failed` are confirmed provider failures; `canceled` and
+`deactivated` are distinct non-success outcomes. `live` succeeds only when the
+exact source is still the latest live deployment. It still records application
+acceptance as NOT TESTED and grants no promotion authority. Unknown states,
+wrong sources, changed targets and malformed responses fail closed.
+
+To observe an existing version-2 receipt, first retrieve the exact original
+`render-deployment-observation` artifact from the independently verified owner run.
+Keep the downloaded original and artifact digest in the restricted evidence store.
+Copy its two files into a new owner-only continuation directory, set the receipt
+to mode 0600, and independently pin the copied receipt's SHA256. Using the existing
+authorized Render credential in private operator custody, run:
+
+```sh
+python3 scripts/deploy_render.py --environment Staging \
+  --observe-id dep-EXACT_DEPLOYMENT_ID --candidate EXACT_REQUESTED_CANDIDATE_SHA \
+  --preflight /private/continuation/render-preflight.json \
+  --receipt /private/continuation/render.json --receipt-sha256 EXACT_RECEIPT_SHA256 \
+  --wait-seconds 1800 --request-timeout 20
+```
+
+The existing `RENDER_SERVICE_ID` and `GITHUB_REF` must match that environment's
+fixed service and permanent branch. The observer validates the receipt hash,
+original source/run binding, service configuration and actual deployment commit;
+its transport rejects every POST. It makes no application, operator, SQL,
+cancellation, restart or cache-clear request. Resuming observation consumes no
+full hosted qualification attempt and cannot resume skipped acceptance jobs.
+After any actual live result, follow the existing source-bound staging, approval
+and hosted acceptance process within its separately authorized attempt budget.
+
+For an ambiguous create response, preserve the request intent and reconcile the
+provider's exact recent deployments before any further submission. An existing
+active deployment or matching source blocks a duplicate full create. Do not erase
+the receipt to evade that guard. The older script saved a receipt only on success;
+a failed legacy run may have no receipt. Never fabricate its original preflight
+or claim it can be resumed through the version-2 path. Reconcile its immutable
+workflow log and exact provider record separately in the existing restricted audit.
+
+The October 14 run `38628644160` targeted the fixed **staging** service and commit
+`0299570`, not production. Its local 1,800-second timeout did not cancel Render.
+The subsequent operator-owned cancellation was separately verified; no hosted
+API/browser acceptance started. Current restricted evidence preserves provider
+times, serving source, the zero-entry build-log readback and Render's reported
+regional build incident. No dependency, model, hardware package, memory, cache or
+quota cause is inferred without actual build evidence. No build file or hosting
+plan change is justified by that empty log result.
+
+Sources: [Render deploy states](https://api-docs.render.com/reference/retrieve-deploy),
+[rate limits](https://api-docs.render.com/reference/rate-limiting),
+[build pipeline limits](https://render.com/docs/build-pipeline).
+
 ## Recovery, rollback and administrative tunnel
 
 Require an already-stopped, confirmed idle runtime before rollback; preserve unknown
