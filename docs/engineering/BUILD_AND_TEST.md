@@ -39,3 +39,21 @@ root isolation, live preference changes with drafts/simulation and accessibility
 `ONESA_VISUAL_EVIDENCE_DIR` may select only a protected directory for synthetic
 screenshots; never set it to public assets or include private test credentials.
 The shared foundation digest is verified by the frontend build.
+
+## Dependency maintenance
+
+Automatic security-update PR creation is disabled under the owner's explicit
+14 October 2026 authorization; Dependabot alerts remain enabled. The owner confirmed
+receipt and review of Actions failure notifications and Dependabot alerts for this
+repository. Existing security PRs and branches remain intact. Version-update config,
+registry settings and compatibility constraints are retained with zero automatic PRs.
+The existing full verification workflow runs weekly on Monday at 06:17 UTC after
+this version reaches main; changes to dev, staging and main retain required checks.
+Dependency/source and final-image scans are mandatory. A session is not a monitor.
+
+Review alerts and preserve advisory, severity, affected version, remediation and owner
+in the existing restricted findings register. Apply supported updates on dev, qualify
+staging and main, then verify the deployed artifact. Never dismiss alerts or weaken
+checks to make a release pass. Restore security-fix PR preparation only through an
+authorized repository-level `automated-security-fixes` PUT operation. Direct graph
+SBOM readback returned HTTP404; no dependency-graph setting was changed.

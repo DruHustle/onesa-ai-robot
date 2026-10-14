@@ -172,3 +172,6 @@ Coordinate branches, schemas and provider writes; retain recovery and existing d
 Done means reviewed source, safe cleanup, passing affected checks, accounted evidence
 and verified authorized hosted scope. Report the exact genuine blocker and next
 executable action. Only verified production changes enter the root CHANGELOG.
+
+Dependency maintenance uses the verified owner notification path and scheduled existing
+CI described in `docs/engineering/BUILD_AND_TEST.md`; no automatic update branches.
