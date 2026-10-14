@@ -41,11 +41,11 @@ flowchart TD
 | `robot-monitor.yml` | After successful cloud deployment: verify latest provider commit and current readiness; no repair/promotion |
 | `release-candidate.yml` | Existing independent application packaging retained |
 
-Feature CI detects paths without external Actions dependencies. Frontend-only changes
+PR CI detects paths without external Actions dependencies. Frontend-only changes
 skip backend/ROS rebuilding; backend schema/safety or shared scripts/contracts trigger
 frontend checks as well. Every main push and manual CI dispatch runs the complete
 release set, including both runtime digest artifacts. Skipped or absent exact-commit
-checks cannot qualify a release. Before merging a feature PR, dispatch full CI on its SHA when path-filtered push jobs
+checks cannot qualify a release. Before merging a dev-to-staging PR, dispatch full CI on its SHA when path-filtered push jobs
 leave a required context absent. Exact main release checks always run in full.
 Main protection requires the existing checks plus
 `ros-contracts`; workflows never infer success from a skipped job.
@@ -66,7 +66,8 @@ identity with the locally scanned Docker image is not claimed.
 `ROS2_INTERFACE_VERIFIED`. `ROS2_VERIFIED` (integrated robotics runtime) and
 `EDGE_DEPLOYMENT_VERIFIED` remain NOT TESTED. `PHYSICAL_HARDWARE_APPROVED`
 and `PHYSICAL_HARDWARE_READY` remain BLOCKED even after a cloud approval.
-Operations/legal gates require explicit owner review. No physical PASS is generated.
+Operations/legal gates require real evidence and current scope-specific owner authority;
+reuse recorded authorization when applicable without fabricating new review. No physical PASS is generated.
 Robot had no legacy `RELEASE_QUALIFICATION_JSON` deploy gate; no secret is removed.
 The sibling products have retired their legacy JSON fallback; private Free uses external owner authorization.
 

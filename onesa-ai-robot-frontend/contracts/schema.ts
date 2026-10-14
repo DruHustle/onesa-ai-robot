@@ -364,6 +364,11 @@ export interface components {
             active_task: string | null;
             capabilities: components["schemas"]["Capabilities"];
             /**
+             * Deployment Environment
+             * @enum {string}
+             */
+            deployment_environment: "local" | "staging" | "production";
+            /**
              * Mode
              * @constant
              */
@@ -377,6 +382,8 @@ export interface components {
             physical_actuation: false;
             /** Position Radians */
             position_radians: number;
+            /** Sampled At */
+            sampled_at: number;
             /** Stopped */
             stopped: boolean;
         };

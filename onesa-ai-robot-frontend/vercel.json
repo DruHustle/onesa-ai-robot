@@ -38,6 +38,10 @@
   ],
   "rewrites": [
     {
+      "source": "/console",
+      "destination": "/console.html"
+    },
+    {
       "source": "/api/v1/:__onesa_route*",
       "destination": "/api/gateway"
     }

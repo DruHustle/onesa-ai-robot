@@ -1,6 +1,7 @@
 # Robot operator interface
 
-The existing Onesa branding and static HTML/CSS interface now connect to an
+The public `/` product page serves no scripts or operator telemetry. The `/console`
+operator shell uses the shared pinned Onesa foundation and connects to an
 independent authenticated software simulator through a fixed same-origin proxy.
 No browser storage retains passwords, session tokens or control keys.
 
@@ -16,7 +17,12 @@ Use Node 24. PORT defaults to 3431. `ROBOT_API_URL` is server-only and must be a
 credential-free HTTP(S) origin. Remote gateways require TLS. The proxy forwards only
 the Robot session cookie and needed Origin/CSRF/content headers; provider bypass
 headers/cookies are not forwarded. Backend `ROBOT_PUBLIC_ORIGIN` must match the
-browser origin exactly. The interface is a software simulation, never live telemetry.
+browser origin exactly. The operator state is software simulation, never physical robot telemetry.
+Appearance follows browser/OS preference through CSS, including native controls;
+there is no selector, appearance storage or clock schedule.
+
+The local build manifest `design-system.consumer.json` pins the owner artifact and
+build verifies its digest; the engineering manifest is an identical reviewed copy. No sibling source is a build input.
 
 `npm run test:e2e` requires an isolated simulator, synthetic operator
 `browser-test-operator-only`, and matching installed Chromium/Firefox/WebKit binaries.

@@ -29,3 +29,13 @@ Release changes also require `.venv/bin/python -m unittest discover -s scripts/r
 verification uses the pinned official Jazzy image command in `scaffold.yml`, with no
 external network. Keep all three browser projects required; local launch failure is
 not a passing application test.
+
+
+Appearance uses `node --test scripts/test_system_appearance.mjs` from the root;
+repository documentation uses `python3 scripts/check_repository_docs.py` and
+`python3 -m unittest discover -s scripts -p test_repository_docs.py`. The browser
+suite tests both system preferences against contrary mocked local hours, public
+root isolation, live preference changes with drafts/simulation and accessibility.
+`ONESA_VISUAL_EVIDENCE_DIR` may select only a protected directory for synthetic
+screenshots; never set it to public assets or include private test credentials.
+The shared foundation digest is verified by the frontend build.

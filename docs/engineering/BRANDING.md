@@ -9,16 +9,26 @@ are preserved independently in this repository:
   browsers scale the supplied image. The original screenshot includes the cursor.
 - `onesa-ai-robot-frontend/public/brand/sources.json`: dimensions and SHA-256 provenance.
 
-The frontend runtime is not implemented. These are prepared assets; no live robot
-page, favicon route or social preview exists yet. When the approved interface is
-implemented, serve these public paths and use `https://robot.onesa.eu` as its
-metadata base. Keep assets in this repository rather than importing sibling source.
-No generated reinterpretation, image edit or license assignment was made.
+The public product and authenticated software simulator are implemented. The
+October 13 production baseline is recorded in the root CHANGELOG and restricted
+deployment receipts. The current public root uses an original static synthetic-joint
+SVG with descriptive text and no private telemetry. This illustration makes no
+physical robot achievement claim. Its source is in `public/index.html`.
 
-## Shared homepage theme — 2026-10-10
+## Shared foundation and Robot identity — 2026-10-14
 
-`public/index.html` and `public/theme.css` now provide a standalone static visual
-preview with the company navy/cyan palette, typography and orbit motif. Original
-image assets are preserved. The page serves the existing PNG favicon and explicitly
-labels missing connection, telemetry and controls; it remains noindex. Desktop and
-mobile browser checks passed. No connected robot runtime or hosted deployment exists.
+Both product and `/console` consume shared Onesa design artifact `1.0.0`, pinned by
+`design-system.consumer.json`. A teal product accent identifies Robot; safety statuses
+use shared semantic roles and explicit text. The operator shell has protected,
+simulation and runtime-sourced deployment labels, stable units and observation times.
+Browser titles identify Onesa AI Robot independently of color.
+
+Appearance follows CSS `prefers-color-scheme`, with readable light fallback, dark
+roles, native controls, forced colors, reduced motion and print mappings. The previous
+visitor-clock schedule and old stored/selector behavior are superseded. No script,
+timer or appearance preference is retained. Shared artifact updates require deliberate
+verified adoption and each consumer's independent release.
+
+The owner-supplied favicon bytes remain unchanged. Browser-tab legibility and a
+potential approved square product derivative require separate visual inspection;
+the original non-square image is not claimed to be an optimized multi-size icon set.
