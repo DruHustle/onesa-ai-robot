@@ -4,7 +4,7 @@ const byId = id => document.getElementById(id);
 let csrf = '', proposalId = '', timer, polling = false, generation=0, suspended=false;
 const notice = text => { byId('notice').textContent = text; };
 
-function signedOut() {generation++; clearInterval(timer);csrf='';client.csrf='';proposalId='';byId('operator').hidden=true;byId('login-form').hidden=false;byId('approval-form').hidden=true;byId('history').replaceChildren(); }
+function signedOut() {generation++; clearInterval(timer);csrf='';client.csrf='';proposalId='';byId('operator').hidden=true;byId('login-form').hidden=false;byId('approval-form').hidden=true;byId('history').replaceChildren();for(const field of document.querySelectorAll('input[type="password"]'))field.value=''; }
 async function refresh() {
   if(suspended || polling || !csrf) return;
   polling=true;const current=generation;
@@ -29,6 +29,27 @@ async function refresh() {
   finally {polling=false;}
 }
 const busyForms=new WeakSet();
+const unavailableSignIn='Simulator is unavailable. Your sign-in entries are retained. Wait a moment, then select Sign in again.';
+async function waitForSimulator() {
+  const lifecycle=client.pending.signal,deadline=performance.now()+20000;
+  notice('Checking simulator readiness… Your sign-in entries stay on this page.');
+  while(!suspended && !lifecycle.aborted && performance.now()<deadline) {
+    try {
+      const response=await fetch('/api/v1/ready',{credentials:'omit',cache:'no-store',signal:AbortSignal.any([lifecycle,AbortSignal.timeout(Math.ceil(Math.max(1,Math.min(4000,deadline-performance.now()))))])});
+      if(response.ok) {
+        let state;try{state=await response.json();}catch{throw new Error('Simulator readiness could not be verified. Try signing in after service recovery.');}
+        if(state?.status==='ready'&&state.mode==='simulation'&&state.physical_actuation===false)return;
+        throw new Error('Simulator readiness could not be verified. Try signing in after service recovery.');
+      }
+      if(![502,503,504].includes(response.status))throw new Error('Simulator readiness request was rejected. Try signing in after service recovery.');
+    } catch(error) {
+      if(lifecycle.aborted || suspended)throw error;
+      if(!['AbortError','TimeoutError','TypeError'].includes(error.name))throw error;
+    }
+    await new Promise(resolve=>setTimeout(resolve,Math.min(500,Math.max(0,deadline-performance.now()))));
+  }
+  const error=new Error(unavailableSignIn);Object.assign(error,{status:503});throw error;
+}
 async function run(action, success) {
   if(suspended)return;
   const form=document.activeElement?.closest('form');
@@ -36,10 +57,10 @@ async function run(action, success) {
   const controls=form?[...form.querySelectorAll('button[type="submit"]')]:[];
   if(form){busyForms.add(form);form.setAttribute('aria-busy','true');controls.forEach(control=>control.disabled=true);}
   try {await action();if(suspended)return;notice(success);await refresh();}
-  catch(error){if(suspended)return;if(error.status===401) signedOut();notice(error.message);}
+  catch(error){if(suspended)return;if(error.status===401) signedOut();notice(form?.id==='login-form'&&([502,503,504].includes(error.status)||['AbortError','TimeoutError','TypeError'].includes(error.name))?unavailableSignIn:error.message);}
   finally{if(form){busyForms.delete(form);form.removeAttribute('aria-busy');controls.forEach(control=>control.disabled=false);}}
 }
-byId('login-form').addEventListener('submit',event=>{event.preventDefault();const password=byId('password').value;byId('password').value='';run(async()=>{const session=await client.login({name:byId('name').value,password});generation++;csrf=session.csrf;client.csrf=csrf;byId('login-form').hidden=true;byId('operator').hidden=false;timer=setInterval(refresh,500);},'Signed in. Physical actuation remains disabled.');});
+byId('login-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{await waitForSimulator();const session=await client.login({name:byId('name').value,password:byId('password').value});byId('password').value='';generation++;csrf=session.csrf;client.csrf=csrf;byId('login-form').hidden=true;byId('operator').hidden=false;timer=setInterval(refresh,500);},'Signed in. Physical actuation remains disabled.');});
 byId('reset-form').addEventListener('submit',event=>{event.preventDefault();const password=byId('reset-password').value;byId('reset-password').value='';run(()=>client.reset({password}),'Simulation stop reset.');});
 byId('proposal-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{const data=await client.propose({command_id:crypto.randomUUID(),issued_at:Date.now()/1000,target_radians:Number(byId('target').value),duration_seconds:Number(byId('duration').value)});proposalId=data.id;byId('proposed-id').textContent=proposalId;byId('approval-form').hidden=false;byId('approve-password').focus();},'Proposal created. Confirm within 15 seconds.');});
 byId('approval-form').addEventListener('submit',event=>{event.preventDefault();const password=byId('approve-password').value;byId('approve-password').value='';run(async()=>{await client.approve(proposalId,{password});byId('approval-form').hidden=true;proposalId='';},'Simulation running; heartbeat must remain connected.');});

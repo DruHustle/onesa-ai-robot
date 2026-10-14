@@ -529,6 +529,10 @@ def generate(github, sha, run, staging_run=None, require_frontend_build=True):
         trusted_staging_run(github, stage_run, sha)
         stage, origin = github.artifact(stage_run, "staging-verification")
         verify_stage(stage, sha, record["valid_for_source_sha256"], builds)
+        if PRODUCT == "onesa-ai-robot" and stage.get("component_plan"):
+            from components import verify
+
+            record["component_plan"] = verify(github, sha, stage["component_plan"])
         record["staging"] = {"record": stage, "artifact": origin}
         record["STAGING_VERIFIED"] = stage["status"]
     if code == "FAIL" or record["STAGING_VERIFIED"] == "FAIL":
@@ -588,6 +592,21 @@ def verify_stage(stage, sha, fingerprint, builds, now=None):
         stage.get("render_deployment_id") and stage.get("vercel_deployment_id"),
         "Staging deployment identifiers missing",
     )
+    if PRODUCT == "onesa-ai-robot" and stage.get("component_plan"):
+        selected = stage["component_plan"]
+        require(
+            selected.get("mode") == "frontend-only"
+            and selected.get("frontend_commit") == sha
+            and selected.get("physical_hardware_authorized") is False
+            and stage.get("components", {}).get("frontend", {}).get("commit") == sha
+            and stage.get("components", {}).get("frontend", {}).get("deployment_id")
+            == stage["vercel_deployment_id"]
+            and stage.get("components", {}).get("backend", {}).get("commit")
+            == selected.get("backend_commit")
+            and stage.get("components", {}).get("backend", {}).get("deployment_id")
+            == stage["render_deployment_id"],
+            "Staging component versions differ from the selected plan",
+        )
     if stage["status"] == "PASS":
         require(
             all(stage["checks"][name] == "PASS" for name in required),
@@ -935,6 +954,24 @@ def main():
             record["CODE_VERIFIED"] == "PASS",
             "Exact staging CI/build/security must pass",
         )
+        if args.mode == "stage-preflight" and PRODUCT == "onesa-ai-robot":
+            mode = os.environ.get("ROBOT_RELEASE_MODE", "full")
+            require(mode in {"full", "frontend-only"}, "Unknown Robot release mode")
+            if mode == "frontend-only":
+                require(
+                    run["event"] == "workflow_dispatch",
+                    "Component reuse requires explicit owner staging dispatch",
+                )
+                from components import plan
+
+                record["component_plan"] = plan(
+                    github, sha, os.environ.get("ROBOT_BASELINE_AUTHORIZATION_RUN", "")
+                )
+            else:
+                require(
+                    not os.environ.get("ROBOT_BASELINE_AUTHORIZATION_RUN"),
+                    "A full release cannot silently select a retained component",
+                )
     elif args.mode == "generate":
         require(
             run["event"] in {"workflow_dispatch", "workflow_run"},

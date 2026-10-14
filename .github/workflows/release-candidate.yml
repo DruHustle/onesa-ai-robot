@@ -23,6 +23,15 @@ name: Robot candidate packaging (simulation only)
         - frontend
         - backend
         required: true
+      release_mode:
+        description: Full staging release or explicit frontend-only delivery
+        type: choice
+        options: [full, frontend-only]
+        default: full
+      baseline_authorization_run:
+        description: Prior immutable owner authorization run for frontend-only staging
+        type: string
+        required: false
 permissions:
   contents: read
   checks: read
@@ -51,6 +60,9 @@ jobs:
   staging:
     if: github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/staging' && inputs.target == 'staging'
     uses: ./.github/workflows/release-staging.yml
+    with:
+      release_mode: ${{ inputs.release_mode || 'full' }}
+      baseline_authorization_run: ${{ inputs.baseline_authorization_run }}
     secrets:
       STAGING_RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
       STAGING_RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}

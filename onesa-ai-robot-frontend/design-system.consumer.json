@@ -16,5 +16,24 @@
     "local_artifacts": [
       "onesa-ai-robot-frontend/onesa-applications.json"
     ]
+  },
+  "icons": {
+    "version": "1.0.0",
+    "owner": "DruHustle/onesa-company-portal",
+    "source_artwork": "onesa-company-portal-frontend/public/brand/onesa-orbit.png",
+    "source_artwork_sha256": "4dc5ada01211fe5127ab59f33a9e4b19482658ef9878300fa088de4b27e6d7e6",
+    "producer": "scripts/generate_identity_icons.mjs",
+    "product": "robot",
+    "local_manifest": "onesa-ai-robot-frontend/public/brand/icons/v1/sources.json",
+    "local_manifest_sha256": "dc8417a04e8b0d0a1d9e49d26b99878190fca9d728e7b8a1afe1512e4d447dd1",
+    "local_artifacts": [
+      "onesa-ai-robot-frontend/public/brand/icons/v1/onesa-robot.svg",
+      "onesa-ai-robot-frontend/public/brand/icons/v1/onesa-robot-16.png",
+      "onesa-ai-robot-frontend/public/brand/icons/v1/onesa-robot-32.png",
+      "onesa-ai-robot-frontend/public/brand/icons/v1/onesa-robot-64.png",
+      "onesa-ai-robot-frontend/public/brand/icons/v1/onesa-robot.ico",
+      "onesa-ai-robot-frontend/public/brand/icons/v1/onesa-robot-180.png",
+      "onesa-ai-robot-frontend/public/favicon.ico"
+    ]
   }
 }
