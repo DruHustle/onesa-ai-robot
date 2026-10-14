@@ -45,6 +45,31 @@ test('late unauthorized telemetry cannot sign out a newer operator session',asyn
  await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible();
  await page.getByRole('button',{name:'Sign out'}).click();
 });
+test('independent Stop and Sign out work while another form response is pending',async({page})=>{
+ // Test-owned HTTP responses isolate the interaction race: no server session,
+ // reset, stop, task or credential mutation occurs in this regression fixture.
+ let session=false,resets=0,stops=0,logouts=0,held,release;
+ const received=new Promise(resolve=>held=resolve),pending=new Promise(resolve=>release=resolve);
+ await page.route('**/api/v1/**',async route=>{
+  const path=new URL(route.request().url()).pathname;
+  let status=200,body={};
+  if(path.endsWith('/ready'))body={status:'ready',mode:'simulation',physical_actuation:false};
+  else if(path.endsWith('/auth/me')){status=session?200:401;body=session?{csrf:'fixture-csrf'}:{detail:'Fixture signed out'};}
+  else if(path.endsWith('/auth/login')){session=true;body={csrf:'fixture-csrf'};}
+  else if(path.endsWith('/auth/logout')){session=false;logouts++;}
+  else if(path.endsWith('/reset')){resets++;held();await pending;}
+  else if(path.endsWith('/stop'))stops++;
+  else if(path.endsWith('/status'))body={mode:'simulation',physical_actuation:false,stopped:true,position_radians:0,active_task:null,sampled_at:Date.now()/1000,capabilities:{edge_telemetry:'disconnected'},deployment_environment:'local'};
+  else if(path.endsWith('/tasks'))body={tasks:[]};
+  await route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
+ });
+ await page.goto('/console');await page.getByLabel('Operator name').fill('fixture-operator');await page.getByLabel('Password',{exact:true}).fill('fixture-password');await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible();
+ await page.getByLabel('Confirm password to reset').fill('fixture-password');await page.getByRole('button',{name:'Reset simulation stop'}).click();await received;await expect(page.locator('#reset-form')).toHaveAttribute('aria-busy','true');
+ await page.getByLabel('Confirm password to reset').focus();await page.getByRole('button',{name:'Stop simulation',exact:true}).click();await expect.poll(()=>stops).toBe(1);
+ await page.evaluate(()=>document.querySelector('#reset-form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));expect(resets).toBe(1);
+ await page.getByLabel('Confirm password to reset').focus();await page.getByRole('button',{name:'Sign out'}).click();await expect(page.getByRole('button',{name:'Sign in',exact:true})).toBeVisible();expect(logouts).toBe(1);
+ release();await expect(page.locator('#reset-form')).not.toHaveAttribute('aria-busy','true');await expect(page.getByRole('button',{name:'Sign in',exact:true})).toBeVisible();expect(resets).toBe(1);
+});
 for(const mode of ['light','dark'])for(const width of [320,390,768,1024,1440])test(`public Robot identity and telemetry isolation ${mode} at ${width}`,async({page})=>{
  await page.emulateMedia({colorScheme:mode});await page.setViewportSize({width,height:1000});const privateRequests=[];page.on('request',request=>{if(request.url().includes('/api/v1/'))privateRequests.push(request.url());});
  await page.goto('/');await expect(page).toHaveTitle('Product | Onesa AI Robot');await expect(page.getByRole('heading',{name:/Explore motion/})).toBeVisible();await expect(page.getByRole('img',{name:'Illustrated synthetic single-joint simulator'})).toBeVisible();await expect(page.locator('#operator')).toHaveCount(0);expect(privateRequests).toEqual([]);
