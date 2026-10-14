@@ -6,8 +6,24 @@ receipts remain in the restricted release store; local changes are not hosted ac
 
 ## Current deployed baseline and storage
 
-The October 14 production source is `16381086192dc34c8ad7ea40c43ef6d178b00904`
-at `https://robot.onesa.eu`: Render `dep-db7f3oe7bikc73aldipg` and Vercel
+The current October 14 production frontend is
+`56ce52f20ddf7a491de0b33a3805d0c02cc0d345`, Vercel
+`dpl_ENwtg1yhAww2dZURnrabR4b5NraD`, at `https://robot.onesa.eu`.
+It retains backend `16381086192dc34c8ad7ea40c43ef6d178b00904`, Render
+`dep-db7f3oe7bikc73aldipg`. The source-bound qualification and owner authorization
+preceded this frontend-only delivery; actual API acceptance passed 13/13, while
+mandatory browser acceptance **failed at 80/81**. Preserve the failed WebKit
+sign-out observation; the precise original focus state was not captured. The later
+explicit originating-form correction has passed source/local and earlier hosted
+staging checks but has not been deployed to production. Journal recovery-required
+503s were observed separately at 09:09 and 09:32 UTC; a bounded read-only readiness
+observation passed at 09:59, followed by stable complete-history/idle checks at
+10:05. These observations neither explain the latch nor qualify a new release.
+No production restart was performed. Restricted records are in
+`docs/internal/release-audit/evidence/system-design-v2-main-56ce52f/`.
+
+The earlier October 14 production source was
+`16381086192dc34c8ad7ea40c43ef6d178b00904`: the same Render deployment and Vercel
 `dpl_J13jsKeKNGCMqMWbdUV9i45JUcGm`. Exact main CI, fresh hosted staging,
 qualification `38501657824` and owner authorization `38501859388` passed before
 deployment. Actual production API/safety/edge checks are 13/13 PASS. Initial hosted
@@ -152,9 +168,62 @@ Render Free wake-up can produce a bounded initial 503 through the gateway. Recor
 and warm observations separately; do not hide an unresolved persistent outage behind
 retry or keep a free instance artificially awake.
 
+## Journal availability diagnosis and prepared full release
+
+The exact-main staging run `38555383546` for
+`53803249d27de78af4ed971dac10feb139370266` failed its mandatory hosted suite at
+**59/84** (Chromium 28/28, Firefox 18/28, WebKit 13/28). Its source tree matches
+the earlier `826e65e` staging run that passed 15 API/safety checks and all 84 browser
+cases. That earlier PASS does not qualify this failed run. No trusted staging
+receipt artifact was generated. Preserve the complete failed log and sanitized
+diagnosis in the existing restricted `system-design-v2-form-origin-ca75187` audit.
+
+At 11:43 UTC a bounded read-only direct staging check returned the fixed
+recovery-required 503. Two complete SELECT-only snapshots of the current journal
+matched: 348 rows, zero pending tasks and one expired lease. These compare only
+that observed window; no complete before-suite comparator survived the failed run.
+The sampled provider logs contained no exception type or operation phase. The
+underlying trigger remains unproven. Source inspection disproved the hypothesis
+that reset marks all historical tasks dirty: reset changes the safety flag, and
+cancellation marks only running/proposed tasks. Flush-before-renewal is a source
+timing observation, not evidence of this incident's cause.
+
+The prepared diagnostic change emits one warning in the existing protected backend
+log when journal failure first latches. It records only an allowlisted category,
+an explicit operation phase, clamped integer monotonic elapsed milliseconds and an
+optional numeric HTTP status. It excludes exception text, SQL, URLs, tokens, task
+identifiers, row contents, raw responses and tracebacks. Anonymous 503 responses
+remain unchanged. A timeout category identifies a timed-out boundary; ownership
+means a guarded statement did not return the expected owner. Neither proves a
+provider outage or permits automatic recovery. A stale-lease warning identifies
+the existing readiness freshness check, not the cause of missed renewal.
+
+The patch preserves the one-second HTTP budget, two-second overall RPC budget,
+10-second renewal, 15-second readiness freshness and 30-second lease, together
+with existing flush order, fencing, cancellation, watchdog and no-retry behavior.
+Lifecycle cancellation propagates; an ambiguous write is never replayed. This
+backend change requires a **full** release with new exact-source CI, fresh hosted
+staging, immutable artifacts, qualification and owner authorization. Earlier
+frontend-only retained-backend proofs and prepared builds do not attest it.
+
+Before any provider operation, present the reviewed source, isolated negative
+tests, actual failed-run evidence and narrowly scoped plan to the release owner.
+Confirm the exact existing staging service, source/configuration, complete history,
+already-stopped idle state, zero pending work and current lease/deployment/Actions
+state. Preserve unknown work and hold if any check is inconclusive. A failed journal
+does not authorize a stop, lease edit, token rotation, history deletion or production
+restart. No recovery or additional hosted attempt is automatic. Record attempts
+for the same unresolved episode and stop by the master limit of three; the failed
+exact-main suite above is attempt one, with zero recovery restarts or retries.
+After any separately authorized staging cutover, require actual history/readiness
+and the complete 15/84 hosted gates before normal main qualification. Production
+provider writes require a new concrete owner-reviewed plan and fresh external gate.
+
 ## Recovery, rollback and administrative tunnel
 
-Stop tasks before rollback, preserve the private journal and retain the stop latch.
+Require an already-stopped, confirmed idle runtime before rollback; preserve unknown
+active or proposed work and coordinate its owner rather than cancelling it to release.
+Preserve the private journal and retain the stop latch.
 Sessions revoke and unfinished tasks cancel on restart. Recheck origin/API/schema/
 artifact compatibility. Do not restore active sessions or automatically replay commands.
 Test backup/restoration only in an isolated authorized destination; prove retained

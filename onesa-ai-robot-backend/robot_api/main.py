@@ -2,6 +2,7 @@
 
 import asyncio
 import contextlib
+import logging
 import secrets
 import sqlite3
 import time
@@ -22,12 +23,14 @@ from robot_api.turso import (
     COLUMNS,
     PRODUCTION_DATABASE,
     JournalAlreadyOwned,
+    JournalFailure,
     TursoJournal,
     endpoint,
 )
 
 REQUEST_BODY_SECONDS = 5
 JOURNAL_STARTUP_SECONDS = 90
+JOURNAL_LOG = logging.getLogger("robot_api.journal")
 
 
 class Settings(BaseSettings):
@@ -241,8 +244,8 @@ class State:
         try:
             await self.journal.renew()
             self.journal_lease_confirmed_at = time.monotonic()
-        except sqlite3.Error:
-            self.fail_journal()
+        except sqlite3.Error as error:
+            self.fail_journal(error, phase="lease_renew")
             raise
 
     def dirty(self, task_id: str) -> None:
@@ -250,9 +253,30 @@ class State:
             self.journal_version += 1
             self.journal_dirty[task_id] = self.journal_version
 
-    def fail_journal(self) -> None:
+    def fail_journal(
+        self,
+        error: sqlite3.Error | None = None,
+        *,
+        category: str = "sqlite",
+        phase: str = "unknown",
+        elapsed_ms: int = 0,
+    ) -> None:
+        first = not self.journal_failed
         self.journal_failed = True
         self.cancel("storage_unavailable", stop=True)
+        if first:
+            diagnostic = (
+                JournalFailure(error.category, error.phase, error.elapsed_ms, error.http_status)
+                if isinstance(error, JournalFailure)
+                else JournalFailure(category, phase, elapsed_ms)
+            )
+            JOURNAL_LOG.warning(
+                "Simulation journal latched category=%s phase=%s elapsed_ms=%d http_status=%d",
+                diagnostic.category,
+                diagnostic.phase,
+                diagnostic.elapsed_ms,
+                diagnostic.http_status,
+            )
 
     async def flush_journal(self) -> None:
         if not self.journal:
@@ -270,8 +294,8 @@ class State:
                     await self.journal.save(dict(row))
                     if self.journal_dirty.get(task_id) == version:
                         self.journal_dirty.pop(task_id)
-            except sqlite3.Error:
-                self.fail_journal()
+            except sqlite3.Error as error:
+                self.fail_journal(error, phase="flush")
                 raise
 
     @property
@@ -372,15 +396,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 await asyncio.sleep(0.1)
                 if not state.journal_initialized:
                     if time.monotonic() >= startup_deadline:
-                        state.fail_journal()
+                        state.fail_journal(
+                            category="startup_deadline",
+                            phase="initialize",
+                            elapsed_ms=int((time.monotonic() - renewed) * 1000),
+                        )
                         return
                     try:
                         await state.initialize_journal()
                         renewed = time.monotonic()
                     except JournalAlreadyOwned:
                         await asyncio.sleep(1)
-                    except sqlite3.Error:
-                        state.fail_journal()
+                    except sqlite3.Error as error:
+                        state.fail_journal(error, phase="initialize")
                         return
                     continue
                 try:
@@ -388,8 +416,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     if state.journal and time.monotonic() - renewed >= 10:
                         await state.refresh_journal_lease()
                         renewed = time.monotonic()
-                except sqlite3.Error:
-                    state.fail_journal()
+                except sqlite3.Error as error:
+                    state.fail_journal(error, phase="flush")
                     return  # Bounded fail-closed; operator recovery requires restart.
 
         journal_task = asyncio.create_task(journal_watch()) if state.journal else None
@@ -560,7 +588,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             # Anonymous health traffic must not consume remote connections. The
             # background lease renewal supplies a bounded, real database proof.
             if time.monotonic() - sim.journal_lease_confirmed_at > 15:
-                sim.fail_journal()
+                sim.fail_journal(
+                    category="lease_stale",
+                    phase="ready",
+                    elapsed_ms=int((time.monotonic() - sim.journal_lease_confirmed_at) * 1000),
+                )
                 raise HTTPException(503, "Remote simulation journal lease check expired")
         if sim.db.execute("SELECT count(*) FROM safety WHERE id=1").fetchone()[0] != 1:
             raise HTTPException(503, "Safety state unavailable")
