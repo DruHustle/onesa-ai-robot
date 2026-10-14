@@ -87,6 +87,24 @@ def test_auth_origin_csrf_and_control_boundaries(api):
     assert api.post("/api/v1/stop", content="x" * 16385).status_code == 413
 
 
+@pytest.mark.parametrize("environment", ["local", "staging", "production"])
+def test_status_context_is_authenticated_and_runtime_sourced(config, environment):
+    config.deployment_environment = environment
+    with TestClient(create_app(config)) as client:
+        client.headers["Origin"] = config.public_origin
+        assert client.get("/api/v1/status?deployment_environment=wrong").status_code == 401
+        login(client)
+        before = time.time()
+        response = client.get("/api/v1/status?deployment_environment=wrong")
+        after = time.time()
+        assert response.status_code == 200
+        assert response.headers["cache-control"] == "no-store"
+        assert response.json()["deployment_environment"] == environment
+        assert before <= response.json()["sampled_at"] <= after
+        assert response.json()["mode"] == "simulation"
+        assert response.json()["physical_actuation"] is False
+
+
 def test_completion_requires_heartbeat_no_replay_and_explicit_stop_reset(api):
     login(api)
     reset(api)

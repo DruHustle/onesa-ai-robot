@@ -29,3 +29,45 @@ Release changes also require `.venv/bin/python -m unittest discover -s scripts/r
 verification uses the pinned official Jazzy image command in `scaffold.yml`, with no
 external network. Keep all three browser projects required; local launch failure is
 not a passing application test.
+
+
+Appearance uses `node --test scripts/test_system_appearance.mjs` from the root;
+repository documentation uses `python3 scripts/check_repository_docs.py` and
+`python3 -m unittest discover -s scripts -p test_repository_docs.py`. The browser
+suite tests both system preferences against contrary mocked local hours, public
+root isolation, live preference changes with drafts/simulation and accessibility.
+`ONESA_VISUAL_EVIDENCE_DIR` may select only a protected directory for synthetic
+screenshots; never set it to public assets or include private test credentials.
+The shared foundation digest is verified by the frontend build.
+
+## Dependency maintenance
+
+The owner's latest 14 October 2026 instruction authorizes temporary Dependabot
+security-update PR branches and necessary narrowly scoped security-release candidates,
+while retaining exactly three permanent branches: dev, staging and main. It supersedes
+the earlier same-day security-PR disable instruction. The owner confirmed receipt and
+review of Actions failures and Dependabot notifications. Alerts, dependency/source and
+final-image scans, existing security PRs and evidence remain intact. The root coordinating
+session restores and verifies the separate repository security-fix setting; a source
+configuration alone does not prove the remote setting is active. Read-only API
+metadata at 2026-10-14 01:25 UTC returned `enabled: true`, `paused: false`;
+default main and the existing open dev-to-staging PR were preserved.
+
+Ordinary version PRs remain disabled with `open-pull-requests-limit: 0`. Their retained
+configuration targets dev. Security updates always target the unchanged repository
+default main; target-branch does not redirect security fixes, and version-only groups/
+cooldown settings do not constrain them. No auto-merge or automatic production release
+is enabled. Review fixes through [the security integration procedure](CI_CD.md#security-pr-integration-and-urgent-candidates).
+
+The existing full verification workflow runs weekly on Monday at 06:17 UTC once this
+version reaches main; dev/staging/main changes retain required checks. Temporary security
+PR code receives credential-free GitHub-hosted PR checks targeting a permanent branch;
+never send it provider secrets or a persistent privileged runner. A scheduled scan or
+Actions session does not itself establish delivered monitoring.
+
+Review alerts and preserve advisory, severity, affected version, remediation and owner
+in the existing restricted register. Normally apply reviewed fixes on dev and qualify
+staging/main; necessary urgent candidates start from exact production and exclude
+unfinished dev work. No alert dismissal, check suppression, credential rotation or
+branch deletion is implied. Direct graph SBOM readback previously returned HTTP404;
+no dependency-graph setting was changed by this source update.

@@ -146,6 +146,8 @@ class StatusResponse(BaseModel):
     operator: str
     active_task: str | None
     capabilities: Capabilities
+    sampled_at: float
+    deployment_environment: Literal["local", "staging", "production"]
 
 
 class TaskSummary(BaseModel):
@@ -628,6 +630,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "position_radians": sim.position,
             "operator": operator["name"],
             "active_task": sim.active["id"] if sim.active else None,
+            "sampled_at": time.time(),
+            "deployment_environment": config.deployment_environment,
             "capabilities": {
                 "edge_telemetry": request.app.state.edge.status(),
                 "ros2": "not_connected",

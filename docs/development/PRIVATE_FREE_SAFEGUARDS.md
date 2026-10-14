@@ -219,7 +219,7 @@ handoff does not resolve that blocker or authorize paid disks.
 | Production credentials absent from editable repository CI | External owner custody after migration | **Not yet active remotely**; current repository keys must be removed/rotated by owner |
 | Production Git/deploy-hook automation disabled | Provider account settings after verified owner action | Local configs are prepared; existing service settings not freshly verified |
 | Manual owner issue/dispatch/digest, revocation, freshness | Workflow/API provenance and trusted external verifier | Owner must review source; writable repository cannot police a malicious workflow author by itself |
-| Feature branches, PR targeting main, solo-owner merge review | Team discipline plus release eligibility check | Direct pushes and unchecked merges remain possible on private Free |
+| Permanent dev/staging/main, scoped temporary security PRs, owner review | Team discipline plus release eligibility check | Direct pushes and unchecked merges remain possible on private Free |
 | Hardware/robot physical authorization | Separate owner/hardware safety process | Cloud approval never grants physical authority; current software cannot actuate hardware |
 
 [GitHub's security guidance](https://docs.github.com/en/actions/reference/security/secure-use)
@@ -246,3 +246,17 @@ remote installation and provider controls remain owner actions, not verified cla
 Application runtime source, contracts, data and dependencies are unchanged by this task.
 
 Verified local result: 41 registered release tests, 34 passed and 7 existing sibling-only cases skipped; Actions syntax, synthetic failure demonstration, publication/history hygiene and whitespace checks passed. Existing CI application run commands were compared against HEAD and preserved (apart from expanding the release test discovery and removing retired legacy deployment steps). Full application/browser/container suites were not rerun for this workflow/documentation-only change.
+
+
+## Current temporary security branch exception — 2026-10-14
+
+Latest owner steering allows temporary Dependabot security-update PRs and necessary
+narrow security-release candidates while retaining only dev/staging/main permanently.
+Normal integration remains dev → staging → main; default-main Dependabot targets do
+not grant auto-merge or production authority. An urgent candidate excludes unfinished
+dev work by starting at exact verified production and obtaining its own owner-controlled
+staging/source/artifact qualification. Preserve concurrent work and reconcile the fix
+into dev/staging afterward. Follow [the operational procedure](../engineering/CI_CD.md#security-pr-integration-and-urgent-candidates).
+Keep credential-free hosted PR validation, external production custody and all current
+release gates; this exception is not a native Free branch-protection claim. Temporary
+cleanup requires incorporation, retained evidence and open-review/work checks.

@@ -1,10 +1,15 @@
+# Ordinary version-update PRs remain disabled; their retained target is dev.
+# Authorized security PRs use the repository default main, independently of target-branch.
+# Registry, compiler compatibility and reviewed update metadata retained.
+# Security-update PRs are enabled separately and target the default main branch.
 version: 2
 updates:
 - package-ecosystem: github-actions
   directory: /
   schedule:
     interval: monthly
-  open-pull-requests-limit: 2
+  target-branch: dev
+  open-pull-requests-limit: 0
   groups:
     compatible-actions:
       applies-to: version-updates
@@ -19,7 +24,8 @@ updates:
   directory: /onesa-ai-robot-frontend
   schedule:
     interval: monthly
-  open-pull-requests-limit: 2
+  target-branch: dev
+  open-pull-requests-limit: 0
   groups:
     compatible-packages:
       applies-to: version-updates
@@ -34,7 +40,8 @@ updates:
   directory: /onesa-ai-robot-backend
   schedule:
     interval: monthly
-  open-pull-requests-limit: 2
+  target-branch: dev
+  open-pull-requests-limit: 0
   groups:
     compatible-python:
       applies-to: version-updates

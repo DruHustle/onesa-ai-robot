@@ -3,7 +3,7 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname } from 'node:path';
 import {fileURLToPath} from 'node:url';
-const root = resolve(import.meta.dirname, 'public');
+const root = resolve(import.meta.dirname, 'dist');
 const port = Number(process.env.PORT || 3431);
 const upstream = new URL(process.env.ROBOT_API_URL || 'http://127.0.0.1:8431');
 if (!['http:', 'https:'].includes(upstream.protocol) || upstream.username || upstream.password || upstream.pathname !== '/' || upstream.search || upstream.hash) throw new Error('ROBOT_API_URL must be a credential-free HTTP(S) origin');
@@ -37,7 +37,7 @@ export async function handler(req, res) {
       return;
     }
     if (!['GET','HEAD'].includes(req.method)) {res.writeHead(405).end();return;}
-    const files = new Map([['/','index.html'],['/index.html','index.html'],['/theme.css','theme.css'],['/app.js','app.js'],['/automatic-day-night.js','automatic-day-night.js'],['/client.js','client.js'],['/brand/onesa-orbit.png','brand/onesa-orbit.png'],['/robots.txt','robots.txt']]);
+    const files = new Map([['/','index.html'],['/index.html','index.html'],['/console','console.html'],['/console/','console.html'],['/console.html','console.html'],['/onesa-foundation.css','onesa-foundation.css'],['/theme.css','theme.css'],['/app.js','app.js'],['/client.js','client.js'],['/brand/onesa-orbit.png','brand/onesa-orbit.png'],['/robots.txt','robots.txt']]);
     const file = files.get(url.pathname);
     if (!file) {res.writeHead(404).end();return;}
     const body=await readFile(resolve(root,file));
