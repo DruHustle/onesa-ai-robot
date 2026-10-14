@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import {spawn} from 'node:child_process';
 import {setTimeout as sleep} from 'node:timers/promises';
+import {readFile} from 'node:fs/promises';
 test('proxy preserves auth boundaries, strips unrelated secrets and rejects open routes',async()=>{
  let received;
  const upstream=http.createServer((req,res)=>{received=req.headers;res.setHeader('Content-Type','application/json');res.setHeader('Set-Cookie',['robot_session=fixture; Path=/api/v1; HttpOnly','unrelated=secret']);res.end('{}');});
@@ -29,6 +30,12 @@ test('proxy preserves auth boundaries, strips unrelated secrets and rejects open
 
   assert.equal((await fetch('http://127.0.0.1:3439/api/v1/stop',{method:'POST',body:'x'.repeat(16385)})).status,413);
   assert.equal((await fetch('http://127.0.0.1:3439/.env')).status,404);
+  for(const width of [640,1280]){
+    const image=await fetch('http://127.0.0.1:3439/images/robot-concept-'+width+'.webp');
+    assert.equal(image.status,200);assert.equal(image.headers.get('content-type'),'image/webp');
+    assert.deepEqual(Buffer.from(await image.arrayBuffer()),await readFile('dist/images/robot-concept-'+width+'.webp'));
+  }
+  for(const path of ['/images/robot-concept-999.webp','/images/../.env','/images%2frobot-concept-640.webp','/images/robot-concept-640.webp/..%2f..%2f.env'])assert.equal((await fetch('http://127.0.0.1:3439'+path)).status,404);
   assert.equal((await fetch('http://127.0.0.1:3439/')).headers.get('content-security-policy').includes("frame-ancestors 'none'"),true);
  } finally {child.kill('SIGTERM');await new Promise(resolve=>child.once('exit',resolve));await new Promise(resolve=>upstream.close(resolve));}
 });
