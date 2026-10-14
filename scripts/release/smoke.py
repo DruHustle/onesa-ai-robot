@@ -7,6 +7,7 @@ import os
 import tempfile
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from uuid import uuid4
@@ -55,7 +56,7 @@ class Simulator:
         if self.csrf and csrf:
             headers["X-CSRF-Token"] = self.csrf
         bypass = os.environ.get("VERCEL_AUTOMATION_BYPASS_SECRET")
-        if bypass:
+        if bypass and urllib.parse.urlsplit(self.url).hostname.endswith(".vercel.app"):
             headers["x-vercel-protection-bypass"] = bypass
         request = urllib.request.Request(
             self.url + route,

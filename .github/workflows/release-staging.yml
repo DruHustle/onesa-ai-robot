@@ -144,6 +144,14 @@ jobs:
         RENDER_API_KEY: ${{ secrets.STAGING_RENDER_API_KEY }}
         RENDER_SERVICE_ID: ${{ secrets.STAGING_RENDER_SERVICE_ID }}
         GH_TOKEN: ${{ github.token }}
+        VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.STAGING_VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
+        ROBOT_STORAGE_MODE: ${{ vars.STAGING_ROBOT_STORAGE_MODE || 'ephemeral-simulation' }}
+        ROBOT_TURSO_DATABASE_URL: ${{ vars.STAGING_ROBOT_TURSO_DATABASE_URL }}
+        ROBOT_API_URL: ${{ vars.STAGING_ROBOT_API_URL || 'https://onesa-ai-robot-backend-staging.onrender.com' }}
+        ROBOT_TEST_OPERATOR: ${{ vars.STAGING_ROBOT_TEST_OPERATOR || 'operator' }}
+        VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET }}
       run: RENDER_RECEIPT_PATH="$RUNNER_TEMP/robot-release/render.json" python3 scripts/deploy_render.py --preflight "$RUNNER_TEMP/robot-release/preflight/record.json"
     - name: Synthetic API and safety acceptance
       env:
