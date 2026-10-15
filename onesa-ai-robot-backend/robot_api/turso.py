@@ -43,6 +43,7 @@ DIAGNOSTIC_PHASES = frozenset(
         "task_save",
         "task_save_reconcile",
         "lease_renew",
+        "lease_renew_reconcile",
         "lease_probe",
         "lease_release",
         "initialize",
@@ -309,12 +310,41 @@ class TursoJournal:
 
     async def renew(self) -> None:
         started = time.monotonic()
-        rows = await self.execute(
-            f"UPDATE {LEASE} SET expires=unixepoch()+30 "
-            "WHERE id=1 AND owner=? AND expires>unixepoch() RETURNING owner",
-            (self.owner,),
-            phase="lease_renew",
-        )
+        try:
+            rows = await self.execute(
+                f"UPDATE {LEASE} SET expires=unixepoch()+30 "
+                "WHERE id=1 AND owner=? AND expires>unixepoch() RETURNING owner",
+                (self.owner,),
+                phase="lease_renew",
+            )
+        except JournalFailure as error:
+            if error.category not in {"timeout", "transport"}:
+                raise
+            # An uncertain acknowledgement must never replay the UPDATE or
+            # refresh local authority from a nearly expired lease. Confirm this
+            # same owner with >=25 seconds remaining on the database clock:
+            # longer than local readiness's 15-second freshness window, even
+            # after the bounded response delay. The whole renewal stays <=2s.
+            remaining = 2 - (time.monotonic() - started)
+            try:
+                if remaining <= 0:
+                    raise TimeoutError
+                async with asyncio.timeout(remaining):
+                    confirmed = await self.execute(
+                        f"SELECT owner FROM {LEASE} "
+                        "WHERE id=1 AND owner=? AND expires>=unixepoch()+25",
+                        (self.owner,),
+                        phase="lease_renew_reconcile",
+                    )
+            except (JournalFailure, TimeoutError):
+                error.reconciliation = "unavailable"
+                error.elapsed_ms = min(120_000, int((time.monotonic() - started) * 1000))
+                raise error from None
+            if confirmed == [{"owner": self.owner}]:
+                return
+            error.reconciliation = "not_confirmed"
+            error.elapsed_ms = min(120_000, int((time.monotonic() - started) * 1000))
+            raise error from None
         if rows != [{"owner": self.owner}]:
             raise JournalFailure(
                 "ownership", "lease_renew", int((time.monotonic() - started) * 1000)

@@ -21,6 +21,16 @@ outcome alongside the existing fixed categories, never exception text or row con
 The earlier transport failure's exact subtype was not captured; do not retroactively
 claim it was a connect error. See [HTTPX transport retry semantics](https://www.python-httpx.org/advanced/transports/).
 
+A later staging preflight captured a `ReadTimeout` during lease renewal. An uncertain
+renewal acknowledgement now permits one SELECT, within the renewal's original
+two-second deadline, to confirm the same owner with at least 25 seconds remaining
+on the database clock. This exceeds the local 15-second readiness freshness window
+even after the bounded response delay. It never repeats the UPDATE, extends an
+expired lease or accepts another owner. A missing, short-lived, malformed or
+unavailable confirmation still stops the journal and revokes authority. Explicit
+provider denials do not attempt reconciliation. Successful observation proves a
+safely fresh lease; it does not establish why the original response was lost.
+
 ## Restricted development release and owner deferral
 
 Robot is under development. Its protected operator interface supports authorized
