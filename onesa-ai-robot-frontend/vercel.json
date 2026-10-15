@@ -43,6 +43,10 @@
       "destination": "/console.html"
     },
     {
+      "source": "/privacy",
+      "destination": "/privacy.html"
+    },
+    {
       "source": "/api/v1/:__onesa_route*",
       "destination": "/api/gateway"
     }

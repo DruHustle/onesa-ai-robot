@@ -14,6 +14,11 @@ name: Free release authorization
         description: Optional existing owner review issue; owner dispatch records a single release decision
         type: string
         required: false
+      defer_development_privacy:
+        description: Record owner deferral of development privacy records until launch; no legal certification or hardware approval
+        type: boolean
+        default: false
+        required: false
       decision:
         description: Authorize external owner handoff or revoke older approval
         type: choice
@@ -48,6 +53,7 @@ jobs:
         EVIDENCE_DIGEST: ${{ inputs.evidence_digest }}
         REVIEW_ISSUE: ${{ inputs.review_issue }}
         REVIEW_DECISION: ${{ inputs.decision }}
+        DEFER_DEVELOPMENT_PRIVACY: ${{ inputs.defer_development_privacy }}
       run: python3 scripts/release/free_gate.py authorize --output "$RUNNER_TEMP/free-release/record.json"
     - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       with:

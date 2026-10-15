@@ -375,7 +375,7 @@ def test_first_latch_only_redacted_warning_stops_authority_and_keeps_public_503(
         records = [record for record in caplog.records if record.name == "robot_api.journal"]
         assert len(records) == 1
         record = records[0]
-        assert record.args == ("timeout", "task_save", 123, 0)
+        assert record.args == ("timeout", "task_save", 123, 0, "none", "not_attempted")
         assert record.exc_info is None and record.stack_info is None
         assert SENTINEL not in repr(vars(record)) + record.getMessage()
 
@@ -396,9 +396,17 @@ def test_untrusted_metadata_is_allowlisted_and_numeric_fields_are_clamped(remote
     ):
         # Even mutated exception metadata is revalidated before it reaches the logger.
         failure.category, failure.phase, failure.elapsed_ms = SENTINEL, SENTINEL, SENTINEL
+        failure.transport_kind, failure.reconciliation = SENTINEL, SENTINEL
         api.portal.call(lambda: api.app.state.sim.fail_journal(failure))
         records = [record for record in caplog.records if record.name == "robot_api.journal"]
-        assert len(records) == 1 and records[0].args == ("unknown", "unknown", 0, 0)
+        assert len(records) == 1 and records[0].args == (
+            "unknown",
+            "unknown",
+            0,
+            0,
+            "other",
+            "not_confirmed",
+        )
         assert SENTINEL not in repr(vars(records[0]))
 
 
@@ -411,7 +419,7 @@ def test_generic_sqlite_failure_logs_no_exception_text_or_arguments(remote, tmp_
         api.portal.call(lambda: api.app.state.sim.fail_journal(error, phase="flush"))
         records = [record for record in caplog.records if record.name == "robot_api.journal"]
         assert len(records) == 1
-        assert records[0].args == ("sqlite", "flush", 0, 0)
+        assert records[0].args == ("sqlite", "flush", 0, 0, "none", "not_attempted")
         assert records[0].exc_info is None and records[0].stack_info is None
         assert SENTINEL not in repr(vars(records[0]))
         assert api.get("/api/v1/ready").json() == {

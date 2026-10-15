@@ -37,6 +37,13 @@ test('proxy preserves auth boundaries, strips unrelated secrets and rejects open
 
   assert.equal((await fetch('http://127.0.0.1:3439/api/v1/stop',{method:'POST',body:'x'.repeat(16385)})).status,413);
   assert.equal((await fetch('http://127.0.0.1:3439/.env')).status,404);
+  const privacy=await fetch('http://127.0.0.1:3439/privacy');
+  assert.equal(privacy.status,200);
+  const privacyHTML=await privacy.text();
+  assert.match(privacyHTML,/<h1>Development privacy<\/h1>/);
+  assert.match(privacyHTML,/protected software development and testing by authorized operators/);
+  assert.doesNotMatch(privacyHTML,/<script\b/i);
+  assert.match(await (await fetch('http://127.0.0.1:3439/')).text(),/href="\/privacy">Development privacy/);
   for(const width of [640,1280]){
     const image=await fetch('http://127.0.0.1:3439/images/robot-concept-'+width+'.webp');
     assert.equal(image.status,200);assert.equal(image.headers.get('content-type'),'image/webp');

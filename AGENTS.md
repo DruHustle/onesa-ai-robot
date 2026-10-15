@@ -134,7 +134,8 @@ reviewed workflow_run exceptions, owner actions and remote activation status.
 
 ## Product, appearance and Code Review Rules
 
-The public product at `/` is script-free and never reads operator data. `/console`
+The public product at `/` and development privacy at `/privacy` are script-free
+and never read operator data. `/console`
 loads only the authenticated simulator API; menus and hidden markup are not access
 controls. Preserve the single configured operator and existing credentials, device
 bearer isolation, object ownership, expiring proposals, session/heartbeat revocation,
@@ -210,3 +211,13 @@ security candidate from the exact deployed production SHA; obtain owner-controll
 staging and exact-source qualification before any release, then reconcile dev/staging.
 Keep existing release and runner guards. Delete a temporary branch only after proven
 incorporation, retained evidence and active-review/work checks; never bulk-delete bots.
+
+The owner has explicitly deferred the Robot development-processing legal-basis,
+retention and existing-provider processing/transfer records until launch. Record
+this as a deferral, never a legal PASS or executed contract. The existing manual
+Free authorization can bind that decision to one exact qualified development
+candidate with `defer_development_privacy`; default is false. Only the external
+owner verifier may consume it after rechecking the latest immutable authorization.
+Keep operations, exact-source CI/staging, authentication, preservation and physical
+safety gates. This cannot authorize a customer launch, new processing/provider,
+physical operation or an automatic deployment. See DEPLOYMENT for the scoped path.

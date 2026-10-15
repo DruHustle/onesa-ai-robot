@@ -4,6 +4,46 @@ Audience/classification: authorized engineering / INTERNAL. Owner: Robot enginee
 Reviewed: 2026-10-14. Scope: software simulation only. Existing immutable deployment
 receipts remain in the restricted release store; local changes are not hosted acceptance.
 
+## Journal connection failures
+
+The journal permits one HTTPX connection-establishment retry before a request is
+sent. HTTP phase deadlines remain one second and the outer operation deadline stays
+two seconds. Pool bounds, lease fencing, heartbeat and stop behavior are unchanged.
+Read/write/protocol failures never resend a statement. A lost acknowledgement still
+requires one exact seven-field read under the same live lease; uncertainty fails closed.
+Diagnostics now record only an allowlisted HTTP exception class and reconciliation
+outcome alongside the existing fixed categories, never exception text or row contents.
+The earlier transport failure's exact subtype was not captured; do not retroactively
+claim it was a connect error. See [HTTPX transport retry semantics](https://www.python-httpx.org/advanced/transports/).
+
+## Restricted development release and owner deferral
+
+Robot is under development. Its protected operator interface supports authorized
+software development/testing, with essential authentication sessions, operator-linked
+synthetic history and necessary security diagnostics. It is not a customer launch or
+an integrated physical controller. The owner explicitly deferred the legal-basis,
+history/backup/provider-log retention and existing-provider processing/transfer records
+until launch on 2026-10-15. Those records remain unapproved; no legal compliance,
+executed provider agreement or external lawyer certification is inferred.
+
+Use the existing credential-free manual `free-authorization.yml` decision, selecting
+`defer_development_privacy=true` only for that reviewed restricted development scope.
+The immutable owner artifact records `DEFERRED_BY_OWNER_UNTIL_LAUNCH`, separately from
+the untouched qualification's blocked legal/operations fields. The source must state
+`Under development` and protected development/testing access. An external production
+preflight may carry that exact deferral only after `free_gate` revalidates the latest
+owner artifact, exact main, fresh CI/staging, source digest and current authorization.
+GitHub Actions cannot use this exception to deploy. It grants no operations PASS:
+current preservation, backup/recovery, operating limits and scoped operations review
+are still required. Authentication, CSRF, private telemetry, credentials, history and
+physical-controller safety requirements are unchanged.
+
+Keep the deferred records in the existing restricted review and master evidence
+register as launch blockers. A change to customer access, processing purpose,
+providers or physical operation needs its own review; this decision cannot grant it.
+Revoking/superseding the owner authorization or changing the exact candidate invalidates
+the handoff. The default authorization path and all other production gates remain.
+
 ## Current deployed baseline and storage
 
 The current October 14 production frontend is

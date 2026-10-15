@@ -16,6 +16,39 @@ import evidence as e
 
 WORKFLOW = "free-authorization.yml"
 QUALIFICATION = "free-qualification.yml"
+DEVELOPMENT_PRIVACY_DEFERRAL = {
+    "decision": "DEFERRED_BY_OWNER_UNTIL_LAUNCH",
+    "scope": "restricted-robot-software-development-and-testing",
+    "deferred_records": [
+        "operator-processing-legal-basis-record",
+        "history-backup-and-provider-log-retention-record",
+        "existing-provider-processing-and-transfer-records",
+    ],
+    "launch_ready": False,
+    "legal_compliance_certified": False,
+    "physical_operation_authorized": False,
+}
+
+
+def development_source():
+    """The exception cannot authorize a launch or change the runtime safety gate."""
+    frontend = e.ROOT / "onesa-ai-robot-frontend" / "public"
+    return (
+        '<p class="badge">Under development</p>'
+        in (frontend / "index.html").read_text()
+        and "Protected access is for authorized development and testing."
+        in (frontend / "console.html").read_text()
+    )
+
+
+def current_owner():
+    # GitHub.api deliberately rejects non-repository paths. Keep this bounded
+    # identity read identical to the existing external verifier's owner boundary.
+    return json.loads(
+        subprocess.check_output(
+            ["gh", "api", "user"], text=True, stderr=subprocess.DEVNULL, timeout=20
+        )
+    )["login"]
 
 
 def current_main(github, sha):
@@ -163,10 +196,27 @@ def owner_issue(github, number, sha, fingerprint):
     }
 
 
-def authorize(github, sha, run, qualification_run, fingerprint, review_issue, decision):
+def authorize(
+    github,
+    sha,
+    run,
+    qualification_run,
+    fingerprint,
+    review_issue,
+    decision,
+    defer_development_privacy=False,
+):
     e.trusted_run(run, WORKFLOW, sha, {"main"}, completed=False)
     current_main(github, sha)
     e.require(decision in {"approve", "revoke"}, "Explicit decision required")
+    e.require(
+        type(defer_development_privacy) is bool,
+        "Explicit development decision required",
+    )
+    e.require(
+        not defer_development_privacy or decision == "approve",
+        "A revocation cannot grant a development exception",
+    )
     record = {
         "repository": e.REPOSITORY,
         "candidate_commit": sha,
@@ -199,6 +249,15 @@ def authorize(github, sha, run, qualification_run, fingerprint, review_issue, de
                 }
             ),
         )
+        if defer_development_privacy:
+            e.require(
+                development_source()
+                and qualified.get("scope") == "cloud-software-only"
+                and qualified.get("physical_hardware_authorized") is False
+                and not qualified.get("component_plan"),
+                "Development deferral requires the reviewed restricted software scope",
+            )
+            record["development_privacy_deferral"] = dict(DEVELOPMENT_PRIVACY_DEFERRAL)
     return record
 
 
@@ -225,6 +284,7 @@ def verify(github, sha, identifier):
         approval["evidence_sha256"],
         approval["owner_review"].get("number"),
         "approve",
+        defer_development_privacy="development_privacy_deferral" in approval,
     )
     e.require(approval == refreshed, "Approval or owner review changed")
     return {
@@ -237,6 +297,26 @@ def verify(github, sha, identifier):
     }
 
 
+def verify_development_preflight(github, sha, identifier, preflight):
+    """Read the actual latest owner artifact; caller-supplied deferrals grant nothing."""
+    e.require(current_owner() == e.OWNER, "External owner identity required")
+    handoff = verify(github, sha, identifier)
+    approval = handoff["approval"]
+    e.require(
+        approval.get("development_privacy_deferral") == DEVELOPMENT_PRIVACY_DEFERRAL
+        and preflight.get("kind") == "external-owner-verified-render-preflight"
+        and preflight.get("CONTENT_LEGAL_APPROVED") == "DEFERRED_BY_OWNER_UNTIL_LAUNCH"
+        and preflight.get("external_authorization_run") == approval["workflow_run_id"]
+        and preflight.get("workflow_run_id") == approval["workflow_run_id"]
+        and preflight.get("valid_for_source_sha256") == approval["source_sha256"]
+        and preflight.get("candidate_commit") == sha
+        and preflight.get("development_privacy_deferral")
+        == DEVELOPMENT_PRIVACY_DEFERRAL,
+        "Actual current owner development deferral required",
+    )
+    return handoff
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", choices=["qualify", "authorize", "verify"])
@@ -247,6 +327,11 @@ def main():
     parser.add_argument("--review-issue", default=os.getenv("REVIEW_ISSUE"))
     parser.add_argument("--decision", default=os.getenv("REVIEW_DECISION", "revoke"))
     parser.add_argument("--authorization-run")
+    parser.add_argument(
+        "--defer-development-privacy",
+        choices=["false", "true"],
+        default=os.getenv("DEFER_DEVELOPMENT_PRIVACY", "false"),
+    )
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
     github = e.GitHub()
@@ -265,9 +350,7 @@ def main():
             not os.getenv("GITHUB_ACTIONS"),
             "Private production handoff must run outside repository Actions",
         )
-        actor = json.loads(subprocess.check_output(["gh", "api", "user"], text=True))[
-            "login"
-        ]
+        actor = current_owner()
         e.require(
             actor == e.OWNER, "External production verifier requires owner identity"
         )
@@ -289,6 +372,7 @@ def main():
                 args.evidence_digest,
                 args.review_issue,
                 args.decision,
+                defer_development_privacy=args.defer_development_privacy == "true",
             )
         )
     e.save(record, args.output)
