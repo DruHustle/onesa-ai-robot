@@ -8,10 +8,10 @@ import time
 import httpx
 import pytest
 from fastapi.testclient import TestClient
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 
 from robot_api.main import Settings, create_app
-from robot_api.turso import LEASE, PRODUCTION_DATABASE, TABLE, TursoJournal
+from robot_api.turso import COLUMNS, LEASE, PRODUCTION_DATABASE, TABLE, JournalFailure, TursoJournal
 from tests.test_simulation import HASH, PASSWORD, approve, login, proposal, reset
 
 URL = "libsql://synthetic-staging.example.turso.io"
@@ -21,7 +21,14 @@ TOKEN = "placeholder"
 @pytest.fixture
 def remote(tmp_path, monkeypatch):
     path = tmp_path / "cloud.sqlite3"
-    state = {"offline": False, "delay": 0.0, "calls": 0, "redirect": False, "malformed": False}
+    state = {
+        "offline": False,
+        "delay": 0.0,
+        "calls": 0,
+        "redirect": False,
+        "malformed": False,
+        "after_execute": None,
+    }
 
     async def handler(request):
         state["calls"] += 1
@@ -46,6 +53,8 @@ def remote(tmp_path, monkeypatch):
             cursor = db.execute(statement["sql"], args)
             columns = [col[0] for col in cursor.description or []]
             rows = cursor.fetchall()
+        if state["after_execute"] is not None:
+            state["after_execute"](statement["sql"])
 
         def encode(value):
             if isinstance(value, int):
@@ -103,6 +112,158 @@ def client(settings):
     result = TestClient(create_app(settings))
     result.headers["Origin"] = settings.public_origin
     return result
+
+
+@pytest.mark.parametrize("failure", [httpx.ReadTimeout, httpx.ReadError])
+def test_lost_save_ack_observes_exact_commit_once_without_replaying(remote, failure):
+    _, network = remote
+    statements = []
+
+    def lose_ack(sql):
+        statements.append(sql)
+        if sql.startswith(f"INSERT INTO {TABLE}"):
+            raise failure("synthetic private provider detail")
+
+    async def run():
+        journal = TursoJournal(URL, SecretStr(TOKEN))
+        try:
+            await journal.initialize()
+            network["after_execute"] = lose_ack
+            row = dict(
+                zip(COLUMNS, ("synthetic", "owner", "{}", "proposed", "", 1.5, 0.0), strict=True)
+            )
+            await journal.save(row)
+            assert len(statements) == 2
+            assert statements[0].startswith("INSERT")
+            assert statements[1].startswith("SELECT")
+            assert "expires>unixepoch()" in statements[1]
+        finally:
+            network["after_execute"] = None
+            await journal.close()
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("column", COLUMNS)
+def test_lost_save_ack_rejects_any_different_persisted_field(remote, column):
+    path, network = remote
+    statements = []
+
+    def lose_ack(sql):
+        statements.append(sql)
+        if sql.startswith(f"INSERT INTO {TABLE}"):
+            with sqlite3.connect(path) as db:
+                db.execute(
+                    f"UPDATE {TABLE} SET {column}=?",
+                    (2.5 if column in {"created", "position"} else "different",),
+                )
+            raise httpx.ReadTimeout("synthetic lost acknowledgement")
+
+    async def run():
+        journal = TursoJournal(URL, SecretStr(TOKEN))
+        try:
+            await journal.initialize()
+            network["after_execute"] = lose_ack
+            row = dict(
+                zip(COLUMNS, ("synthetic", "owner", "{}", "proposed", "", 1.5, 0.0), strict=True)
+            )
+            with pytest.raises(JournalFailure) as caught:
+                await journal.save(row)
+            assert caught.value.category == "timeout"
+            assert caught.value.phase == "task_save"
+            assert len(statements) == 2
+        finally:
+            network["after_execute"] = None
+            await journal.close()
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("uncertainty", ["foreign_lease", "expired_lease", "read_timeout"])
+def test_lost_save_ack_cannot_restore_uncertain_or_foreign_authority(remote, uncertainty):
+    path, network = remote
+    statements = []
+
+    def lose_ack(sql):
+        statements.append(sql)
+        if sql.startswith(f"INSERT INTO {TABLE}"):
+            with sqlite3.connect(path) as db:
+                if uncertainty == "foreign_lease":
+                    db.execute(f"UPDATE {LEASE} SET owner='replacement'")
+                elif uncertainty == "expired_lease":
+                    db.execute(f"UPDATE {LEASE} SET expires=unixepoch()-1")
+            raise httpx.ReadTimeout("synthetic lost acknowledgement")
+        if uncertainty == "read_timeout":
+            raise httpx.ReadTimeout("synthetic uncertain read")
+
+    async def run():
+        journal = TursoJournal(URL, SecretStr(TOKEN))
+        try:
+            await journal.initialize()
+            network["after_execute"] = lose_ack
+            row = dict(
+                zip(COLUMNS, ("synthetic", "owner", "{}", "proposed", "", 1.5, 0.0), strict=True)
+            )
+            with pytest.raises(JournalFailure) as caught:
+                await journal.save(row)
+            assert caught.value.category == "timeout"
+            assert "synthetic" not in str(caught.value)
+            assert len(statements) == 2
+        finally:
+            network["after_execute"] = None
+            await journal.close()
+
+    asyncio.run(run())
+
+
+def test_explicit_provider_denial_does_not_attempt_reconciliation(remote):
+    _, network = remote
+
+    async def run():
+        journal = TursoJournal(URL, SecretStr(TOKEN))
+        try:
+            await journal.initialize()
+            network["offline"] = True
+            calls = network["calls"]
+            row = dict(
+                zip(COLUMNS, ("synthetic", "owner", "{}", "proposed", "", 1.5, 0.0), strict=True)
+            )
+            with pytest.raises(JournalFailure) as caught:
+                await journal.save(row)
+            assert caught.value.category == "http_status"
+            assert network["calls"] == calls + 1
+        finally:
+            network["offline"] = False
+            await journal.close()
+
+    asyncio.run(run())
+
+
+def test_committed_lost_ack_preserves_real_handlers_and_stop(remote, tmp_path):
+    path, network = remote
+    writes = 0
+
+    def lose_ack(sql):
+        nonlocal writes
+        if sql.startswith(f"INSERT INTO {TABLE}"):
+            writes += 1
+            raise httpx.ReadTimeout("synthetic lost acknowledgement")
+
+    with client(config(tmp_path)) as api:
+        login(api)
+        reset(api)
+        network["after_execute"] = lose_ack
+        identifier = approve(api, proposal(duration_seconds=5))
+        assert api.get("/api/v1/ready").status_code == 200
+        assert api.post("/api/v1/stop").status_code == 200
+        status = api.get("/api/v1/status").json()
+        assert status["stopped"] and status["active_task"] is None
+        with sqlite3.connect(path) as db:
+            assert db.execute(f"SELECT id,state,reason FROM {TABLE}").fetchall() == [
+                (identifier, "cancelled", "operator_stop")
+            ]
+        assert writes == 3  # Proposal, approval and Stop; no write is replayed.
+        network["after_execute"] = None
 
 
 def test_durable_history_safe_restart_and_no_local_file(remote, tmp_path):

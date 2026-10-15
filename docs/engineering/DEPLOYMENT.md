@@ -308,6 +308,17 @@ Sources: [Render deploy states](https://api-docs.render.com/reference/retrieve-d
 
 ## Recovery, rollback and administrative tunnel
 
+For a task-save timeout or transport loss, the journal may have committed before
+the acknowledgement arrived. The client performs one bounded read of all seven
+persisted fields, requiring its unchanged, unexpired writer lease. An exact match
+acknowledges that save without another write. A missing/different row, lost lease,
+failed observation, explicit provider denial or invalid response still fails closed.
+The HTTP and per-operation deadlines remain unchanged; at most one extra read is
+allowed, with no command replay, automatic process restart or permission restoration.
+This does not recover a journal that has already latched unavailable: stop promotion
+and preserve its history, lease and pending-work evidence under the existing recovery
+controls before any separately reviewed recovery deployment.
+
 Require an already-stopped, confirmed idle runtime before rollback; preserve unknown
 active or proposed work and coordinate its owner rather than cancelling it to release.
 Preserve the private journal and retain the stop latch.

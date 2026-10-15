@@ -41,6 +41,7 @@ DIAGNOSTIC_PHASES = frozenset(
         "history_read",
         "history_validate",
         "task_save",
+        "task_save_reconcile",
         "lease_renew",
         "lease_probe",
         "lease_release",
@@ -226,15 +227,36 @@ class TursoJournal:
 
     async def save(self, row: dict) -> None:
         started = time.monotonic()
-        saved = await self.execute(
-            f"INSERT INTO {TABLE}({','.join(COLUMNS)}) SELECT ?,?,?,?,?,?,? "
-            f"WHERE EXISTS(SELECT 1 FROM {LEASE} WHERE id=1 AND owner=? AND expires>unixepoch()) "
-            "ON CONFLICT(id) DO UPDATE SET owner=excluded.owner,proposal=excluded.proposal,"
-            "state=excluded.state,reason=excluded.reason,created=excluded.created,"
-            "position=excluded.position RETURNING id",
-            (*[row[col] for col in COLUMNS], self.owner),
-            phase="task_save",
-        )
+        expected = {col: row[col] for col in COLUMNS}
+        try:
+            saved = await self.execute(
+                f"INSERT INTO {TABLE}({','.join(COLUMNS)}) SELECT ?,?,?,?,?,?,? "
+                f"WHERE EXISTS(SELECT 1 FROM {LEASE} "
+                "WHERE id=1 AND owner=? AND expires>unixepoch()) "
+                "ON CONFLICT(id) DO UPDATE SET owner=excluded.owner,proposal=excluded.proposal,"
+                "state=excluded.state,reason=excluded.reason,created=excluded.created,"
+                "position=excluded.position RETURNING id",
+                (*expected.values(), self.owner),
+                phase="task_save",
+            )
+        except JournalFailure as error:
+            if error.category not in {"timeout", "transport"}:
+                raise
+            # The write may have committed before its acknowledgement was lost.
+            # Observe once, under the same live lease; never retry the write.
+            try:
+                persisted = await self.execute(
+                    f"SELECT {','.join(COLUMNS)} FROM {TABLE} WHERE id=? "
+                    f"AND EXISTS(SELECT 1 FROM {LEASE} "
+                    "WHERE id=1 AND owner=? AND expires>unixepoch())",
+                    (expected["id"], self.owner),
+                    phase="task_save_reconcile",
+                )
+            except JournalFailure:
+                raise error from None
+            if persisted == [expected]:
+                return
+            raise error from None
         if saved != [{"id": row["id"]}]:
             raise JournalFailure("ownership", "task_save", int((time.monotonic() - started) * 1000))
 
