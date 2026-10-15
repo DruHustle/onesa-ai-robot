@@ -1,5 +1,11 @@
 # Robot simulator deployment and recovery
 
+Browser qualification waits for the server's approval acknowledgement before
+starting its six-second completed-history assertion. Approval submission and durable
+acknowledgement precede the simulation interval. A held-acknowledgement DOM fixture
+covers this ordering without connecting to accounts, the journal or robot controls.
+This test ordering does not change application timeouts, safety or release gates.
+
 Audience/classification: authorized engineering / INTERNAL. Owner: Robot engineering.
 Reviewed: 2026-10-14. Scope: software simulation only. Existing immutable deployment
 receipts remain in the restricted release store; local changes are not hosted acceptance.
