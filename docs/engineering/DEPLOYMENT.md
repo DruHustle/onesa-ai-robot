@@ -1,5 +1,13 @@
 # Robot simulator deployment and recovery
 
+Initial and failed simulator observations keep reset/propose/approve unavailable until
+one complete status/history snapshot is confirmed. Stop, cancel and sign-out remain
+independent. Unknown observations are labelled unavailable rather than left Loading.
+Qualification waits for the reset acknowledgement before the unchanged Ready assertion;
+this separates password-confirmed command latency from observation readiness. The local
+held-observation fixture uses intercepted synthetic API responses and adds no journal rows.
+
+
 Browser qualification waits for the server's approval acknowledgement before
 starting its six-second completed-history assertion. Approval submission and durable
 acknowledgement precede the simulation interval. A held-acknowledgement DOM fixture

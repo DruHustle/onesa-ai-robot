@@ -1,11 +1,14 @@
 import {RobotClient} from './client.js';
 const client = new RobotClient();
 const byId = id => document.getElementById(id);
-let csrf = '', proposalId = '', timer, polling = null, generation=0, suspended=false;
+let csrf = '', proposalId = '', timer, polling = null, generation=0, suspended=false, observationReady=false;
+const busyForms=new WeakSet();
+const observationForms=[['reset-form','reset-submit'],['proposal-form','proposal-submit'],['approval-form','approve-submit']];
+function setObservationReady(ready){observationReady=ready;for(const [formId,buttonId]of observationForms)byId(buttonId).disabled=!ready||busyForms.has(byId(formId));}
 let administrator=false,permissionRevision=null,permissionRead=null,lastPermissionRead=0;
 const notice = text => { byId('notice').textContent = text; };
 
-function signedOut() {generation++; clearInterval(timer);csrf='';client.csrf='';proposalId='';administrator=false;permissionRevision=null;permissionRead=null;lastPermissionRead=0;byId('administrator').hidden=true;byId('physical-permission-state').textContent='Unavailable';byId('physical-operation-state').textContent='Unavailable';byId('operator').hidden=true;byId('login-form').hidden=false;byId('approval-form').hidden=true;byId('history').replaceChildren();for(const field of document.querySelectorAll('input[type="password"]'))field.value=''; }
+function signedOut() {setObservationReady(false);generation++; clearInterval(timer);csrf='';client.csrf='';proposalId='';administrator=false;permissionRevision=null;permissionRead=null;lastPermissionRead=0;byId('administrator').hidden=true;byId('physical-permission-state').textContent='Unavailable';byId('physical-operation-state').textContent='Unavailable';byId('operator').hidden=true;byId('login-form').hidden=false;byId('approval-form').hidden=true;byId('history').replaceChildren();for(const field of document.querySelectorAll('input[type="password"]'))field.value=''; }
 function renderPhysicalPermission(value){
  if(!['allowed','blocked'].includes(value?.permission)||!Number.isSafeInteger(value.revision)||value.revision<0||value.controller_connection!=='not_connected'||value.controller_readiness!=='not_ready'||value.physical_operation!=='inactive'||value.physical_actuation!==false)throw new Error('Physical-operation state could not be verified.');
  if(permissionRevision!==null&&value.revision<permissionRevision)return;
@@ -42,11 +45,11 @@ async function refresh() {
     byId('environment').hidden=false;
     byId('history').replaceChildren(...tasks.map(task=>{const li=document.createElement('li');li.textContent=`${task.state} · ${task.id} · ${task.reason} · ${new Date(task.created*1000).toLocaleString()} · ${Number(task.position).toFixed(4)} rad`;if(task.state==='running'){const button=document.createElement('button');button.textContent='Cancel running task';button.addEventListener('click',()=>run(()=>client.cancel(task.id),'Task cancelled; simulation stopped.'));li.append(button);}return li;}));
     if(!tasks.length){const li=document.createElement('li');li.textContent='No simulation tasks yet. Reset the stop state to create a proposal.';byId('history').append(li);}
+    setObservationReady(true);
     if(administrator&&performance.now()-lastPermissionRead>5000)void readPhysicalPermission();
-  } catch(error) {if(current!==generation) return;byId('connection').textContent='Disconnected — telemetry is stale; the gateway watchdog stops running simulation tasks.';byId('position').textContent='Stale · latest response unavailable';if(error.status===401) signedOut();notice(error.message);}
+  } catch(error) {if(current!==generation) return;setObservationReady(false);byId('stop-state').textContent='Unavailable — current observation could not be verified';byId('connection').textContent='Disconnected — telemetry is stale; the gateway watchdog stops running simulation tasks.';byId('position').textContent='Stale · latest response unavailable';if(error.status===401) signedOut();notice(error.message);}
   finally {await Promise.allSettled(observations);if(polling===owner)polling=null;}
 }
-const busyForms=new WeakSet();
 const unavailableSignIn='Simulator is unavailable. Your sign-in entries are retained. Wait a moment, then select Sign in again.';
 async function waitForSimulator() {
   const lifecycle=client.pending.signal,deadline=performance.now()+20000;
@@ -71,11 +74,12 @@ async function waitForSimulator() {
 async function run(action, success, form=null,expectedGeneration=null) {
   if(suspended)return;
   if(form&&busyForms.has(form))return;
+  if(form&&observationForms.some(([id])=>id===form.id)&&!observationReady){notice('Wait for a current simulator observation before changing simulation state.');return;}
   const controls=form?[...form.querySelectorAll('button[type="submit"]')]:[];
   if(form){busyForms.add(form);form.setAttribute('aria-busy','true');controls.forEach(control=>control.disabled=true);}
   try {await action();if(suspended||expectedGeneration!==null&&expectedGeneration!==generation)return;notice(success);await refresh();}
   catch(error){if(suspended||expectedGeneration!==null&&expectedGeneration!==generation)return;if(error.status===401) signedOut();notice(form?.id==='login-form'&&([502,503,504].includes(error.status)||['AbortError','TimeoutError','TypeError'].includes(error.name))?unavailableSignIn:error.message);}
-  finally{if(form){busyForms.delete(form);form.removeAttribute('aria-busy');controls.forEach(control=>control.disabled=false);}}
+  finally{if(form){busyForms.delete(form);form.removeAttribute('aria-busy');controls.forEach(control=>control.disabled=observationForms.some(([id])=>id===form.id)&&!observationReady);}}
 }
 byId('login-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{await waitForSimulator();const session=await client.login({name:byId('name').value,password:byId('password').value});byId('password').value='';generation++;csrf=session.csrf;client.csrf=csrf;setAdministrator(session);byId('login-form').hidden=true;byId('operator').hidden=false;timer=setInterval(refresh,500);},'Signed in.',event.currentTarget);});
 byId('physical-permission-form').addEventListener('submit',event=>{event.preventDefault();const password=byId('physical-permission-password').value,revision=permissionRevision,current=generation;byId('physical-permission-password').value='';run(async()=>{if(!administrator||revision===null)throw new Error('Refresh and review the current administrator permission before allowing operation.');const value=await client.allowPhysical({password,expected_revision:revision});if(current===generation&&administrator&&!suspended)renderPhysicalPermission(value);},'Permission request completed. The current confirmed state is shown in Robot administration; no movement started.',event.currentTarget,current);});
@@ -89,8 +93,9 @@ byId('logout').addEventListener('click',()=>run(async()=>{await client.logout();
 // No localStorage/sessionStorage, token URLs or persistence of operator credentials.
 
 function restoreSession(){const current=++generation;return client.me().then(session=>{if(current!==generation)return;csrf=session.csrf;client.csrf=csrf;setAdministrator(session);byId('login-form').hidden=true;byId('operator').hidden=false;timer=setInterval(refresh,500);return refresh();}).catch(error=>{if(current===generation&&error.status!==401&&error.name!=='AbortError')notice(error.message);});}
-function suspendRequests(){suspended=true;generation++;clearInterval(timer);client.cancelPending();polling=null;}
+function suspendRequests(){setObservationReady(false);suspended=true;generation++;clearInterval(timer);client.cancelPending();polling=null;}
 window.addEventListener('beforeunload',suspendRequests);
 window.addEventListener('pagehide',suspendRequests);
 window.addEventListener('pageshow',event=>{if(event.persisted){suspended=false;restoreSession();}});
+setObservationReady(false);
 restoreSession();

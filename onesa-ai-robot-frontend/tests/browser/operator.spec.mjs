@@ -2,8 +2,17 @@ import {test,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
-import {waitForApprovedSimulationCompletion} from './simulation-acceptance.mjs';
-test.afterEach(async({page,baseURL})=>{await page.unrouteAll({behavior:'ignoreErrors'});const me=await page.request.get('/api/v1/auth/me');if(me.ok()){const session=await me.json();await page.request.post('/api/v1/auth/logout',{headers:{Origin:baseURL,'X-CSRF-Token':session.csrf},data:{}});}});
+import {waitForApprovedSimulationCompletion,waitForSimulationReset} from './simulation-acceptance.mjs';
+const requestTimings=new WeakMap();
+test.beforeEach(async({page,baseURL})=>{
+ const starts=new WeakMap(),records=[];requestTimings.set(page,records);
+ const route=request=>{const url=new URL(request.url());if(url.origin!==new URL(baseURL).origin||!url.pathname.startsWith('/api/v1/'))return null;return url.pathname.replace(/[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}/g,':task');};
+ const add=value=>{records.push(value);if(records.length>40)records.shift();};
+ page.on('request',request=>{if(route(request))starts.set(request,performance.now());});
+ page.on('response',response=>{const request=response.request(),path=route(request),start=starts.get(request);if(path&&start!==undefined)add({route:path,method:request.method(),status:response.status(),elapsed_ms:Math.round(performance.now()-start)});});
+ page.on('requestfailed',request=>{const path=route(request),start=starts.get(request);if(path&&start!==undefined)add({route:path,method:request.method(),failure:'transport',elapsed_ms:Math.round(performance.now()-start)});});
+});
+test.afterEach(async({page,baseURL},testInfo)=>{if(testInfo.status!==testInfo.expectedStatus)console.log('Bounded Robot request timings: '+JSON.stringify(requestTimings.get(page)||[]));await page.unrouteAll({behavior:'ignoreErrors'});const me=await page.request.get('/api/v1/auth/me');if(me.ok()){const session=await me.json();await page.request.post('/api/v1/auth/logout',{headers:{Origin:baseURL,'X-CSRF-Token':session.csrf},data:{}});}});
 for(const [hour,mode] of [[20,'light'],[12,'dark']]) for(const width of [320,390,768,1024,1440]) test(`simulation ${mode} flows and accessibility at ${width}`,async({page})=>{
  await page.addInitScript(hour=>{Date.prototype.getHours=()=>hour;},hour);
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
@@ -17,7 +26,7 @@ for(const [hour,mode] of [[20,'light'],[12,'dark']]) for(const width of [320,390
  await page.getByLabel('Operator name').fill(process.env.ROBOT_TEST_OPERATOR || 'operator');await page.getByLabel('Password',{exact:true}).fill((process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only'));await page.getByRole('button',{name:'Sign in',exact:true}).click();
  await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible({timeout:25000});for(let navigation=0;navigation<3;navigation++){await page.reload();await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible();}
  await page.getByLabel('Confirm password to reset').fill((process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only'));await page.getByRole('button',{name:'Reset simulation stop'}).click();
- await expect(page.locator('#stop-state')).toContainText('Ready');
+ await waitForSimulationReset(page);
  await page.getByRole('button',{name:'Create proposal'}).click();await expect(page.locator('#approval-form')).toBeVisible();await expect(page.locator('#proposed-id')).toContainText(/[a-f0-9-]{36}/);const taskId=await page.locator('#proposed-id').textContent();await page.getByLabel('Confirm operator password',{exact:true}).fill((process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only'));await page.getByRole('button',{name:'Approve simulation task'}).click();
  await waitForApprovedSimulationCompletion(page,taskId);
  await page.getByRole('button',{name:'Stop simulation',exact:true}).click();await expect(page.locator('#stop-state')).toContainText('Stopped');
@@ -80,7 +89,7 @@ for(const mode of ['light','dark'])for(const width of [320,390,768,1024,1440])te
 test('system preference change preserves a proposal draft, focus and simulation authority',async({page})=>{
  await page.emulateMedia({colorScheme:'light'});await page.goto('/console');
  await page.getByLabel('Operator name').fill(process.env.ROBOT_TEST_OPERATOR || 'operator');await page.getByLabel('Password',{exact:true}).fill(process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible();
- await page.getByLabel('Confirm password to reset').fill(process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only');await page.getByRole('button',{name:'Reset simulation stop'}).click();await expect(page.locator('#stop-state')).toContainText('Ready');
+ await page.getByLabel('Confirm password to reset').fill(process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only');await page.getByRole('button',{name:'Reset simulation stop'}).click();await waitForSimulationReset(page);
  const target=page.getByLabel('Target position');await target.fill('0.08');await target.focus();await page.emulateMedia({colorScheme:'dark'});await expect(target).toHaveValue('0.08');await expect(target).toBeFocused();await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible();
  await page.getByRole('button',{name:'Create proposal'}).click();await expect(page.locator('#proposed-id')).toContainText(/[a-f0-9-]{36}/);const taskId=await page.locator('#proposed-id').textContent();await page.getByLabel('Confirm operator password',{exact:true}).fill(process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only');await page.getByRole('button',{name:'Approve simulation task'}).click();await expect(page.locator('#notice')).toContainText('Simulation running');
  const mutations=[];page.on('request',request=>{if(request.method()==='POST'&&!request.url().endsWith('/heartbeat'))mutations.push(new URL(request.url()).pathname);});await page.emulateMedia({colorScheme:'light'});await expect(page.locator('#history li').filter({hasText:taskId})).toContainText('completed',{timeout:6000});expect(mutations).toEqual([]);await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible();
