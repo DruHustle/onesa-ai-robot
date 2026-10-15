@@ -9,6 +9,7 @@ const routes = {
  me:'/api/v1/auth/me',login:'/api/v1/auth/login',logout:'/api/v1/auth/logout',status:'/api/v1/status',
  tasks:'/api/v1/tasks',heartbeat:'/api/v1/heartbeat',stop:'/api/v1/stop',reset:'/api/v1/reset',
  approve:'/api/v1/tasks/{task_id}/approve',cancel:'/api/v1/tasks/{task_id}/cancel'
+ ,physicalPermission:'/api/v1/admin/physical-operation',allowPhysical:'/api/v1/admin/physical-operation/allow',blockPhysical:'/api/v1/admin/physical-operation/block'
 } as const satisfies Record<string,ApiPath>;
 export class RobotClient {
  csrf = '';
@@ -41,4 +42,7 @@ export class RobotClient {
  heartbeat(){return this.request<components['schemas']['ActionResponse']>(routes.heartbeat,{});}
  stop(){return this.request<components['schemas']['ActionResponse']>(routes.stop,{});}
  reset(value:Confirmation){return this.request<components['schemas']['ActionResponse']>(routes.reset,value);}
+ physicalPermission(){return this.request<components['schemas']['PhysicalPermissionResponse']>(routes.physicalPermission);}
+ allowPhysical(value:components['schemas']['PhysicalPermissionConfirmation']){return this.request<components['schemas']['PhysicalPermissionResponse']>(routes.allowPhysical,value);}
+ blockPhysical(){return this.request<components['schemas']['PhysicalPermissionResponse']>(routes.blockPhysical,{});}
 }

@@ -584,6 +584,7 @@ def verify_stage(stage, sha, fingerprint, builds, now=None):
             "browser_acceptance",
             "storage_isolation",
             "edge_telemetry",
+            "administrator_operation_permission",
         }
     if PRODUCT == "onesa-ai-platform":
         required |= {"streaming", "inference", "embeddings"}

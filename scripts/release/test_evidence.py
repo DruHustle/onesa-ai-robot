@@ -79,6 +79,7 @@ def fixtures():
             "browser_acceptance",
             "storage_isolation",
             "edge_telemetry",
+            "administrator_operation_permission",
         ]
     }
     stage = {
@@ -256,6 +257,12 @@ class GateTests(unittest.TestCase):
                 )
         stage = copy.deepcopy(original)
         del stage["checks"]["authentication"]
+        with self.assertRaises(e.Rejected):
+            e.verify_stage(stage, SHA, FINGERPRINT, self.evidence["builds"], now=NOW)
+
+    def test_new_administrator_workflow_cannot_reuse_an_older_stage_receipt(self):
+        stage = copy.deepcopy(self.evidence["staging"]["record"])
+        del stage["checks"]["administrator_operation_permission"]
         with self.assertRaises(e.Rejected):
             e.verify_stage(stage, SHA, FINGERPRINT, self.evidence["builds"], now=NOW)
 

@@ -1,5 +1,35 @@
 # Software simulation architecture
 
+## Administrator permission and future physical controllers
+
+The owner identifies the product as pre-launch and under development; hardware
+has not yet been developed. The new administration software separates
+**permission**, **controller connection/readiness**, and **actual operation**.
+An explicit `ROBOT_ADMINISTRATOR_NAME` may identify only the existing configured
+operator. Other operator sessions receive 403 from all administration endpoints.
+`/api/v1/admin/physical-operation` is authenticated, non-cacheable state; its
+`allow` operation requires the administrator password, current revision and an
+already-stopped idle simulator. `block` needs the administrator session and CSRF
+but no extra password, and invalidates any in-flight allow confirmation.
+
+Permission is bound to the issuing session, expires with it, and is revoked on
+logout, process restart, Stop, storage failure or watchdog failure. It is held
+in process memory, with no new remote table, migration, operator account or
+credential. It cannot approve/replay simulator tasks or send hardware commands.
+The software truthfully reports `not_connected`, `not_ready` and `inactive`
+until a real controller is integrated; an administrative allow is never reported
+as physical actuation. Future hardware adapters must enforce device identity,
+fresh bounded control authority, local interlocks, emergency stop and watchdog
+independently. The existing telemetry-only edge bearer grants none of that authority.
+
+```mermaid
+flowchart LR
+ Admin[Designated administrator] -->|Session, CSRF, password and revision| Permission[Allow or block operation permission]
+ Permission -. requires future qualified integration .-> Controller[Physical controller and local safety controls]
+ Controller -. hardware still in development .-> Robot[Physical robot]
+ Simulator[Existing software simulator] --> Journal[Existing private task history]
+```
+
 ```mermaid
 flowchart LR
  Browser[Onesa operator interface] -->|same origin; opaque cookie and CSRF| Frontend[Node or Vercel proxy]

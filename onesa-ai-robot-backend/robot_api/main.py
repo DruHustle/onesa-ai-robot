@@ -1,4 +1,4 @@
-"""Authenticated, persistent software simulator. Physical operation is unavailable."""
+"""Authenticated simulator and administrator permission for future physical controllers."""
 
 import asyncio
 import contextlib
@@ -50,12 +50,15 @@ class Settings(BaseSettings):
     turso_auth_token: SecretStr = SecretStr("")
     session_seconds: int = Field(default=900, ge=60, le=3600)
     heartbeat_seconds: float = Field(default=3, ge=1, le=10)
+    administrator_name: str = Field(default="", max_length=64)
 
     @model_validator(mode="after")
     def safe_runtime(self):
         from urllib.parse import urlsplit
 
         url = urlsplit(self.public_origin)
+        if self.administrator_name and self.administrator_name != self.operator_name:
+            raise ValueError("Administrator must be the explicitly designated configured operator")
         if bool(self.edge_device_id) != bool(self.edge_token_sha256):
             raise ValueError("Configure both synthetic edge identity and token hash")
         if self.edge_device_id:
@@ -86,7 +89,9 @@ class Settings(BaseSettings):
         elif self.turso_database_url or self.turso_auth_token.get_secret_value():
             raise ValueError("Select turso storage explicitly; remote settings cannot be ignored")
         if self.actuation_enabled:
-            raise ValueError("Physical actuation is not implemented or authorized")
+            raise ValueError(
+                "Integrate and qualify the physical controller before activating hardware"
+            )
         if (
             url.scheme not in ("http", "https")
             or not url.netloc
@@ -129,6 +134,22 @@ class Confirmation(BaseModel):
 class SessionResponse(BaseModel):
     csrf: str
     name: str
+    role: Literal["operator", "administrator"] = "operator"
+
+
+class PhysicalPermissionConfirmation(Confirmation):
+    expected_revision: int = Field(ge=0, strict=True)
+
+
+class PhysicalPermissionResponse(BaseModel):
+    permission: Literal["allowed", "blocked"]
+    revision: int
+    expires_at: float | None
+    controller_connection: Literal["not_connected"] = "not_connected"
+    controller_readiness: Literal["not_ready"] = "not_ready"
+    physical_operation: Literal["inactive"] = "inactive"
+    physical_actuation: Literal[False] = False
+    sampled_at: float
 
 
 class Capabilities(BaseModel):
@@ -189,6 +210,9 @@ class State:
         self.journal_initialized = self.journal is None
         self.journal_lease_confirmed_at = 0.0
         self.stop_epoch = 0
+        self.physical_permission_owner: str | None = None
+        self.physical_permission_expires = 0.0
+        self.physical_permission_revision = 0
         self.mutation_lock = asyncio.Lock()
         if not self.journal:
             settings.database_path.parent.mkdir(parents=True, exist_ok=True)
@@ -302,6 +326,27 @@ class State:
     def stopped(self) -> bool:
         return bool(self.db.execute("SELECT stopped FROM safety WHERE id=1").fetchone()[0])
 
+    def block_physical_permission(self) -> None:
+        # Revise even an already-blocked permission: invalidate an in-flight allow.
+        self.physical_permission_owner = None
+        self.physical_permission_expires = 0.0
+        self.physical_permission_revision += 1
+
+    def physical_permission(self) -> dict:
+        return {
+            "permission": "allowed" if self.physical_permission_owner else "blocked",
+            "revision": self.physical_permission_revision,
+            "expires_at": self.physical_permission_expires
+            if self.physical_permission_owner
+            else None,
+            "sampled_at": time.time(),
+            # Administrative permission does not fabricate a connected controller.
+            "controller_connection": "not_connected",
+            "controller_readiness": "not_ready",
+            "physical_operation": "inactive",
+            "physical_actuation": False,
+        }
+
     def cancel(self, reason: str, stop: bool = False) -> None:
         self.active = None
         for row in self.db.execute("SELECT id FROM tasks WHERE state IN ('running','proposed')"):
@@ -311,12 +356,20 @@ class State:
             (reason,),
         )
         if stop:
+            self.block_physical_permission()
             self.stop_epoch += 1
             self.db.execute("UPDATE safety SET stopped=1 WHERE id=1")
         self.db.commit()
         self.active = None
 
     def tick(self) -> None:
+        if self.physical_permission_owner is not None:
+            permitted = self.db.execute(
+                "SELECT expires FROM sessions WHERE token=? AND expires>?",
+                (self.physical_permission_owner, time.time()),
+            ).fetchone()
+            if permitted is None or self.physical_permission_expires <= time.time():
+                self.block_physical_permission()
         active = self.active
         if not active:
             return
@@ -483,6 +536,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     "/api/v1/stop",
                     "/api/v1/heartbeat",
                     "/api/v1/auth/logout",
+                    "/api/v1/admin/physical-operation/block",
                 ) or request.url.path.endswith("/cancel"):
                     response = await call_next(request)
                     await sim.flush_journal()
@@ -508,6 +562,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def state(request: Request, require_watchdog: bool = False) -> State:
         sim = request.app.state.sim
         if request.app.state.watch.done():
+            if sim.physical_permission_owner:
+                sim.block_physical_permission()
             if sim.active:
                 sim.cancel("watchdog_failure", stop=True)
             if require_watchdog:
@@ -548,6 +604,61 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return dict(row)
 
     Operator = Annotated[Session, Depends(session)]
+
+    def role(operator: Session) -> Literal["operator", "administrator"]:
+        return (
+            "administrator"
+            if config.administrator_name and operator["name"] == config.administrator_name
+            else "operator"
+        )
+
+    async def administrator(operator: Operator) -> Session:
+        if role(operator) != "administrator":
+            raise HTTPException(403, "Administrator authorization required")
+        return operator
+
+    Administrator = Annotated[Session, Depends(administrator)]
+
+    @app.get("/api/v1/admin/physical-operation", response_model=PhysicalPermissionResponse)
+    async def physical_permission(request: Request, administrator: Administrator):
+        return state(request).physical_permission()
+
+    @app.post("/api/v1/admin/physical-operation/allow", response_model=PhysicalPermissionResponse)
+    async def allow_physical_permission(
+        value: PhysicalPermissionConfirmation, request: Request, administrator: Administrator
+    ):
+        sim = state(request, require_watchdog=True)
+        await confirm(sim, request, value.password)
+        # Password hashing yields. Recheck revocation, Stop and a concurrent block.
+        sim = state(request, require_watchdog=True)
+        current = sim.db.execute(
+            "SELECT expires FROM sessions WHERE token=? AND expires>?",
+            (administrator["token"], time.time()),
+        ).fetchone()
+        if current is None:
+            raise HTTPException(401, "Sign in required")
+        if value.expected_revision != sim.physical_permission_revision:
+            raise HTTPException(409, "Operation permission changed; review its current state")
+        if (
+            not sim.stopped
+            or sim.active
+            or sim.db.execute(
+                "SELECT count(*) FROM tasks WHERE state IN ('proposed','running')"
+            ).fetchone()[0]
+        ):
+            raise HTTPException(
+                409, "Confirm an already-stopped, idle simulator before allowing operation"
+            )
+        sim.physical_permission_owner = administrator["token"]
+        sim.physical_permission_expires = float(current[0])
+        sim.physical_permission_revision += 1
+        return sim.physical_permission()
+
+    @app.post("/api/v1/admin/physical-operation/block", response_model=PhysicalPermissionResponse)
+    async def block_physical_permission(request: Request, administrator: Administrator):
+        sim = state(request)
+        sim.block_physical_permission()
+        return sim.physical_permission()
 
     @app.get("/api/v1/edge/challenge", dependencies=[Depends(HTTPBearer(auto_error=False))])
     async def edge_challenge(request: Request):
@@ -636,15 +747,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             samesite="strict",
             path="/api/v1",
         )
-        return {"csrf": csrf, "name": value.name}
+        return {"csrf": csrf, "name": value.name, "role": role({"name": value.name})}
 
     @app.get("/api/v1/auth/me", response_model=SessionResponse)
     async def me(operator: Operator):
-        return {"csrf": operator["csrf"], "name": operator["name"]}
+        return {"csrf": operator["csrf"], "name": operator["name"], "role": role(operator)}
 
     @app.post("/api/v1/auth/logout", response_model=ActionResponse)
     async def logout(request: Request, response: Response, operator: Operator):
         sim = state(request)
+        if sim.physical_permission_owner == operator["token"]:
+            sim.block_physical_permission()
         if sim.active and sim.active["session"] == operator["token"]:
             sim.cancel("session_revoked", stop=True)
         sim.db.execute("DELETE FROM sessions WHERE token=?", (operator["token"],))
