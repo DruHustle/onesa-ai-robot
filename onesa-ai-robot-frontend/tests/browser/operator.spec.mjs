@@ -2,6 +2,7 @@ import {test,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
+import {waitForApprovedSimulationCompletion} from './simulation-acceptance.mjs';
 test.afterEach(async({page,baseURL})=>{await page.unrouteAll({behavior:'ignoreErrors'});const me=await page.request.get('/api/v1/auth/me');if(me.ok()){const session=await me.json();await page.request.post('/api/v1/auth/logout',{headers:{Origin:baseURL,'X-CSRF-Token':session.csrf},data:{}});}});
 for(const [hour,mode] of [[20,'light'],[12,'dark']]) for(const width of [320,390,768,1024,1440]) test(`simulation ${mode} flows and accessibility at ${width}`,async({page})=>{
  await page.addInitScript(hour=>{Date.prototype.getHours=()=>hour;},hour);
@@ -18,7 +19,7 @@ for(const [hour,mode] of [[20,'light'],[12,'dark']]) for(const width of [320,390
  await page.getByLabel('Confirm password to reset').fill((process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only'));await page.getByRole('button',{name:'Reset simulation stop'}).click();
  await expect(page.locator('#stop-state')).toContainText('Ready');
  await page.getByRole('button',{name:'Create proposal'}).click();await expect(page.locator('#approval-form')).toBeVisible();await expect(page.locator('#proposed-id')).toContainText(/[a-f0-9-]{36}/);const taskId=await page.locator('#proposed-id').textContent();await page.getByLabel('Confirm operator password',{exact:true}).fill((process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only'));await page.getByRole('button',{name:'Approve simulation task'}).click();
- await expect(page.locator('#history li').filter({hasText:taskId})).toContainText('completed',{timeout:6000});
+ await waitForApprovedSimulationCompletion(page,taskId);
  await page.getByRole('button',{name:'Stop simulation',exact:true}).click();await expect(page.locator('#stop-state')).toContainText('Stopped');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
  if(process.env.ONESA_VISUAL_EVIDENCE_DIR&&[390,1440].includes(width))await page.screenshot({path:`${process.env.ONESA_VISUAL_EVIDENCE_DIR}/${test.info().project.name}/robot-console-${mode}-${width}.png`,fullPage:true});
