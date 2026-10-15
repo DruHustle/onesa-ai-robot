@@ -33,7 +33,7 @@ def test_delayed_lost_renewal_ack_confirms_fresh_owner_without_replaying(remote,
             assert len(statements) == 2
             assert statements[0].startswith("UPDATE")
             assert statements[1].startswith("SELECT")
-            assert "owner=? AND expires>=unixepoch()+25" in statements[1]
+            assert "owner=? AND expires>=unixepoch()+18" in statements[1]
         finally:
             network.update(after_execute=None, delay=0)
             await journal.close()
@@ -57,7 +57,7 @@ def test_uncertain_or_short_lived_lease_cannot_refresh_authority(remote, uncerta
                 else:
                     db.execute(
                         f"UPDATE {LEASE} SET expires=unixepoch()+?",
-                        (-1 if uncertainty == "expired" else 19,),
+                        (-1 if uncertainty == "expired" else 17,),
                     )
             raise httpx.ReadTimeout("synthetic-private-response")
 
@@ -75,6 +75,43 @@ def test_uncertain_or_short_lived_lease_cannot_refresh_authority(remote, uncerta
             assert sum(sql.startswith("UPDATE") for sql in statements) == 1
         finally:
             network["after_execute"] = None
+            await journal.close()
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("remaining,accepted", [(20, True), (18, True), (17, False)])
+def test_uncommitted_renewal_observes_only_safely_remaining_ownership(remote, remaining, accepted):
+    path, network = remote
+    statements = []
+
+    def lose_request(sql):
+        statements.append(sql)
+        if sql.startswith(f"UPDATE {LEASE}"):
+            # The provider never executes this renewal. Reconciliation must
+            # neither assume it committed nor rewrite the existing expiry.
+            raise httpx.ReadTimeout("synthetic-private-request")
+
+    async def run():
+        journal = TursoJournal(URL, SecretStr(TOKEN))
+        try:
+            await journal.initialize()
+            with sqlite3.connect(path) as db:
+                db.execute(f"UPDATE {LEASE} SET expires=unixepoch()+?", (remaining,))
+                before = db.execute(f"SELECT owner,expires FROM {LEASE}").fetchone()
+            network["before_execute"] = lose_request
+            if accepted:
+                await journal.renew()
+            else:
+                with pytest.raises(JournalFailure) as caught:
+                    await journal.renew()
+                assert caught.value.reconciliation == "not_confirmed"
+            assert len(statements) == 2
+            assert statements[0].startswith("UPDATE") and statements[1].startswith("SELECT")
+            with sqlite3.connect(path) as db:
+                assert db.execute(f"SELECT owner,expires FROM {LEASE}").fetchone() == before
+        finally:
+            network["before_execute"] = None
             await journal.close()
 
     asyncio.run(run())
