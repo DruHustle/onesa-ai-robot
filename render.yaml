@@ -27,6 +27,8 @@ services:
         sync: false
       - key: ROBOT_OPERATOR_NAME
         sync: false
+      - key: ROBOT_ADMINISTRATOR_NAME
+        sync: false
       - key: ROBOT_OPERATOR_PASSWORD_HASH
         sync: false
       - key: ROBOT_EDGE_DEVICE_ID

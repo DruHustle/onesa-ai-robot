@@ -18,6 +18,13 @@ test('proxy preserves auth boundaries, strips unrelated secrets and rejects open
   // Actual Vercel route metadata must support nested auth/task paths.
   assert.equal((await fetch('http://127.0.0.1:3439/api/v1/ready?__onesa_route=ready')).status,200);
   assert.equal((await fetch('http://127.0.0.1:3439/api/v1/auth/me?__onesa_route=auth%2Fme')).status,200);
+  for(const suffix of ['', '/allow', '/block']){
+    const path='/api/v1/admin/physical-operation'+suffix;
+    const response=await fetch('http://127.0.0.1:3439'+path+'?__onesa_route='+encodeURIComponent(path.slice('/api/v1/'.length)),suffix?{method:'POST',headers:{Origin:'https://synthetic-owner.invalid','X-CSRF-Token':'synthetic-csrf',Cookie:'robot_session=fixture'},body:'{}'}:{});
+    assert.equal(response.status,200);
+    if(suffix){assert.equal(received.origin,'https://synthetic-owner.invalid');assert.equal(received['x-csrf-token'],'synthetic-csrf');assert.equal(received.cookie,'robot_session=fixture');}
+  }
+  for(const path of ['/api/v1/admin','/api/v1/admin/physical-operation/enable','/api/v1/admin/physical-operation/allow?role=administrator'])assert.equal((await fetch('http://127.0.0.1:3439'+path)).status,404);
   const approval='/api/v1/tasks/00000000-0000-0000-0000-000000000000/approve';
   assert.equal((await fetch('http://127.0.0.1:3439'+approval+'?__onesa_route='+encodeURIComponent(approval.slice('/api/v1/'.length)),{method:'POST',body:'{}'})).status,200);
   for (const route of [

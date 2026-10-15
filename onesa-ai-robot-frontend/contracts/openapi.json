@@ -123,6 +123,91 @@
         "title": "Login",
         "type": "object"
       },
+      "PhysicalPermissionConfirmation": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_revision": {
+            "minimum": 0.0,
+            "title": "Expected Revision",
+            "type": "integer"
+          },
+          "password": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password",
+          "expected_revision"
+        ],
+        "title": "PhysicalPermissionConfirmation",
+        "type": "object"
+      },
+      "PhysicalPermissionResponse": {
+        "properties": {
+          "controller_connection": {
+            "const": "not_connected",
+            "default": "not_connected",
+            "title": "Controller Connection",
+            "type": "string"
+          },
+          "controller_readiness": {
+            "const": "not_ready",
+            "default": "not_ready",
+            "title": "Controller Readiness",
+            "type": "string"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "permission": {
+            "enum": [
+              "allowed",
+              "blocked"
+            ],
+            "title": "Permission",
+            "type": "string"
+          },
+          "physical_actuation": {
+            "const": false,
+            "default": false,
+            "title": "Physical Actuation",
+            "type": "boolean"
+          },
+          "physical_operation": {
+            "const": "inactive",
+            "default": "inactive",
+            "title": "Physical Operation",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "sampled_at": {
+            "title": "Sampled At",
+            "type": "number"
+          }
+        },
+        "required": [
+          "permission",
+          "revision",
+          "expires_at",
+          "sampled_at"
+        ],
+        "title": "PhysicalPermissionResponse",
+        "type": "object"
+      },
       "Proposal": {
         "additionalProperties": false,
         "properties": {
@@ -165,6 +250,15 @@
           },
           "name": {
             "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "default": "operator",
+            "enum": [
+              "operator",
+              "administrator"
+            ],
+            "title": "Role",
             "type": "string"
           }
         },
@@ -436,6 +530,80 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/admin/physical-operation": {
+      "get": {
+        "operationId": "physical_permission_api_v1_admin_physical_operation_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhysicalPermissionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Physical Permission"
+      }
+    },
+    "/api/v1/admin/physical-operation/allow": {
+      "post": {
+        "operationId": "allow_physical_permission_api_v1_admin_physical_operation_allow_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhysicalPermissionConfirmation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhysicalPermissionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Allow Physical Permission"
+      }
+    },
+    "/api/v1/admin/physical-operation/block": {
+      "post": {
+        "operationId": "block_physical_permission_api_v1_admin_physical_operation_block_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhysicalPermissionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Block Physical Permission"
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "operationId": "login_api_v1_auth_login_post",

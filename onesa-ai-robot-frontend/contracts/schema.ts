@@ -4,6 +4,57 @@
  */
 
 export interface paths {
+    "/api/v1/admin/physical-operation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Physical Permission */
+        get: operations["physical_permission_api_v1_admin_physical_operation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/physical-operation/allow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Allow Physical Permission */
+        post: operations["allow_physical_permission_api_v1_admin_physical_operation_allow_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/physical-operation/block": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Block Physical Permission */
+        post: operations["block_physical_permission_api_v1_admin_physical_operation_block_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -337,6 +388,51 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** PhysicalPermissionConfirmation */
+        PhysicalPermissionConfirmation: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Password */
+            password: string;
+        };
+        /** PhysicalPermissionResponse */
+        PhysicalPermissionResponse: {
+            /**
+             * Controller Connection
+             * @default not_connected
+             * @constant
+             */
+            controller_connection: "not_connected";
+            /**
+             * Controller Readiness
+             * @default not_ready
+             * @constant
+             */
+            controller_readiness: "not_ready";
+            /** Expires At */
+            expires_at: number | null;
+            /**
+             * Permission
+             * @enum {string}
+             */
+            permission: "allowed" | "blocked";
+            /**
+             * Physical Actuation
+             * @default false
+             * @constant
+             */
+            physical_actuation: false;
+            /**
+             * Physical Operation
+             * @default inactive
+             * @constant
+             */
+            physical_operation: "inactive";
+            /** Revision */
+            revision: number;
+            /** Sampled At */
+            sampled_at: number;
+        };
         /** Proposal */
         Proposal: {
             /**
@@ -357,6 +453,12 @@ export interface components {
             csrf: string;
             /** Name */
             name: string;
+            /**
+             * Role
+             * @default operator
+             * @enum {string}
+             */
+            role: "operator" | "administrator";
         };
         /** StatusResponse */
         StatusResponse: {
@@ -473,6 +575,79 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    physical_permission_api_v1_admin_physical_operation_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhysicalPermissionResponse"];
+                };
+            };
+        };
+    };
+    allow_physical_permission_api_v1_admin_physical_operation_allow_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhysicalPermissionConfirmation"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhysicalPermissionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    block_physical_permission_api_v1_admin_physical_operation_block_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhysicalPermissionResponse"];
+                };
+            };
+        };
+    };
     login_api_v1_auth_login_post: {
         parameters: {
             query?: never;

@@ -138,8 +138,15 @@ The public product at `/` is script-free and never reads operator data. `/consol
 loads only the authenticated simulator API; menus and hidden markup are not access
 controls. Preserve the single configured operator and existing credentials, device
 bearer isolation, object ownership, expiring proposals, session/heartbeat revocation,
-independent software motion gate and permanently disabled physical actuation.
-Do not add hardware control, public DDS or automatic task replay. Real model/ROS/
+independent software motion gate. The owner has requested session-bound administrator
+allow/block permission for future physical controllers; hardware is still in development.
+Keep that permission separate from controller connection, readiness and actual actuation.
+Only the explicitly designated existing operator may have the administrator role;
+recheck it, session, Origin/CSRF, password confirmation and revision on the backend.
+Block/Stop, logout, expiry and restart revoke permission. Permission alone must never
+send movement or claim connected hardware. Future physical activation needs its actual
+controller integration and independently qualified hardware safety/stop behavior.
+No physical movement test, public DDS or automatic task replay is authorized. Real model/ROS/
 hardware capability must never be presented as a synthetic fallback.
 
 Follow the versioned Onesa design contract in `docs/engineering/design-system.consumer.json`
