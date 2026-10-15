@@ -6,3 +6,8 @@ export async function waitForApprovedSimulationCompletion(page, taskId) {
   await expect(page.locator('#history li').filter({hasText: taskId}))
     .toContainText('completed', {timeout: 6000});
 }
+
+export async function waitForSimulationReset(page) {
+  await expect(page.locator('#notice')).toContainText('Simulation stop reset.');
+  await expect(page.locator('#stop-state')).toContainText('Ready');
+}
