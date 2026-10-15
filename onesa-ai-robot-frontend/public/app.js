@@ -2,9 +2,27 @@ import {RobotClient} from './client.js';
 const client = new RobotClient();
 const byId = id => document.getElementById(id);
 let csrf = '', proposalId = '', timer, polling = null, generation=0, suspended=false;
+let administrator=false,permissionRevision=null,permissionRead=null,lastPermissionRead=0;
 const notice = text => { byId('notice').textContent = text; };
 
-function signedOut() {generation++; clearInterval(timer);csrf='';client.csrf='';proposalId='';byId('operator').hidden=true;byId('login-form').hidden=false;byId('approval-form').hidden=true;byId('history').replaceChildren();for(const field of document.querySelectorAll('input[type="password"]'))field.value=''; }
+function signedOut() {generation++; clearInterval(timer);csrf='';client.csrf='';proposalId='';administrator=false;permissionRevision=null;permissionRead=null;lastPermissionRead=0;byId('administrator').hidden=true;byId('physical-permission-state').textContent='Unavailable';byId('physical-operation-state').textContent='Unavailable';byId('operator').hidden=true;byId('login-form').hidden=false;byId('approval-form').hidden=true;byId('history').replaceChildren();for(const field of document.querySelectorAll('input[type="password"]'))field.value=''; }
+function renderPhysicalPermission(value){
+ if(!['allowed','blocked'].includes(value?.permission)||!Number.isSafeInteger(value.revision)||value.revision<0||value.controller_connection!=='not_connected'||value.controller_readiness!=='not_ready'||value.physical_operation!=='inactive'||value.physical_actuation!==false)throw new Error('Physical-operation state could not be verified.');
+ if(permissionRevision!==null&&value.revision<permissionRevision)return;
+ permissionRevision=value.revision;
+ byId('physical-permission-state').textContent=value.permission==='allowed'?'Allowed for this administrator session':'Blocked by administrator';
+ byId('physical-controller-state').textContent='Not connected · hardware integration under development';
+ byId('physical-operation-state').textContent='Inactive · controller not connected';
+ byId('physical-permission-expiry').textContent=value.expires_at?new Date(value.expires_at*1000).toLocaleString():'No active permission';
+}
+async function readPhysicalPermission(){
+ if(!administrator||suspended||permissionRead)return;
+ const owner={},current=generation;permissionRead=owner;lastPermissionRead=performance.now();
+ try{const value=await client.physicalPermission();if(current===generation&&administrator&&!suspended)renderPhysicalPermission(value);}
+ catch(error){if(current!==generation||!administrator||suspended)return;permissionRevision=null;byId('physical-permission-state').textContent='Unavailable · last observation is stale';byId('physical-operation-state').textContent='Unknown · current state unavailable';if(error.status===401)signedOut();}
+ finally{if(permissionRead===owner)permissionRead=null;}
+}
+function setAdministrator(session){administrator=session.role==='administrator';permissionRevision=null;permissionRead=null;lastPermissionRead=0;byId('administrator').hidden=!administrator;if(administrator)void readPhysicalPermission();}
 async function refresh() {
   if(suspended || polling || !csrf) return;
   const owner={};polling=owner;const current=generation,observations=[];
@@ -24,6 +42,7 @@ async function refresh() {
     byId('environment').hidden=false;
     byId('history').replaceChildren(...tasks.map(task=>{const li=document.createElement('li');li.textContent=`${task.state} · ${task.id} · ${task.reason} · ${new Date(task.created*1000).toLocaleString()} · ${Number(task.position).toFixed(4)} rad`;if(task.state==='running'){const button=document.createElement('button');button.textContent='Cancel running task';button.addEventListener('click',()=>run(()=>client.cancel(task.id),'Task cancelled; simulation stopped.'));li.append(button);}return li;}));
     if(!tasks.length){const li=document.createElement('li');li.textContent='No simulation tasks yet. Reset the stop state to create a proposal.';byId('history').append(li);}
+    if(administrator&&performance.now()-lastPermissionRead>5000)void readPhysicalPermission();
   } catch(error) {if(current!==generation) return;byId('connection').textContent='Disconnected — telemetry is stale; the gateway watchdog stops running simulation tasks.';byId('position').textContent='Stale · latest response unavailable';if(error.status===401) signedOut();notice(error.message);}
   finally {await Promise.allSettled(observations);if(polling===owner)polling=null;}
 }
@@ -49,16 +68,18 @@ async function waitForSimulator() {
   }
   const error=new Error(unavailableSignIn);Object.assign(error,{status:503});throw error;
 }
-async function run(action, success, form=null) {
+async function run(action, success, form=null,expectedGeneration=null) {
   if(suspended)return;
   if(form&&busyForms.has(form))return;
   const controls=form?[...form.querySelectorAll('button[type="submit"]')]:[];
   if(form){busyForms.add(form);form.setAttribute('aria-busy','true');controls.forEach(control=>control.disabled=true);}
-  try {await action();if(suspended)return;notice(success);await refresh();}
-  catch(error){if(suspended)return;if(error.status===401) signedOut();notice(form?.id==='login-form'&&([502,503,504].includes(error.status)||['AbortError','TimeoutError','TypeError'].includes(error.name))?unavailableSignIn:error.message);}
+  try {await action();if(suspended||expectedGeneration!==null&&expectedGeneration!==generation)return;notice(success);await refresh();}
+  catch(error){if(suspended||expectedGeneration!==null&&expectedGeneration!==generation)return;if(error.status===401) signedOut();notice(form?.id==='login-form'&&([502,503,504].includes(error.status)||['AbortError','TimeoutError','TypeError'].includes(error.name))?unavailableSignIn:error.message);}
   finally{if(form){busyForms.delete(form);form.removeAttribute('aria-busy');controls.forEach(control=>control.disabled=false);}}
 }
-byId('login-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{await waitForSimulator();const session=await client.login({name:byId('name').value,password:byId('password').value});byId('password').value='';generation++;csrf=session.csrf;client.csrf=csrf;byId('login-form').hidden=true;byId('operator').hidden=false;timer=setInterval(refresh,500);},'Signed in. Physical actuation remains disabled.',event.currentTarget);});
+byId('login-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{await waitForSimulator();const session=await client.login({name:byId('name').value,password:byId('password').value});byId('password').value='';generation++;csrf=session.csrf;client.csrf=csrf;setAdministrator(session);byId('login-form').hidden=true;byId('operator').hidden=false;timer=setInterval(refresh,500);},'Signed in.',event.currentTarget);});
+byId('physical-permission-form').addEventListener('submit',event=>{event.preventDefault();const password=byId('physical-permission-password').value,revision=permissionRevision,current=generation;byId('physical-permission-password').value='';run(async()=>{if(!administrator||revision===null)throw new Error('Refresh and review the current administrator permission before allowing operation.');const value=await client.allowPhysical({password,expected_revision:revision});if(current===generation&&administrator&&!suspended)renderPhysicalPermission(value);},'Permission request completed. The current confirmed state is shown in Robot administration; no movement started.',event.currentTarget,current);});
+byId('block-physical-permission').addEventListener('click',()=>{const current=generation;run(async()=>{const value=await client.blockPhysical();if(current===generation&&administrator&&!suspended)renderPhysicalPermission(value);},'Administrator permission blocked.',null,current);});
 byId('reset-form').addEventListener('submit',event=>{event.preventDefault();const password=byId('reset-password').value;byId('reset-password').value='';run(()=>client.reset({password}),'Simulation stop reset.',event.currentTarget);});
 byId('proposal-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{const data=await client.propose({command_id:crypto.randomUUID(),issued_at:Date.now()/1000,target_radians:Number(byId('target').value),duration_seconds:Number(byId('duration').value)});proposalId=data.id;byId('proposed-id').textContent=proposalId;byId('approval-form').hidden=false;byId('approve-password').focus();},'Proposal created. Confirm within 15 seconds.',event.currentTarget);});
 byId('approval-form').addEventListener('submit',event=>{event.preventDefault();const password=byId('approve-password').value;byId('approve-password').value='';run(async()=>{await client.approve(proposalId,{password});byId('approval-form').hidden=true;proposalId='';},'Simulation running; heartbeat must remain connected.',event.currentTarget);});
@@ -67,7 +88,7 @@ byId('stop').addEventListener('click',()=>run(()=>client.stop(),'Simulation stop
 byId('logout').addEventListener('click',()=>run(async()=>{await client.logout();signedOut();},'Signed out; this session cannot authorize further tasks.'));
 // No localStorage/sessionStorage, token URLs or persistence of operator credentials.
 
-function restoreSession(){const current=++generation;return client.me().then(session=>{if(current!==generation)return;csrf=session.csrf;client.csrf=csrf;byId('login-form').hidden=true;byId('operator').hidden=false;timer=setInterval(refresh,500);return refresh();}).catch(error=>{if(current===generation&&error.status!==401&&error.name!=='AbortError')notice(error.message);});}
+function restoreSession(){const current=++generation;return client.me().then(session=>{if(current!==generation)return;csrf=session.csrf;client.csrf=csrf;setAdministrator(session);byId('login-form').hidden=true;byId('operator').hidden=false;timer=setInterval(refresh,500);return refresh();}).catch(error=>{if(current===generation&&error.status!==401&&error.name!=='AbortError')notice(error.message);});}
 function suspendRequests(){suspended=true;generation++;clearInterval(timer);client.cancelPending();polling=null;}
 window.addEventListener('beforeunload',suspendRequests);
 window.addEventListener('pagehide',suspendRequests);

@@ -29,6 +29,7 @@ CHECKS = [
     "audit_history",
     "storage_isolation",
     "edge_telemetry",
+    "administrator_operation_permission",
 ]
 
 
@@ -146,6 +147,7 @@ def run(url, environment):
         checks["storage_isolation"] = "PASS"
         phase = "authentication"
         api.call("/api/v1/status", expected=401)
+        api.call("/api/v1/admin/physical-operation", expected=401)
         api.call(
             "/api/v1/auth/login",
             {"name": name, "password": "invalid-synthetic-login"},
@@ -162,6 +164,39 @@ def run(url, environment):
         phase = "authorization"
         api.call("/api/v1/stop", {}, expected=403, csrf=False)
         checks["authorization"] = "PASS"
+        phase = "administrator_operation_permission"
+        require(
+            login.get("role") == "administrator", "Designated administrator required"
+        )
+        before_permission_history = api.call("/api/v1/tasks")
+        permission = api.call("/api/v1/admin/physical-operation")
+        require(
+            permission["permission"] == "blocked",
+            "Initial administrator permission must be blocked",
+        )
+        allowed = api.call(
+            "/api/v1/admin/physical-operation/allow",
+            {
+                "password": password,
+                "expected_revision": permission["revision"],
+            },
+        )
+        require(
+            allowed["permission"] == "allowed"
+            and allowed["controller_connection"] == "not_connected"
+            and allowed["controller_readiness"] == "not_ready"
+            and allowed["physical_operation"] == "inactive"
+            and allowed["physical_actuation"] is False,
+            "Administrator permission must not fabricate connected hardware",
+        )
+        blocked = api.call("/api/v1/admin/physical-operation/block", {})
+        require(
+            blocked["permission"] == "blocked"
+            and blocked["physical_actuation"] is False
+            and api.call("/api/v1/tasks") == before_permission_history,
+            "Administrator control must preserve task history and hardware state",
+        )
+        checks["administrator_operation_permission"] = "PASS"
         phase = "edge_telemetry"
         # Independent outbound device identity is telemetry-only; it cannot approve tasks.
         edge_token = os.environ.get("ROBOT_EDGE_TOKEN", "")

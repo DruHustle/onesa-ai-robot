@@ -48,6 +48,15 @@ ROBOT_API_URL=http://127.0.0.1:8431 npm start
 ```
 
 Open `http://localhost:3431` for product information and `/console` for operator sign-in.
+The product is **pre-launch, under development**, with **protected access for
+authorized users**. To exercise the new administration software locally, explicitly
+set `ROBOT_ADMINISTRATOR_NAME` to the configured `ROBOT_OPERATOR_NAME`; leaving it
+empty grants no administrator role. The designated administrator can allow or block
+physical-operation permission after password confirmation. The console separately
+shows connection, readiness and actual operation: hardware is still being developed,
+so allowing permission does not connect a controller or start movement. Permission
+belongs to the issuing session and is revoked on logout, expiry, restart or Stop.
+It is not stored in the simulation task journal and never replays existing tasks.
 The simulator starts stopped. Reset requires operator confirmation and never resumes
 an old task. No sibling repository, paid inference, cloud database or physical robot
 is required for this local path.

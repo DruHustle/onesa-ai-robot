@@ -60,6 +60,19 @@ database, claim a paid disk or silently fall back to ephemeral history.
 
 ## Configuration and authority
 
+The owner-requested administration software is a new candidate, not part of the
+previous 83f7579 qualification. After its own exact-source CI and staging checks,
+bind `ROBOT_ADMINISTRATOR_NAME` only to the existing approved operator name in
+each intended environment. Preserve the operator/password/device credentials,
+journal and other configuration. Do not enable a different account or infer an
+administrator role from browser markup or a request body. The protected console
+then offers session-bound allow/block permission, with separate hardware state.
+Hardware is still in development; no real controller or physical actuation is
+claimed. A missing administrator designation fails the newly mandatory hosted
+`administrator_operation_permission` check, rather than silently skipping it.
+The 83f7579 15-check/84-view result remains valid only for its older source;
+fresh qualification is required for the new control/authentication surface.
+
 Inspect current providers and private bindings before a write. Native builds use
 `python -m pip install --require-hashes -r requirements.lock` and single-process
 `sh start.sh` with the repository Python version. Render automatic deployment remains

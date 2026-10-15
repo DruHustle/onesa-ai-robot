@@ -133,6 +133,7 @@ def test_hosted_acceptance_executes_real_api_and_safety_flows(settings, monkeypa
     import smoke
 
     settings.public_origin = "https://synthetic.vercel.app"
+    settings.administrator_name = settings.operator_name
     settings.deployment_environment = "staging"
     settings.storage_mode = "ephemeral-simulation"
     config = {
