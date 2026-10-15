@@ -322,9 +322,11 @@ class TursoJournal:
                 raise
             # An uncertain acknowledgement must never replay the UPDATE or
             # refresh local authority from a nearly expired lease. Confirm this
-            # same owner with >=25 seconds remaining on the database clock:
-            # longer than local readiness's 15-second freshness window, even
-            # after the bounded response delay. The whole renewal stays <=2s.
+            # same owner with >=18 seconds remaining on the database clock:
+            # the 15-second readiness window, the <=2-second response deadline
+            # and a one-second clock-resolution margin. The UPDATE need not
+            # have committed: an existing sufficiently fresh lease is also real
+            # ownership evidence. This read never extends the database lease.
             remaining = 2 - (time.monotonic() - started)
             try:
                 if remaining <= 0:
@@ -332,7 +334,7 @@ class TursoJournal:
                 async with asyncio.timeout(remaining):
                     confirmed = await self.execute(
                         f"SELECT owner FROM {LEASE} "
-                        "WHERE id=1 AND owner=? AND expires>=unixepoch()+25",
+                        "WHERE id=1 AND owner=? AND expires>=unixepoch()+18",
                         (self.owner,),
                         phase="lease_renew_reconcile",
                     )

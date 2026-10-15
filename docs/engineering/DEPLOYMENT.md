@@ -23,9 +23,12 @@ claim it was a connect error. See [HTTPX transport retry semantics](https://www.
 
 A later staging preflight captured a `ReadTimeout` during lease renewal. An uncertain
 renewal acknowledgement now permits one SELECT, within the renewal's original
-two-second deadline, to confirm the same owner with at least 25 seconds remaining
-on the database clock. This exceeds the local 15-second readiness freshness window
-even after the bounded response delay. It never repeats the UPDATE, extends an
+two-second deadline, to confirm the same owner with at least 18 seconds remaining
+on the database clock: the 15-second readiness window, at most two seconds of
+response delay and a one-second clock-resolution margin. The previous 25-second
+threshold incorrectly rejected a still-valid unrenewed lease after the normal
+10-second renewal interval. Observation can confirm the existing expiry even when
+the UPDATE did not commit; it never changes or assumes extension of that expiry. It never repeats the UPDATE, extends an
 expired lease or accepts another owner. A missing, short-lived, malformed or
 unavailable confirmation still stops the journal and revokes authority. Explicit
 provider denials do not attempt reconciliation. Successful observation proves a
