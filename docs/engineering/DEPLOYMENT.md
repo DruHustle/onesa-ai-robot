@@ -78,7 +78,23 @@ the handoff. The default authorization path and all other production gates remai
 
 ## Current deployed baseline and storage
 
-The current October 14 production frontend is
+The current October 15 production frontend and backend both serve
+`595fd4f494e77de4fdecacbb9e64ac46c8c3597b`. Vercel is
+`dpl_FX54UPw53gMQ1TL7sY2kMH71YfKW`; Render is `dep-db8g94o473hc73ert5h0`.
+Exact-main CI `38768560790`, hosted staging `38769589380` (16 API/safety checks,
+96 browser cases), qualification `38771745184` and authorization `38771808387` passed.
+Production acceptance passed 14 API/safety/admin checks, two public layouts, anonymous
+console isolation and six private-data denials. All 73 previous records and credentials
+were preserved; three owned synthetic terminal records bring the journal to 76.
+Final state is stopped/idle, physical permission blocked and controller not connected.
+The restricted `closure-robot-main595-production-acceptance.json` records source,
+deployments, preservation, bounded runtime observations and monitor-only continuations.
+Scheduled backups and a hosted Turso restore remain unverified; the pre-deployment
+encrypted off-host snapshot and isolated application restore do not establish them.
+
+### Prior October 14 baseline
+
+The prior October 14 production frontend was
 `56ce52f20ddf7a491de0b33a3805d0c02cc0d345`, Vercel
 `dpl_ENwtg1yhAww2dZURnrabR4b5NraD`, at `https://robot.onesa.eu`.
 It retains backend `16381086192dc34c8ad7ea40c43ef6d178b00904`, Render

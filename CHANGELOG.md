@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-10-15 — Robot development release live and accepted
+
+Production frontend and cloud backend now serve
+`595fd4f494e77de4fdecacbb9e64ac46c8c3597b` at https://robot.onesa.eu.
+The under-development public product, concept artwork and protected operator console
+are live. The designated existing administrator has password-confirmed, session-bound
+allow/block controls for future physical-operation permission; controller connection,
+readiness and actual actuation remain separate. No hardware is connected or actuated.
+
+The release includes the reviewed journal transport/lease confirmation corrections,
+originating-form handling and observation-ready simulator controls. Stop, cancel and
+sign-out remain available independently. Exact-main staging passed 16 API/safety checks
+and96 browser cases. Production acceptance passed 14 API/safety/admin checks, two public
+layouts, anonymous console isolation and six ordinary/spoofed-bot private-data denials.
+All 73 prior history fingerprints and credentials are unchanged; three synthetic terminal
+acceptance records are retained and accounted for. A bounded post-deployment runtime
+log window found no matched journal/error/HTTP 5xx categories.
+
+Vercel deployment: `dpl_FX54UPw53gMQ1TL7sY2kMH71YfKW`.
+Render deployment: `dep-db8g94o473hc73ert5h0`.
+Existing publication observation was resumed without a duplicate deployment after a
+whole-project metadata digest mismatch. The premature public CSS timing observation
+and its corrected read-only continuation remain in restricted evidence. No failed
+historical suite was rewritten as PASS. Development privacy records remain owner-deferred
+until launch; this release does not claim legal certification or physical safety approval.
+
+
 ## 2026-10-14 — Frontend icons delivered; hosted acceptance blocked
 
 Production frontend `56ce52f20ddf7a491de0b33a3805d0c02cc0d345` delivered the approved
