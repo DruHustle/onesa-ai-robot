@@ -394,3 +394,8 @@ replace operator/device authorization and must not expose DDS, actuators or mode
 No physical driver, camera/STT/VLM/TTS/VLA integration or installed edge-control update
 is authorized by a software release. Keep separate software, ROS compatibility, edge
 installation, real-model and physical-hardware verdicts.
+
+
+The public landing, operator and development-privacy footers route general contact to
+the Company Contact enquiry form. Approved controller/privacy contact particulars remain
+in the privacy notice body; the footer does not duplicate email or telephone links.
