@@ -14,13 +14,16 @@ See the [scoped development release procedure](docs/engineering/DEPLOYMENT.md#re
 
 The public [Robot product](https://robot.onesa.eu) explains that scope. The operator
 console serves protected simulation data through an independently authenticated API;
-an ordinary Onesa AI account grants no Robot operator permission. Production source
-56ce52f frontend with retained 1638108 backend passed the 13 API/safety checks;
-hosted acceptance remains blocked after one WebKit sign-out failure and subsequent
-fail-closed journal unavailability. The current result and earlier
-October 13 recovery baseline are recorded in [CHANGELOG.md](CHANGELOG.md) and
-[the protected deployment guide](docs/engineering/DEPLOYMENT.md). Changes in a local
-checkout need their own qualification before deployment.
+an ordinary Onesa AI account grants no Robot operator permission. Production frontend and backend source
+`595fd4f494e77de4fdecacbb9e64ac46c8c3597b` passed exact-main CI, hosted staging
+(16 API/safety checks and 96 browser cases), current owner authorization and production
+acceptance on 2026-10-15. Production verification passed 14 API/safety/administrator
+checks, two public layouts, anonymous console isolation and six private-data denials.
+All 73 pre-existing history records and credentials were preserved; three owned synthetic
+acceptance records are accounted for. The service finished stopped/idle with no connected
+controller or physical actuation. Current receipts and earlier failed observations are
+recorded in [CHANGELOG.md](CHANGELOG.md) and [the protected deployment guide](docs/engineering/DEPLOYMENT.md).
+Local or later source changes require their own applicable release verification.
 
 ```mermaid
 flowchart LR
