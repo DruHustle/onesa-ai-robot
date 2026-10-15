@@ -136,7 +136,7 @@ class TursoJournal:
             # one-second phase and two-second overall deadlines remain unchanged.
             transport=httpx.AsyncHTTPTransport(
                 retries=1,
-                limits=httpx.Limits(max_connections=2, max_keepalive_connections=1),
+                limits=httpx.Limits(max_connections=2, max_keepalive_connections=0),
                 trust_env=False,
             ),
             follow_redirects=False,

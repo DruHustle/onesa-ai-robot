@@ -11,7 +11,7 @@ from robot_api.turso import JournalFailure, TursoJournal
 
 
 class Stream(httpcore.AsyncNetworkStream):
-    def __init__(self, read_error=None):
+    def __init__(self, read_error=None, keep_alive=False):
         body = json.dumps(
             {
                 "results": [
@@ -29,6 +29,9 @@ class Stream(httpcore.AsyncNetworkStream):
             + b"\r\nConnection: close\r\n\r\n"
             + body
         )
+        if keep_alive:
+            self.response = self.response.replace(b"Connection: close", b"Connection: keep-alive")
+        self.template = self.response
         self.written = bytearray()
         self.write_error = (
             read_error if read_error in {httpcore.WriteError, httpcore.WriteTimeout} else None
@@ -46,6 +49,8 @@ class Stream(httpcore.AsyncNetworkStream):
         return data
 
     async def write(self, buffer, timeout=None):
+        if buffer.startswith(b"POST "):
+            self.response = self.template
         self.written.extend(buffer)
         if self.write_error:
             raise self.write_error("synthetic private write detail")
@@ -89,6 +94,37 @@ def test_one_pre_request_connect_failure_sends_the_statement_once(error):
             assert backend.connections == 2
             assert backend.timeouts == [1.0, 1.0]
             assert bytes(stream.written).count(b"POST /v2/pipeline HTTP/1.1") == 1
+        finally:
+            await journal.client.aclose()
+
+    asyncio.run(run())
+
+
+def test_journal_does_not_reuse_a_connection_even_if_server_advertises_keepalive():
+    class FreshBackend(Backend):
+        def __init__(self):
+            super().__init__(httpcore.ConnectError, 0, None)
+            self.streams = []
+
+        async def connect_tcp(self, host, port, timeout=None, **kwargs):
+            self.connections += 1
+            stream = Stream(keep_alive=True)
+            self.streams.append(stream)
+            return stream
+
+    async def run():
+        journal = TursoJournal("libsql://synthetic.example.turso.io", SecretStr("synthetic"))
+        backend = FreshBackend()
+        journal.client._transport._pool._network_backend = backend
+        try:
+            assert await journal.execute("SELECT 1") == []
+            assert await journal.execute("SELECT 1") == []
+            assert backend.connections == 2
+            assert len(backend.streams) == 2
+            assert all(
+                bytes(stream.written).count(b"POST /v2/pipeline HTTP/1.1") == 1
+                for stream in backend.streams
+            )
         finally:
             await journal.client.aclose()
 

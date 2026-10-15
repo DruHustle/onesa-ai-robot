@@ -8,7 +8,12 @@ receipts remain in the restricted release store; local changes are not hosted ac
 
 The journal permits one HTTPX connection-establishment retry before a request is
 sent. HTTP phase deadlines remain one second and the outer operation deadline stays
-two seconds. Pool bounds, lease fencing, heartbeat and stop behavior are unchanged.
+two seconds. At most two connections may run concurrently; connections are not kept
+for reuse between journal operations. A bounded 24-SELECT staging comparison observed
+one read timeout in 12 pooled requests and none in 12 fresh-connection requests.
+Fresh connections took longer in that sample; this is a conservative mitigation,
+not proof of the historical failure's cause. Lease fencing, heartbeat and stop behavior
+are unchanged.
 Read/write/protocol failures never resend a statement. A lost acknowledgement still
 requires one exact seven-field read under the same live lease; uncertainty fails closed.
 Diagnostics now record only an allowlisted HTTP exception class and reconciliation
