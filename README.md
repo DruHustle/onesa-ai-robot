@@ -6,6 +6,12 @@ operator approval, inspect task history, cancel or stop, and test safe failure b
 Physical actuators, connected ROS nodes, cameras and real STT/VLM/TTS/VLA models are
 not implemented. Simulation results do not certify physical robot safety.
 
+**Under development.** Protected operator access supports authorized development
+and testing. Essential sign-in sessions, operator-linked synthetic task history and
+security diagnostics support that purpose. The owner has deferred the corresponding
+privacy approval records until launch; that decision is not a legal certification.
+See the [scoped development release procedure](docs/engineering/DEPLOYMENT.md#restricted-development-release-and-owner-deferral).
+
 The public [Robot product](https://robot.onesa.eu) explains that scope. The operator
 console serves protected simulation data through an independently authenticated API;
 an ordinary Onesa AI account grants no Robot operator permission. Production source
@@ -18,7 +24,7 @@ checkout need their own qualification before deployment.
 
 ```mermaid
 flowchart LR
-  Public[Public product information] --> Website[Robot frontend]
+  Public[Public product and development privacy] --> Website[Robot frontend]
   Operator[Authorized operator] --> Gateway[Same-origin gateway]
   Gateway --> API[Authenticated simulation API]
   API --> Safety[Independent software gate and watchdog]

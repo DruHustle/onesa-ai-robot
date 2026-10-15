@@ -28,6 +28,7 @@ def remote(tmp_path, monkeypatch):
         "redirect": False,
         "malformed": False,
         "after_execute": None,
+        "before_execute": None,
     }
 
     async def handler(request):
@@ -45,6 +46,8 @@ def remote(tmp_path, monkeypatch):
         body = json.loads(request.content)
         assert body["requests"][1] == {"type": "close"}
         statement = body["requests"][0]["stmt"]
+        if state["before_execute"] is not None:
+            state["before_execute"](statement["sql"])
         args = []
         for cell in statement["args"]:
             kind = cell["type"]

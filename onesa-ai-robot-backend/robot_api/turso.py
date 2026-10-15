@@ -43,6 +43,7 @@ DIAGNOSTIC_PHASES = frozenset(
         "task_save",
         "task_save_reconcile",
         "lease_renew",
+        "lease_renew_reconcile",
         "lease_probe",
         "lease_release",
         "initialize",
@@ -51,12 +52,38 @@ DIAGNOSTIC_PHASES = frozenset(
         "unknown",
     }
 )
+TRANSPORT_KINDS = frozenset(
+    {
+        "none",
+        "ConnectError",
+        "ConnectTimeout",
+        "PoolTimeout",
+        "ReadError",
+        "ReadTimeout",
+        "WriteError",
+        "WriteTimeout",
+        "RemoteProtocolError",
+        "LocalProtocolError",
+        "ProxyError",
+        "UnsupportedProtocol",
+        "other",
+    }
+)
 
 
 class JournalFailure(sqlite3.OperationalError):
     """Fixed diagnostic metadata; never copy exception or provider contents."""
 
-    def __init__(self, category: str, phase: str, elapsed_ms: int = 0, http_status: int = 0):
+    def __init__(
+        self,
+        category: str,
+        phase: str,
+        elapsed_ms: int = 0,
+        http_status: int = 0,
+        *,
+        transport_kind: str = "none",
+        reconciliation: str = "not_attempted",
+    ):
         messages = {
             "ownership": "Simulation journal ownership expired",
             "capacity": "Simulation history capacity exceeded",
@@ -68,6 +95,12 @@ class JournalFailure(sqlite3.OperationalError):
         self.elapsed_ms = min(120_000, max(0, elapsed_ms)) if type(elapsed_ms) is int else 0
         self.http_status = (
             http_status if type(http_status) is int and 100 <= http_status <= 599 else 0
+        )
+        self.transport_kind = transport_kind if transport_kind in TRANSPORT_KINDS else "other"
+        self.reconciliation = (
+            reconciliation
+            if reconciliation in {"not_attempted", "unavailable", "not_confirmed"}
+            else "not_confirmed"
         )
 
 
@@ -99,13 +132,20 @@ class TursoJournal:
         self.client = httpx.AsyncClient(
             headers={"Authorization": "Bearer " + token.get_secret_value()},
             timeout=1.0,
-            limits=httpx.Limits(max_connections=2, max_keepalive_connections=1),
+            # Retry only connection establishment, before any HTTP request is sent.
+            # Read/write/protocol failures never replay a statement. The existing
+            # one-second phase and two-second overall deadlines remain unchanged.
+            transport=httpx.AsyncHTTPTransport(
+                retries=1,
+                limits=httpx.Limits(max_connections=2, max_keepalive_connections=0),
+                trust_env=False,
+            ),
             follow_redirects=False,
             trust_env=False,
         )
 
     async def execute(self, sql: str, args: tuple = (), *, phase: str = "query") -> list[dict]:
-        # No implicit retries: a timeout may follow a committed write.
+        # No statement retries: a timeout may follow a committed write.
         def encode(value):
             if value is None:
                 return {"type": "null"}
@@ -180,7 +220,13 @@ class TursoJournal:
             elif isinstance(error, httpx.HTTPError):
                 category = "transport"
             raise JournalFailure(
-                category, phase, int((time.monotonic() - started) * 1000), status
+                category,
+                phase,
+                int((time.monotonic() - started) * 1000),
+                status,
+                transport_kind=type(error).__name__
+                if isinstance(error, httpx.TransportError)
+                else "none",
             ) from None
 
     async def initialize(self) -> list[dict]:
@@ -253,21 +299,54 @@ class TursoJournal:
                     phase="task_save_reconcile",
                 )
             except JournalFailure:
+                error.reconciliation = "unavailable"
                 raise error from None
             if persisted == [expected]:
                 return
+            error.reconciliation = "not_confirmed"
             raise error from None
         if saved != [{"id": row["id"]}]:
             raise JournalFailure("ownership", "task_save", int((time.monotonic() - started) * 1000))
 
     async def renew(self) -> None:
         started = time.monotonic()
-        rows = await self.execute(
-            f"UPDATE {LEASE} SET expires=unixepoch()+30 "
-            "WHERE id=1 AND owner=? AND expires>unixepoch() RETURNING owner",
-            (self.owner,),
-            phase="lease_renew",
-        )
+        try:
+            rows = await self.execute(
+                f"UPDATE {LEASE} SET expires=unixepoch()+30 "
+                "WHERE id=1 AND owner=? AND expires>unixepoch() RETURNING owner",
+                (self.owner,),
+                phase="lease_renew",
+            )
+        except JournalFailure as error:
+            if error.category not in {"timeout", "transport"}:
+                raise
+            # An uncertain acknowledgement must never replay the UPDATE or
+            # refresh local authority from a nearly expired lease. Confirm this
+            # same owner with >=18 seconds remaining on the database clock:
+            # the 15-second readiness window, the <=2-second response deadline
+            # and a one-second clock-resolution margin. The UPDATE need not
+            # have committed: an existing sufficiently fresh lease is also real
+            # ownership evidence. This read never extends the database lease.
+            remaining = 2 - (time.monotonic() - started)
+            try:
+                if remaining <= 0:
+                    raise TimeoutError
+                async with asyncio.timeout(remaining):
+                    confirmed = await self.execute(
+                        f"SELECT owner FROM {LEASE} "
+                        "WHERE id=1 AND owner=? AND expires>=unixepoch()+18",
+                        (self.owner,),
+                        phase="lease_renew_reconcile",
+                    )
+            except (JournalFailure, TimeoutError):
+                error.reconciliation = "unavailable"
+                error.elapsed_ms = min(120_000, int((time.monotonic() - started) * 1000))
+                raise error from None
+            if confirmed == [{"owner": self.owner}]:
+                return
+            error.reconciliation = "not_confirmed"
+            error.elapsed_ms = min(120_000, int((time.monotonic() - started) * 1000))
+            raise error from None
         if rows != [{"owner": self.owner}]:
             raise JournalFailure(
                 "ownership", "lease_renew", int((time.monotonic() - started) * 1000)

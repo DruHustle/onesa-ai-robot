@@ -132,7 +132,7 @@ class DeploymentTests(unittest.TestCase):
             result = d.run(
                 self.args,
                 self.env,
-                client_factory=lambda *a, **k: fake,
+                client_factory=lambda *a, _fake=fake, **k: _fake,
                 monotonic=clock.now,
             )
         return result, json.loads(self.args.receipt.read_text()), fake
@@ -231,6 +231,89 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual(receipt["observation_outcome"], "SERVICE_ENVIRONMENT_MISMATCH")
         self.assertFalse(fake.post_used)
 
+    def production_preflight(self, **changes):
+        self.args.environment = "Production"
+        self.env.update(
+            RENDER_SERVICE_ID=d.TARGETS["Production"][0], GITHUB_REF="refs/heads/main"
+        )
+        data = json.loads(self.preflight.read_text())
+        data.update(
+            qualification_status="APPROVED",
+            STAGING_VERIFIED="PASS",
+            OPERATIONS_VERIFIED="PASS",
+            CONTENT_LEGAL_APPROVED="BLOCKED",
+        )
+        data.update(changes)
+        self.preflight.write_text(json.dumps(data))
+
+    def test_development_deferral_cannot_skip_operations_or_staging(self):
+        for field in ("OPERATIONS_VERIFIED", "STAGING_VERIFIED"):
+            self.production_preflight(
+                **{field: "BLOCKED"},
+                CONTENT_LEGAL_APPROVED="DEFERRED_BY_OWNER_UNTIL_LAUNCH",
+                external_authorization_run=42,
+            )
+            fake = Mock()
+            with self.subTest(field=field), self.assertRaises(d.DeploymentError):
+                d.run(
+                    self.args,
+                    self.env,
+                    client_factory=lambda *a, _fake=fake, **k: _fake,
+                )
+            fake.call.assert_not_called()
+
+    def test_missing_owner_decision_and_actions_deferral_fail_before_provider(self):
+        for changes in (
+            {},
+            {"CONTENT_LEGAL_APPROVED": "DEFERRED_BY_OWNER_UNTIL_LAUNCH"},
+        ):
+            self.production_preflight(**changes)
+            fake = Mock()
+            with self.subTest(changes=changes), self.assertRaises(d.DeploymentError):
+                d.run(
+                    self.args,
+                    self.env,
+                    client_factory=lambda *a, _fake=fake, **k: _fake,
+                )
+            fake.call.assert_not_called()
+        self.production_preflight(
+            CONTENT_LEGAL_APPROVED="DEFERRED_BY_OWNER_UNTIL_LAUNCH",
+            external_authorization_run=42,
+        )
+        self.env["GITHUB_ACTIONS"] = "true"
+        self.env.update(
+            GITHUB_REPOSITORY=d.REPOSITORY,
+            GITHUB_ACTOR="DruHustle",
+            GITHUB_TRIGGERING_ACTOR="DruHustle",
+        )
+        fake = Mock()
+        with self.assertRaises(d.DeploymentError):
+            d.run(self.args, self.env, client_factory=lambda *a, _fake=fake, **k: _fake)
+        fake.call.assert_not_called()
+
+    def test_development_path_rechecks_actual_latest_owner_authorization(self):
+        import evidence
+        import free_gate
+
+        self.production_preflight(
+            CONTENT_LEGAL_APPROVED="DEFERRED_BY_OWNER_UNTIL_LAUNCH",
+            external_authorization_run=42,
+        )
+        fake = Mock()
+        with (
+            patch.object(evidence, "GitHub") as github,
+            patch.object(
+                free_gate,
+                "verify_development_preflight",
+                side_effect=evidence.Rejected("revoked"),
+            ) as verify,
+            self.assertRaises(evidence.Rejected),
+        ):
+            github.return_value.api.return_value = {"login": "DruHustle"}
+            d.run(self.args, self.env, client_factory=lambda *a, _fake=fake, **k: _fake)
+        verify.assert_called_once()
+        fake.call.assert_not_called()
+
     def test_wrong_commit_after_acceptance_preserves_receipt_and_blocks(self):
         result, receipt, _ = self.execute(
             [{"id": ID, "status": "live", "commit": {"id": OTHER}}]
@@ -299,7 +382,7 @@ class DeploymentTests(unittest.TestCase):
             result = d.run(
                 self.args,
                 self.env,
-                client_factory=lambda *a, **k: fake,
+                client_factory=lambda *a, _fake=fake, **k: _fake,
                 monotonic=clock.now,
             )
         self.assertFalse(result)
@@ -378,7 +461,7 @@ class DeploymentTests(unittest.TestCase):
             result = d.run(
                 self.args,
                 self.env,
-                client_factory=lambda *a, **k: fake,
+                client_factory=lambda *a, _fake=fake, **k: _fake,
                 monotonic=clock.now,
             )
         self.assertFalse(result)
@@ -401,7 +484,7 @@ class DeploymentTests(unittest.TestCase):
             result = d.run(
                 self.args,
                 self.env,
-                client_factory=lambda *a, **k: fake,
+                client_factory=lambda *a, _fake=fake, **k: _fake,
                 monotonic=clock.now,
             )
         self.assertFalse(result)
