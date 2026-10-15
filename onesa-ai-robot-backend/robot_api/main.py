@@ -290,16 +290,26 @@ class State:
         self.cancel("storage_unavailable", stop=True)
         if first:
             diagnostic = (
-                JournalFailure(error.category, error.phase, error.elapsed_ms, error.http_status)
+                JournalFailure(
+                    error.category,
+                    error.phase,
+                    error.elapsed_ms,
+                    error.http_status,
+                    transport_kind=error.transport_kind,
+                    reconciliation=error.reconciliation,
+                )
                 if isinstance(error, JournalFailure)
                 else JournalFailure(category, phase, elapsed_ms)
             )
             JOURNAL_LOG.warning(
-                "Simulation journal latched category=%s phase=%s elapsed_ms=%d http_status=%d",
+                "Simulation journal latched category=%s phase=%s elapsed_ms=%d http_status=%d "
+                "transport_kind=%s reconciliation=%s",
                 diagnostic.category,
                 diagnostic.phase,
                 diagnostic.elapsed_ms,
                 diagnostic.http_status,
+                diagnostic.transport_kind,
+                diagnostic.reconciliation,
             )
 
     async def flush_journal(self) -> None:

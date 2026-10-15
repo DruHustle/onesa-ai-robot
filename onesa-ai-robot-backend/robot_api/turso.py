@@ -51,12 +51,38 @@ DIAGNOSTIC_PHASES = frozenset(
         "unknown",
     }
 )
+TRANSPORT_KINDS = frozenset(
+    {
+        "none",
+        "ConnectError",
+        "ConnectTimeout",
+        "PoolTimeout",
+        "ReadError",
+        "ReadTimeout",
+        "WriteError",
+        "WriteTimeout",
+        "RemoteProtocolError",
+        "LocalProtocolError",
+        "ProxyError",
+        "UnsupportedProtocol",
+        "other",
+    }
+)
 
 
 class JournalFailure(sqlite3.OperationalError):
     """Fixed diagnostic metadata; never copy exception or provider contents."""
 
-    def __init__(self, category: str, phase: str, elapsed_ms: int = 0, http_status: int = 0):
+    def __init__(
+        self,
+        category: str,
+        phase: str,
+        elapsed_ms: int = 0,
+        http_status: int = 0,
+        *,
+        transport_kind: str = "none",
+        reconciliation: str = "not_attempted",
+    ):
         messages = {
             "ownership": "Simulation journal ownership expired",
             "capacity": "Simulation history capacity exceeded",
@@ -68,6 +94,12 @@ class JournalFailure(sqlite3.OperationalError):
         self.elapsed_ms = min(120_000, max(0, elapsed_ms)) if type(elapsed_ms) is int else 0
         self.http_status = (
             http_status if type(http_status) is int and 100 <= http_status <= 599 else 0
+        )
+        self.transport_kind = transport_kind if transport_kind in TRANSPORT_KINDS else "other"
+        self.reconciliation = (
+            reconciliation
+            if reconciliation in {"not_attempted", "unavailable", "not_confirmed"}
+            else "not_confirmed"
         )
 
 
@@ -99,13 +131,20 @@ class TursoJournal:
         self.client = httpx.AsyncClient(
             headers={"Authorization": "Bearer " + token.get_secret_value()},
             timeout=1.0,
-            limits=httpx.Limits(max_connections=2, max_keepalive_connections=1),
+            # Retry only connection establishment, before any HTTP request is sent.
+            # Read/write/protocol failures never replay a statement. The existing
+            # one-second phase and two-second overall deadlines remain unchanged.
+            transport=httpx.AsyncHTTPTransport(
+                retries=1,
+                limits=httpx.Limits(max_connections=2, max_keepalive_connections=0),
+                trust_env=False,
+            ),
             follow_redirects=False,
             trust_env=False,
         )
 
     async def execute(self, sql: str, args: tuple = (), *, phase: str = "query") -> list[dict]:
-        # No implicit retries: a timeout may follow a committed write.
+        # No statement retries: a timeout may follow a committed write.
         def encode(value):
             if value is None:
                 return {"type": "null"}
@@ -180,7 +219,13 @@ class TursoJournal:
             elif isinstance(error, httpx.HTTPError):
                 category = "transport"
             raise JournalFailure(
-                category, phase, int((time.monotonic() - started) * 1000), status
+                category,
+                phase,
+                int((time.monotonic() - started) * 1000),
+                status,
+                transport_kind=type(error).__name__
+                if isinstance(error, httpx.TransportError)
+                else "none",
             ) from None
 
     async def initialize(self) -> list[dict]:
@@ -253,9 +298,11 @@ class TursoJournal:
                     phase="task_save_reconcile",
                 )
             except JournalFailure:
+                error.reconciliation = "unavailable"
                 raise error from None
             if persisted == [expected]:
                 return
+            error.reconciliation = "not_confirmed"
             raise error from None
         if saved != [{"id": row["id"]}]:
             raise JournalFailure("ownership", "task_save", int((time.monotonic() - started) * 1000))

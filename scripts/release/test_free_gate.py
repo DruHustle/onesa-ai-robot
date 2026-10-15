@@ -125,6 +125,9 @@ class FreeGateTests(unittest.TestCase):
         self.fingerprint = patch.object(e, "source_hash", return_value=FINGERPRINT)
         self.fingerprint.start()
         self.addCleanup(self.fingerprint.stop)
+        self.owner = patch.object(f, "current_owner", return_value=e.OWNER)
+        self.owner.start()
+        self.addCleanup(self.owner.stop)
 
     def prepare(self):
         self.github.record = f.qualification(self.github, SHA, self.github.run(30), 20)
@@ -168,6 +171,106 @@ class FreeGateTests(unittest.TestCase):
             f.authorize(
                 self.github, SHA, self.github.run(40), 30, fingerprint, None, "approve"
             )
+
+    def development_approval(self):
+        self.github.record = f.qualification(self.github, SHA, self.github.run(30), 20)
+        with patch.object(f, "development_source", return_value=True):
+            self.github.approval = f.authorize(
+                self.github,
+                SHA,
+                self.github.run(40),
+                30,
+                e.digest(self.github.record),
+                None,
+                "approve",
+                defer_development_privacy=True,
+            )
+        return {
+            "kind": "external-owner-verified-render-preflight",
+            "candidate_commit": SHA,
+            "workflow_run_id": 40,
+            "external_authorization_run": 40,
+            "valid_for_source_sha256": FINGERPRINT,
+            "CONTENT_LEGAL_APPROVED": "DEFERRED_BY_OWNER_UNTIL_LAUNCH",
+            "development_privacy_deferral": dict(f.DEVELOPMENT_PRIVACY_DEFERRAL),
+        }
+
+    def test_development_decision_is_actual_owner_artifact_not_a_legal_pass(self):
+        preflight = self.development_approval()
+        with patch.object(f, "development_source", return_value=True):
+            result = f.verify_development_preflight(self.github, SHA, 40, preflight)
+        self.assertEqual(
+            result["approval"]["development_privacy_deferral"],
+            f.DEVELOPMENT_PRIVACY_DEFERRAL,
+        )
+        self.assertFalse(
+            result["approval"]["development_privacy_deferral"]["launch_ready"]
+        )
+        self.assertEqual(self.github.record["CONTENT_LEGAL_APPROVED"], "BLOCKED")
+        self.assertEqual(self.github.record["OPERATIONS_VERIFIED"], "BLOCKED")
+
+    def test_development_decision_cannot_qualify_launch_or_revocation(self):
+        self.development_approval()
+        for decision, value, development in [
+            ("approve", True, False),
+            ("revoke", True, True),
+            ("approve", "true", True),
+        ]:
+            with (
+                self.subTest(decision=decision, value=value),
+                patch.object(f, "development_source", return_value=development),
+                self.assertRaises(e.Rejected),
+            ):
+                f.authorize(
+                    self.github,
+                    SHA,
+                    self.github.run(40),
+                    30,
+                    e.digest(self.github.record),
+                    None,
+                    decision,
+                    defer_development_privacy=value,
+                )
+
+    def test_caller_deferral_without_actual_owner_artifact_cannot_authorize(self):
+        preflight = self.development_approval()
+        self.github.approval.pop("development_privacy_deferral")
+        with self.assertRaises(e.Rejected):
+            f.verify_development_preflight(self.github, SHA, 40, preflight)
+
+    def test_non_owner_cannot_consume_a_public_owner_artifact(self):
+        preflight = self.development_approval()
+        with (
+            patch.object(f, "current_owner", return_value="untrusted"),
+            self.assertRaises(e.Rejected),
+        ):
+            f.verify_development_preflight(self.github, SHA, 40, preflight)
+
+    def test_wrong_source_run_scope_or_tampered_deferral_cannot_authorize(self):
+        preflight = self.development_approval()
+        for key, value in [
+            ("candidate_commit", "b" * 40),
+            ("workflow_run_id", 41),
+            ("external_authorization_run", 41),
+            ("valid_for_source_sha256", "c" * 64),
+            ("kind", "untrusted"),
+            ("development_privacy_deferral", {"launch_ready": True}),
+            ("CONTENT_LEGAL_APPROVED", "PASS"),
+        ]:
+            with (
+                self.subTest(key=key),
+                patch.object(f, "development_source", return_value=True),
+                self.assertRaises(e.Rejected),
+            ):
+                f.verify_development_preflight(
+                    self.github, SHA, 40, {**preflight, key: value}
+                )
+        self.github.approval["development_privacy_deferral"]["launch_ready"] = True
+        with (
+            patch.object(f, "development_source", return_value=True),
+            self.assertRaises(e.Rejected),
+        ):
+            f.verify_development_preflight(self.github, SHA, 40, preflight)
 
     def test_automatic_qualification_derives_evidence_without_human_pass(self):
         value = self.github.run(30)

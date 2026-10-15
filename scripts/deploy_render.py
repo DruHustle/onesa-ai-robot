@@ -657,12 +657,30 @@ def run(args, env=None, *, client_factory=Render, monotonic=time.monotonic):
                     for k in [
                         "STAGING_VERIFIED",
                         "OPERATIONS_VERIFIED",
-                        "CONTENT_LEGAL_APPROVED",
                     ]
                 )
                 and not preflight.get("component_plan"),
                 "PRODUCTION_PREFLIGHT_REQUIRED",
             )
+            if preflight.get("CONTENT_LEGAL_APPROVED") != "PASS":
+                require(
+                    not env.get("GITHUB_ACTIONS")
+                    and preflight.get("CONTENT_LEGAL_APPROVED")
+                    == "DEFERRED_BY_OWNER_UNTIL_LAUNCH"
+                    and type(preflight.get("external_authorization_run")) is int,
+                    "PRODUCTION_PRIVACY_DECISION_REQUIRED",
+                )
+                sys.path.insert(0, str(Path(__file__).resolve().parent / "release"))
+                import evidence
+                import free_gate
+
+                github = evidence.GitHub()
+                free_gate.verify_development_preflight(
+                    github,
+                    candidate,
+                    preflight["external_authorization_run"],
+                    preflight,
+                )
         if preflight.get("component_plan"):
             sys.path.insert(0, str(Path(__file__).resolve().parent / "release"))
             import cloud
