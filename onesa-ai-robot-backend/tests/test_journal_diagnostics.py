@@ -462,13 +462,21 @@ def test_actual_http_failure_latches_at_its_operation_without_replay(
         reset(api)
         identifier = approve(api, proposal(duration_seconds=5))
         sim = api.app.state.sim
-        if operation == "flush":
-            api.portal.call(lambda: sim.dirty(identifier))
-        calls = network["calls"]
-        network["offline"] = True
         action = sim.flush_journal if operation == "flush" else sim.refresh_journal_lease
-        with pytest.raises(JournalFailure):
-            api.portal.call(action)
+
+        async def inject_and_observe():
+            # Fault injection and the targeted operation share the simulator's
+            # loop. A background tick must not consume the fault in the gap
+            # between a test-thread assignment and portal.call().
+            if operation == "flush":
+                sim.dirty(identifier)
+            calls = network["calls"]
+            network["offline"] = True
+            with pytest.raises(JournalFailure):
+                await action()
+            return calls
+
+        calls = api.portal.call(inject_and_observe)
         assert network["calls"] == calls + 1
         assert api.portal.call(lambda: sim.journal_failed and sim.stopped and sim.active is None)
         assert api.get("/api/v1/ready").json() == {
