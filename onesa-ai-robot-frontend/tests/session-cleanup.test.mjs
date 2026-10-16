@@ -9,7 +9,11 @@ function fixture(cookies, replies=[]) {
   const reply=replies.shift();assert.ok(reply,'Unexpected protected request');
   return {status:()=>reply.status,json:async()=>reply.body};
  };
- return {calls,page:{context:()=>({cookies:async origin=>{assert.equal(origin,'https://robot.example');return cookies;}}),request:{get:request('GET'),post:request('POST')}}};
+ return {calls,page:{context:()=>({cookies:async url=>{
+  const parsed=new URL(url);assert.equal(parsed.origin,'https://robot.example');
+  // Match browser cookie-path filtering: /api/v1 cookies are absent at '/'.
+  return cookies.filter(cookie=>parsed.pathname.startsWith(cookie.path||'/api/v1'));
+ }}),request:{get:request('GET'),post:request('POST')}}};
 }
 test('anonymous public and unrelated-cookie fixtures make no protected request',async()=>{
  for(const cookies of [[],[{name:'unrelated',value:'synthetic'}]]){
