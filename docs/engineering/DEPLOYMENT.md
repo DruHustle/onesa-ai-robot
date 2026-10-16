@@ -1,5 +1,27 @@
 # Robot simulator deployment and recovery
 
+## Render capacity hold — local maintenance, 2026-10-16
+
+The owner confirms Render credits are exhausted and backend deployments are paused.
+Do not dispatch staging qualification that builds a backend, request a recovery build,
+resume a suspended service, change billing or provision paid capacity during this hold.
+Continue isolated local implementation and affected regression checks. Preserve the
+existing source-bound hosted results; they do not establish current API availability.
+A restored provider budget and the applicable release controls are required before
+new backend delivery or remaining hosted acceptance.
+
+The maintained deployment script now requires `suspended: not_suspended` and an
+explicit empty `suspenders` list before creation and again when observing `live`.
+Missing, malformed, contradictory or suspended service metadata blocks success;
+a deployment's `live` status alone is insufficient. This check does not resume,
+cancel or recreate a deployment. No availability failure is authentication evidence.
+Offline regression: `python3 -m unittest discover -s scripts/release
+-p test_deploy_render.py` (one command). Suspension during observation retains the
+non-success receipt without falsely classifying a confirmed provider build failure.
+These changes are prepared on development source; no new hosted release is claimed.
+Rollback: revert only the reviewed maintenance commit, retaining existing receipts
+and the owner-directed deployment pause.
+
 Initial and failed simulator observations keep reset/propose/approve unavailable until
 one complete status/history snapshot is confirmed. Stop, cancel and sign-out remain
 independent. Unknown observations are labelled unavailable rather than left Loading.

@@ -52,6 +52,8 @@ class FakeRender:
                 "rootDir": "onesa-ai-robot-backend",
                 "type": "web_service",
                 "autoDeployTrigger": "off",
+                "suspended": "not_suspended",
+                "suspenders": [],
             }
         if suffix == "/env-vars?limit=100":
             return [
@@ -144,6 +146,49 @@ class DeploymentTests(unittest.TestCase):
             self.args.receipt.read_bytes()
         ).hexdigest()
         self.args.preflight = self.root / "render-preflight.json"
+
+    def test_unavailable_service_blocks_before_environment_or_deploy_requests(self):
+        for state in (
+            {"suspended": "suspended", "suspenders": ["billing"]},
+            {"suspended": "not_suspended", "suspenders": ["user"]},
+            {"suspended": "not_suspended"},
+            {"suspended": "unknown", "suspenders": []},
+        ):
+            with self.subTest(state=state):
+                fake = FakeRender(Clock(), ["live"])
+                service = fake.call("")
+                service.pop("suspended")
+                service.pop("suspenders")
+                service.update(state)
+                client = Mock()
+                client.call.return_value = service
+                with self.assertRaisesRegex(d.DeploymentError, "SERVICE_SUSPENDED"):
+                    d.validate_service(client, "Staging")
+                client.call.assert_called_once_with("")
+
+    def test_billing_suspension_after_request_preserves_non_success_receipt(self):
+        clock = Clock()
+        fake = FakeRender(clock, ["live"])
+        original = fake.call
+        reads = 0
+
+        def call(suffix, payload=None):
+            nonlocal reads
+            value = original(suffix, payload)
+            if suffix == "":
+                reads += 1
+                if reads > 1:
+                    value.update(suspended="suspended", suspenders=["billing"])
+            return value
+
+        with patch.object(fake, "call", side_effect=call), redirect_stdout(io.StringIO()):
+            result = d.run(self.args, self.env, client_factory=lambda *a, **k: fake,
+                           monotonic=clock.now)
+        self.assertFalse(result)
+        receipt = json.loads(self.args.receipt.read_text())
+        self.assertEqual(receipt["observation_outcome"], "SERVICE_SUSPENDED_OR_AVAILABILITY_UNVERIFIED")
+        self.assertFalse(receipt["provider_failure_confirmed"])
+        self.assertEqual(receipt["deployment_id"], ID)
 
     def test_slow_progress_live_receipt_saved_before_any_poll(self):
         observed = []

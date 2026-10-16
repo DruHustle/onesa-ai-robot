@@ -312,6 +312,12 @@ def validate_service(client, environment):
         and service.get("autoDeployTrigger") == "off",
         "SERVICE_ENVIRONMENT_MISMATCH",
     )
+    require(
+        service.get("suspended") == "not_suspended"
+        and isinstance(service.get("suspenders"), list)
+        and service["suspenders"] == [],
+        "SERVICE_SUSPENDED_OR_AVAILABILITY_UNVERIFIED",
+    )
     entries = client.call("/env-vars?limit=100")
     require(
         isinstance(entries, list) and len(entries) < 100, "ENVIRONMENT_REPLY_REJECTED"
@@ -424,6 +430,7 @@ def observe(
                 else "PROVIDER_DEACTIVATED_NOT_CURRENT"
             )
         elif status == "live":
+            validate_service(client, record["environment"])
             latest = list_deployments(client)
             record["observation_outcome"] = (
                 "LIVE_CURRENT_ACCEPTANCE_PENDING"
