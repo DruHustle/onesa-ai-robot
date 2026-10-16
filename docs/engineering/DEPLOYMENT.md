@@ -1,5 +1,9 @@
 # Robot simulator deployment and recovery
 
+For the shared Oracle host, use the protected [VM architecture and troubleshooting](https://onesa-engineering-docs.pages.dev/docs/engineering/ORACLE_VM_OPERATIONS).
+It includes exact Robot health routes and journal-failure preservation; it grants no
+old-source restart, lease repair or physical-operation authority.
+
 ## Oracle backend migration — owner authorized 2026-10-16
 
 ### Verified production hosting cutover — 2026-10-16
