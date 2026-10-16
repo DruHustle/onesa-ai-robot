@@ -18,6 +18,86 @@ URL = "libsql://synthetic-staging.example.turso.io"
 TOKEN = "placeholder"
 
 
+@pytest.mark.parametrize("delay, succeeds", [(1.2, True), (2.4, False)])
+def test_real_http_read_uses_statement_budget_without_extending_it(monkeypatch, delay, succeeds):
+    import robot_api.turso as module
+
+    async def run():
+        calls = []
+        handlers = set()
+
+        async def respond(reader, writer):
+            task = asyncio.current_task()
+            handlers.add(task)
+            try:
+                head = await reader.readuntil(b"\r\n\r\n")
+                length = next(
+                    int(line.split(b":", 1)[1])
+                    for line in head.split(b"\r\n")
+                    if line.lower().startswith(b"content-length:")
+                )
+                body = json.loads(await reader.readexactly(length))
+                calls.append(body)
+                assert body["requests"][0]["stmt"]["sql"] == "SELECT 1"
+                await asyncio.sleep(delay)
+                payload = json.dumps(
+                    {
+                        "results": [
+                            {
+                                "type": "ok",
+                                "response": {
+                                    "type": "execute",
+                                    "result": {
+                                        "cols": [{"name": "value"}],
+                                        "rows": [[{"type": "integer", "value": "1"}]],
+                                    },
+                                },
+                            },
+                            {"type": "ok", "response": {"type": "close"}},
+                        ]
+                    }
+                ).encode()
+                writer.write(
+                    b"HTTP/1.1 200 OK\r\nContent-Length: "
+                    + str(len(payload)).encode()
+                    + b"\r\nConnection: close\r\n\r\n"
+                    + payload
+                )
+                await writer.drain()
+            finally:
+                writer.close()
+                await writer.wait_closed()
+                handlers.discard(task)
+
+        server = await asyncio.start_server(respond, "127.0.0.1", 0)
+        port = server.sockets[0].getsockname()[1]
+        monkeypatch.setattr(module, "endpoint", lambda _: f"http://127.0.0.1:{port}/v2/pipeline")
+        journal = TursoJournal(URL, SecretStr(TOKEN))
+        started = time.monotonic()
+        try:
+            if succeeds:
+                assert await journal.execute("SELECT 1") == [{"value": 1}]
+            else:
+                with pytest.raises(JournalFailure) as caught:
+                    await journal.execute("SELECT 1")
+                assert caught.value.category == "timeout"
+            elapsed = time.monotonic() - started
+            if succeeds:
+                assert delay <= elapsed + 0.1
+            else:
+                assert elapsed < 2.3
+            assert len(calls) == 1
+        finally:
+            await journal.client.aclose()
+            server.close()
+            await server.wait_closed()
+            for task in list(handlers):
+                task.cancel()
+            await asyncio.gather(*handlers, return_exceptions=True)
+
+    asyncio.run(run())
+
+
 @pytest.fixture
 def remote(tmp_path, monkeypatch):
     path = tmp_path / "cloud.sqlite3"

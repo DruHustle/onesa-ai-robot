@@ -131,10 +131,13 @@ class TursoJournal:
         self.url = endpoint(url)
         self.client = httpx.AsyncClient(
             headers={"Authorization": "Bearer " + token.get_secret_value()},
-            timeout=1.0,
+            # A read may use the existing two-second statement budget. A
+            # one-second inactivity limit prematurely rejected cloud responses;
+            # execute() still bounds the entire operation to two seconds.
+            timeout=httpx.Timeout(1.0, read=2.0),
             # Retry only connection establishment, before any HTTP request is sent.
             # Read/write/protocol failures never replay a statement. The existing
-            # one-second phase and two-second overall deadlines remain unchanged.
+            # two-second overall deadline remains unchanged.
             transport=httpx.AsyncHTTPTransport(
                 retries=1,
                 limits=httpx.Limits(max_connections=2, max_keepalive_connections=0),

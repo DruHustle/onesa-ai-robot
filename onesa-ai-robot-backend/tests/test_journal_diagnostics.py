@@ -141,7 +141,7 @@ def test_invalid_protocol_is_redacted_and_bounded(kind):
     asyncio.run(scenario())
 
 
-def test_real_configured_http_client_retains_one_second_read_deadline():
+def test_real_configured_http_client_retains_two_second_statement_deadline():
     async def scenario():
         calls = 0
         handlers = set()
@@ -169,8 +169,8 @@ def test_real_configured_http_client_retains_one_second_read_deadline():
         journal = TursoJournal(URL, SecretStr(SENTINEL))
         try:
             assert all(
-                getattr(journal.client.timeout, part) == 1.0
-                for part in ("connect", "read", "write", "pool")
+                getattr(journal.client.timeout, part) == limit
+                for part, limit in (("connect", 1.0), ("read", 2.0), ("write", 1.0), ("pool", 1.0))
             )
             journal.url = f"http://127.0.0.1:{server.sockets[0].getsockname()[1]}/fixture"
             started = time.monotonic()
@@ -178,8 +178,8 @@ def test_real_configured_http_client_retains_one_second_read_deadline():
                 await journal.execute(SENTINEL, phase="task_save")
             elapsed = time.monotonic() - started
             assert caught.value.category == "timeout" and caught.value.phase == "task_save"
-            assert 0.85 <= elapsed < 1.8
-            assert 850 <= caught.value.elapsed_ms < 1800
+            assert 1.8 <= elapsed < 2.3
+            assert 1800 <= caught.value.elapsed_ms < 2300
             assert calls == 1
         finally:
             await journal.client.aclose()
