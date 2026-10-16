@@ -151,7 +151,7 @@ create request, clear cache, cancel or consume qualification just to test monito
 Actual source/readiness/hosted acceptance remain independent requirements.
 
 Retain dependency alerts, scans, scheduled CI and owner-confirmed notifications.
-Security PRs target default main; version target-branch cannot redirect them. Keep
+Dependabot security fixes target default main; version target-branch cannot redirect them. Keep
 PR code credential-free/hosted, with no auto-merge, privileged PR event or production
 deploy. Normally integrate fixes through dev/staging/main. Urgent candidates start
 from exact production and require isolated source-bound staging/owner release,
