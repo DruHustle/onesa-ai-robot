@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-16 — Robot production API moved to Oracle
+
+- Moved the existing qualified backend to an immutable, scanned ARM64 image on
+  the existing Oracle Free VM, behind a dedicated HTTPS tunnel and loopback bind.
+- Republished the identical accepted frontend artifact with its server-side API
+  origin changed. Existing authenticated access, protected reads, logout/revocation
+  and anonymous denial pass through the production website.
+- Preserved accounts, credentials, external data and existing worker/scanner services.
+  No Render build, paid resource, schema migration or physical actuation occurred.
+- Prior full application qualification is reused for unchanged source; new target
+  checks establish access and readiness, not a new feature or inference release.
+  Staging Preview acceptance remains independently recorded in restricted evidence.
+
+
 ## 2026-10-15 — Robot development release live and accepted
 
 Production frontend and cloud backend now serve
