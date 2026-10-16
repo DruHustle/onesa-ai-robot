@@ -143,8 +143,10 @@ receipts remain in the restricted release store; local changes are not hosted ac
 ## Journal connection failures
 
 The journal permits one HTTPX connection-establishment retry before a request is
-sent. HTTP phase deadlines remain one second and the outer operation deadline stays
-two seconds. At most two connections may run concurrently; connections are not kept
+sent. HTTP read inactivity and the outer operation deadline are both two seconds;
+connect, write and pool deadlines remain one second.
+The outer deadline bounds the whole statement, rather than allowing each phase
+to add another two seconds. At most two connections may run concurrently; connections are not kept
 for reuse between journal operations. A bounded 24-SELECT staging comparison observed
 one read timeout in 12 pooled requests and none in 12 fresh-connection requests.
 Fresh connections took longer in that sample; this is a conservative mitigation,
@@ -154,6 +156,13 @@ Read/write/protocol failures never resend a statement. A lost acknowledgement st
 requires one exact seven-field read under the same live lease; uncertainty fails closed.
 Diagnostics now record only an allowlisted HTTP exception class and reconciliation
 outcome alongside the existing fixed categories, never exception text or row contents.
+The Oracle staging failure captured a one-second `ReadTimeout`. Twelve approved
+read-only measurements from the same container succeeded, with end-to-end elapsed
+times of 1.19–2.21 seconds including client construction. This supports removing
+the earlier one-second phase cutoff within the unchanged two-second statement
+budget; it does not establish the cause of network variability. Isolated real-HTTP
+tests cover a delayed response within that budget and a response exceeding it,
+including no statement replay. Hosted qualification is still required.
 The earlier transport failure's exact subtype was not captured; do not retroactively
 claim it was a connect error. See [HTTPX transport retry semantics](https://www.python-httpx.org/advanced/transports/).
 

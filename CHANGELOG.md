@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Let journal HTTP reads use the existing two-second statement budget; keep
+  the total deadline, one-read reconciliation, lease freshness and fencing unchanged.
 - Keep anonymous browser fixtures away from protected session-cleanup endpoints;
   bound and verify logout/revocation when a test actually has an operator cookie.
 - Reserve a bounded read-only confirmation budget after an uncertain journal lease
