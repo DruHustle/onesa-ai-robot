@@ -2,6 +2,52 @@
 
 ## Oracle backend migration — owner authorized 2026-10-16
 
+### Verified production hosting cutover — 2026-10-16
+
+The existing Robot application now uses the Oracle API at `https://robot-api.onesa.eu`.
+The Vercel frontend at https://robot.onesa.eu was republished from the identical accepted prebuilt
+artifact, with only its server-side `ROBOT_API_URL` production binding changed. Frontend
+source remains `595fd4f494e77de4fdecacbb9e64ac46c8c3597b`; backend source remains `595fd4f494e77de4fdecacbb9e64ac46c8c3597b`. This is a hosting
+cutover, not qualification or publication of subsequent development features.
+Existing owner/operator login, protected reads, logout and session revocation pass
+through the canonical frontend proxy. Anonymous and spoofed-bot private requests
+remain denied. A spoofed User-Agent is not evidence of genuine crawler traffic.
+
+Both dedicated connectors use only the approved environment-specific API hosts,
+with an observed unmatched-host `http_status:404` catch-all. Original application
+credentials and external databases remain; no schema migration, worker/scanner
+restart, billing change or physical actuation was requested. ARM64 image security
+scans and matching-source staging access checks passed before production start.
+New-target access checks reuse prior application qualification; they do not claim
+a fresh full suite or new model-generation acceptance. Restricted operator receipts
+hold the actual image, container, deployment, runtime-file and preservation identities.
+
+```mermaid
+flowchart LR
+  User[Browser] --> Frontend[Vercel same-origin frontend]
+  Frontend --> HTTPS[Cloudflare API HTTPS hostname]
+  HTTPS --> Tunnel[Environment-specific outbound tunnel]
+  Tunnel --> API[Oracle loopback-only API container]
+  API --> Data[Existing private data and configured providers]
+  Owner[Owner PC] --> Tailscale[Existing Tailscale administration route]
+  Tailscale --> SSH[Pinned-key Oracle OpenSSH]
+```
+
+The Render deployment/qualification scripts remain provider-specific and held;
+do not dispatch them for this Oracle target or relabel Oracle checks as Render
+qualification. Future application releases still need exact-source CI/security,
+matching hosted staging, preservation and the owner-controlled release process.
+Keep production credentials outside PR/Actions jobs. Separate staging bindings
+and acceptance are recorded independently from the verified production cutover.
+
+Rollback retains the preceding Vercel deployment and private origin value, plus
+the pinned Oracle image and environment files. A Vercel rollback also restores
+its earlier Render binding, which currently leads to a billing-suspended backend;
+that is not an availability recovery. Rebind/redeploy a qualified retained artifact
+to the healthy Oracle API instead. Stop promotion on uncertainty; do not restart
+old Robot source, fence a lease, edit history or delete services to force recovery.
+
+
 The owner now authorizes moving the existing staging and production APIs from Render
 to the existing Oracle worker VM. This supersedes the backend-deployment pause for
 this migration only. Keep qualification active; the Render billing hold itself remains.
