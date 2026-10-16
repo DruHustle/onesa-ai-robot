@@ -1,6 +1,19 @@
 # Changelog
 
-## Unreleased
+## 2026-10-17 — Qualified Oracle Robot release live
+
+- Released frontend `f83b401f3af46d1fdd3459aa8b622d947d825373`, deployment
+  `dpl_BbnqqJcwqqm9TSzhr35KJEpENnnD`, with qualified Oracle backend source
+  `3505bc270a5636347586dbe2542ccd35d6f85600`. The complete source trees are
+  identical; the actual backend source is retained rather than relabelled.
+- Full exact-main CI and staging passed all 14 API checks and 96 browser cases,
+  with no skipped or flaky cases. Production sign-in, administrator controls,
+  one software simulation, Stop/logout and six anonymous/spoofed-bot denials pass.
+- Preserved all 76 existing production records and appended only one completed
+  owned acceptance record. Credentials/runtime bytes and the other eight services
+  are unchanged; all nine services are healthy in bounded post-release observation.
+- Preserved original observer failures and their explicit reconciliations. No
+  failed application test was overridden, old-source restart used, or hardware actuated.
 
 - Align the gateway's bounded acknowledgement deadline with journal confirmation,
   below the existing client deadline; never replay uncertain mutations. Buffer a
