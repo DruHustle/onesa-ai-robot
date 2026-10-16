@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Keep anonymous browser fixtures away from protected session-cleanup endpoints;
+  bound and verify logout/revocation when a test actually has an operator cookie.
 - Reserve a bounded read-only confirmation budget after an uncertain journal lease
   renewal, without replaying the write or changing ownership/freshness checks.
 - Correct the shared design guide link to the existing protected engineering host.

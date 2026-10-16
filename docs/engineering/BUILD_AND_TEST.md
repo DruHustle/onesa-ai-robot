@@ -49,6 +49,16 @@ module tests prove independent Stop/cancel/logout and duplicate originating-form
 suppression. Submission scope comes from the synchronous event currentTarget;
 focused controls do not determine which independent action may run.
 
+Browser cleanup checks for the test context's host-scoped operator cookie before
+requesting protected session endpoints. Anonymous public and intercepted fixtures
+make no cleanup API calls. An existing session requires bounded session read,
+CSRF-protected logout and confirmed revocation; unavailable cleanup fails rather
+than silently passing. `node --test tests/session-cleanup.test.mjs` from the
+frontend verifies these boundaries without a browser, account or network target.
+The public navigation, image, isolation and accessibility assertions and their
+timeouts are unchanged. This corrects an observed anonymous cleanup-hook timeout;
+it does not establish the cause of a separate hosted navigation transport timeout.
+
 The six new administration cases use isolated, test-owned API responses to verify
 the permission form, role visibility, OS-preference focus preservation and accessible
 state labels. Backend `tests/test_physical_permission.py` exercises actual authorization,

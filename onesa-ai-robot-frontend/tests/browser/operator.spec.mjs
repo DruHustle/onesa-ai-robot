@@ -3,6 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {waitForApprovedSimulationCompletion,waitForSimulationReset} from './simulation-acceptance.mjs';
+import {cleanupOperatorSession} from './session-cleanup.mjs';
 const requestTimings=new WeakMap();
 test.beforeEach(async({page,baseURL})=>{
  const starts=new WeakMap(),records=[];requestTimings.set(page,records);
@@ -12,7 +13,7 @@ test.beforeEach(async({page,baseURL})=>{
  page.on('response',response=>{const request=response.request(),path=route(request),start=starts.get(request);if(path&&start!==undefined)add({route:path,method:request.method(),status:response.status(),elapsed_ms:Math.round(performance.now()-start)});});
  page.on('requestfailed',request=>{const path=route(request),start=starts.get(request);if(path&&start!==undefined)add({route:path,method:request.method(),failure:'transport',elapsed_ms:Math.round(performance.now()-start)});});
 });
-test.afterEach(async({page,baseURL},testInfo)=>{if(testInfo.status!==testInfo.expectedStatus)console.log('Bounded Robot request timings: '+JSON.stringify(requestTimings.get(page)||[]));await page.unrouteAll({behavior:'ignoreErrors'});const me=await page.request.get('/api/v1/auth/me');if(me.ok()){const session=await me.json();await page.request.post('/api/v1/auth/logout',{headers:{Origin:baseURL,'X-CSRF-Token':session.csrf},data:{}});}});
+test.afterEach(async({page,baseURL},testInfo)=>{if(testInfo.status!==testInfo.expectedStatus)console.log('Bounded Robot request timings: '+JSON.stringify(requestTimings.get(page)||[]));await page.unrouteAll({behavior:'ignoreErrors'});await cleanupOperatorSession(page,baseURL);});
 for(const [hour,mode] of [[20,'light'],[12,'dark']]) for(const width of [320,390,768,1024,1440]) test(`simulation ${mode} flows and accessibility at ${width}`,async({page})=>{
  await page.addInitScript(hour=>{Date.prototype.getHours=()=>hour;},hour);
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
