@@ -1,16 +1,12 @@
 # Onesa engineering and agent policies
 
-This is the single policy file for `onesa-ai-robot`, including Codex/agent instructions,
-contribution rules, security reporting and repository governance. Keep policies here;
-do not recreate separate setup, implementation-status or session-handoff documents.
-Read README, current release checklist, architecture and code before editing.
-Continue incomplete work without restarting implemented features.
-Update the changelog, contracts and affected operational documentation when behavior
-changes. Record unverified functionality honestly in the applicable release checklist
-or roadmap. Explicit user instructions and previously authorized scope take precedence.
-Preserve local modifications, history and data; stage only reviewed paths.
-Use free services only; do not provision paid resources or accept paid upgrades
-without explicit budget authorization.
+Authoritative agent/contribution/security policy for this independent repository.
+Read README, release checklist and relevant code/runbooks before edits. Continue
+incomplete work; preserve concurrent changes, history, data and credentials. Stage
+only reviewed paths. Update contracts/docs/changelog with behavior changes; report
+unverified scope honestly. User instructions/authorization take precedence. Use free
+resources; paid services require explicit budget approval. Do not recreate root
+setup/status/handoff checklists or first-party SECURITY.md/CONTRIBUTING.md.
 
 ## Contribution rules
 
@@ -29,108 +25,64 @@ authentication, personal data, infrastructure or robot actuation when available.
 Describe the problem, resulting behavior, validation and deployment/rollback impact.
 Update API contracts, migrations and documentation with behavior changes.
 
-Run the commands in `docs/engineering/BUILD_AND_TEST.md` and
-`python3 scripts/repository_hygiene.py` before staging. Inspect `git diff --cached`
-and `git status --short`. Never stage private records, uploads, dumps, models or secrets.
-Use synthetic fixtures; a private repository is not a secret store. Keep environment
-examples as placeholders. New dependencies need provenance and license review.
-Do not introduce a project license until ownership and licensing are approved.
+Before staging run BUILD_AND_TEST and `python3 scripts/repository_hygiene.py`;
+inspect exact cached diff/status. Synthetic fixtures only; never stage private data,
+models, uploads, backups or secrets. Keep examples placeholder-only and dependencies
+locked with provenance/license review. Do not assign a project license without approval.
+Shared contracts must support independent rollouts. Pushes, production promotion and
+visibility changes require current authorization; inspect actual remote protection.
 
-Application builds and releases are independent. Changes to a shared contract must
-remain compatible during separate rollouts. Production promotion, remote pushes and
-visibility changes require explicit authorization. See `docs/engineering/DEPLOYMENT.md`. Actual protection status and activation prerequisites are recorded in
-`docs/development/BRANCH_PROTECTION_REPORT.md`; reverify remote enforcement after visibility changes.
-
-For frontend-only delivery use the existing explicit owner-selected component mode,
-with independently derived prior immutable backend authorization/build/source proof.
-Do not redeploy an unchanged qualified production backend for CSS/icons. Exact new
-main CI, fresh hosted staging, qualification and a new owner authorization remain
-mandatory. Record actual component commits; never substitute a false repository SHA,
-accept caller-supplied PASS, weaken expiry or chain retained-component proofs. Keep
-private runtime digests out of Git, artifact receipts and logs.
+Frontend-only release uses the existing owner-selected component mode and independently
+derived immutable retained-backend proof. Keep exact-main CI, fresh staging,
+qualification and owner authorization. Record actual component SHAs, not a false
+repository SHA. No caller PASS, weakened expiry or chained retained proofs. Never
+redeploy unchanged backend for CSS; keep runtime digests restricted. Read DEPLOYMENT.
 
 ## Security policy
 
 Supported software: the latest reviewed revision of `main`; no historical release
 support promise is made before a release/support policy is approved.
 
-Report vulnerabilities privately through GitHub's private vulnerability reporting
-if enabled, or an organization owner using an existing private channel. Do not file
-credentials, customer records, exploitation details or personal data in public issues.
-The approved private reporting contact is info@onesa.eu; do not invent a security mailbox, bounty or response guarantee.
+Report privately through verified GitHub private reporting or info@onesa.eu; never
+post sensitive exploits/records publicly or invent a mailbox, bounty or response SLA.
+Keep credentials, private records, weights, backups and uploads out of Git/CI/docs;
+use restricted storage, least-privilege identities and protected environments. Separate
+browser-public configuration from backend secrets; ignore private .env files.
+If credentials are committed/exposed, notify the owner and use scoped authorized
+revocation/rotation with access-log assessment. Untracking is not revocation or history
+removal. Historical rewrite requires separate coordinated approval; never force-push.
 
-Do not store API credentials, production environment files, private corporate records,
-model weights, database dumps or user uploads in Git or CI artifacts. Use a secret
-manager and access-controlled storage. Separate frontend public configuration from
-backend secrets. Local `.env` files must remain ignored; examples contain placeholders.
-Use least-privilege database/service identities and protected production environments.
+`python3 scripts/repository_hygiene.py --history` checks reachable history,
+index and publishable files without printing values; it cannot prove confidentiality.
+Preserve available secret scanning/push protection and inspect classifications.
+Confidential history blocks publication pending actual owner remediation authority.
 
-If a credential was committed, revoke/rotate it first, assess access and logs, and
-notify the security owner privately. Ignoring or untracking a file does not remove
-it from history. Remove it from future commits only after reviewing staged work;
-historical removal requires a separately approved, coordinated remediation plan.
-Never automatically rewrite history or force-push. Confidential documents already
-in history block publication until an owner approves an appropriate remediation.
+## Repository governance and release trust
 
-`python3 scripts/repository_hygiene.py --history` scans available reachable history,
-staged content and publishable working files without printing matched values.
-This heuristic cannot prove absence of secrets or confidential prose. Enable GitHub
-secret scanning/push protection where the organization plan supports it, and conduct
-human data-classification review before publishing or uploading CI artifacts.
+Use credential-free disposable GitHub-hosted runners for PRs. Keep the retained
+local runner dormant/private-only unless explicitly isolated and authorized;
+never run untrusted PR code there or provide production credentials to PR jobs.
+Production credentials stay in external owner-controlled custody, outside editable
+Actions. Restrict repository write access: writers can alter workflows/secrets.
+Do not change visibility, ownership, billing or access without authorization.
 
-## Repository governance
+Inspect current remote rules and plan capabilities before claiming enforcement.
+Historical private-Free protection failures do not establish current visibility or
+eligibility. Native private-Free branch/environment protection is unavailable;
+written PR discipline alone cannot stop privileged writers. Never invent reviewers
+or drop failed checks. Use the actual solo-owner review policy above. Read
+`docs/development/PRIVATE_FREE_SAFEGUARDS.md`, `FREE_GITHUB_PLAN.md`,
+`BRANCH_PROTECTION_REPORT.md` and `CI_CD_PIPELINE_REPORT.md` before provider/release work.
 
-### Visibility, runner selection and access
-
-The current owner request selects private GitHub Free safeguards. Credential-free
-PR checks use GitHub-hosted runners within the free private quota; a local runner
-must not be a mandatory dependency for untrusted PR validation. Keep the retained
-private-only reusable runner dormant unless separately isolated and authorized.
-Production credentials must be held outside editable repository Actions. Repository
-writers can alter workflows to read repository secrets; restrict write access.
-Readback on 2026-10-11 still returned public and account plan null. Do not change
-visibility, billing, ownership, access or provider settings without authorization.
-See `docs/development/PRIVATE_FREE_SAFEGUARDS.md` for scope and owner actions.
-
-### Protect main
-
-These repositories remain personally owned by DruHustle. Earlier HTTP 403 protection
-failures occurred when they were private; do not treat them as evidence of current
-public eligibility or enforcement. The runner change does not activate protections.
-Inspect actual remote rules before claiming server enforcement. See
-`docs/development/BRANCH_PROTECTION_REPORT.md` for historical evidence and exact CI
-contexts. Keep PR/check/review discipline and all production authorization gates.
-
-The prepared main policy requires PRs, resolved conversations and observed CI/security
-checks with no routine bypass. Zero independent approvals reflects the current solo
-maintainer; raise review requirements only after a real reviewer is authorized.
-Do not drop failed checks or invent required jobs. Emergency recovery is a recorded,
-temporary authorized policy correction. Actual provider/production/preview credential
-controls remain separate from branch protection and require their own verification.
-
-Sources: [GitHub rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets),
-[secret scanning availability](https://docs.github.com/en/code-security/how-tos/secure-your-secrets/detect-secret-leaks/enable-secret-scanning),
-[GitHub CLI repository creation](https://cli.github.com/manual/gh_repo_create).
-
-
-## Selected GitHub Free policy
-
-Follow `docs/development/FREE_GITHUB_PLAN.md` and the private-Free safeguard report.
-Native private-Free branch/environment protection is unavailable. Direct pushes remain
-possible; CI and qualification block only the authorized deployment path. Private
-production uses credential-free owner authorization and externally controlled promotion.
-Retain exact-commit security/staging checks and separate hardware authorization. Do
-not claim remote safeguards are active until the owner completes and verifies migration.
-
-## Current automated CI/CD policy
-
-Use dev PRs to staging, then qualified staging PRs to main. Prior acceptance branch commits are preserved in restricted recovery bundles; do not recreate remote branches without owner authorization.
-Reviewdog annotations are read-only CI evidence, not an independent human review.
-The mandatory security/summary checks and full exact-main runtime records are release
-requirements. Automatic staging is private-only and default-off pending scoped targets;
-production credentials remain outside editable repository Actions. See
-[the pipeline report](docs/development/CI_CD_PIPELINE_REPORT.md) for tested limits,
-reviewed workflow_run exceptions, owner actions and remote activation status.
+Use reviewed dev PRs to staging, then qualified staging PRs to main. Retain exact-main
+CI/security/ROS contract checks, source-bound hosted staging, owner authorization,
+external production promotion and separate hardware authorization. Reviewdog is CI
+evidence, not independent human review. Keep automatic staging private-only,
+opt-in and default-off pending scoped targets. Provider settings and preview protection
+require actual readback. Prior acceptance branches remain restricted recovery bundles;
+do not recreate them or introduce an unqualified direct-main/native deployment path.
+Emergency exceptions require their actual temporary authority/evidence, never an
+invented PASS. No local runner registration or protection activation is implied.
 
 ## Product, appearance and Code Review Rules
 
@@ -193,24 +145,18 @@ Done means reviewed source, safe cleanup, passing affected checks, accounted evi
 and verified authorized hosted scope. Report the exact genuine blocker and next
 executable action. Only verified production changes enter the root CHANGELOG.
 
-Render observation timeout is an unresolved local observation, not a confirmed
-provider failure or cancellation. Preserve the immediate sanitized deployment
-receipt and its source binding through the existing artifact channel. Continue an
-existing deployment only with the pinned-receipt GET-only observer described in
-DEPLOYMENT; never recreate a deployment, clear its cache, cancel it, or consume a
-hosted qualification attempt merely to test monitoring. Actual live source and all
-hosted acceptance gates remain separate requirements.
+Render observer timeouts are not provider failure/cancellation. Follow DEPLOYMENT's
+pinned-receipt GET-only resume; preserve the immediate receipt. Never duplicate a
+create request, clear cache, cancel or consume qualification just to test monitoring.
+Actual source/readiness/hosted acceptance remain independent requirements.
 
-Dependency maintenance retains alerts, scans, scheduled CI and owner-confirmed
-notifications. Authorized Dependabot security PRs target the unchanged default main;
-version `target-branch: dev` cannot retarget security fixes. PR code runs credential-free
-on GitHub-hosted runners, with no auto-merge, privileged PR event or automatic production.
-A bot label/branch name is not qualification. Normally carry the reviewed fix through
-dev/staging/main. If unfinished dev must be excluded, start the smallest temporary
-security candidate from the exact deployed production SHA; obtain owner-controlled
-staging and exact-source qualification before any release, then reconcile dev/staging.
-Keep existing release and runner guards. Delete a temporary branch only after proven
-incorporation, retained evidence and active-review/work checks; never bulk-delete bots.
+Retain dependency alerts, scans, scheduled CI and owner-confirmed notifications.
+Security PRs target default main; version target-branch cannot redirect them. Keep
+PR code credential-free/hosted, with no auto-merge, privileged PR event or production
+deploy. Normally integrate fixes through dev/staging/main. Urgent candidates start
+from exact production and require isolated source-bound staging/owner release,
+then reconciliation. Preserve all guards; delete temporary branches only after
+incorporation and evidence/review/rollback-dependency checks. Never bulk-delete bots.
 
 The owner has explicitly deferred the Robot development-processing legal-basis,
 retention and existing-provider processing/transfer records until launch. Record

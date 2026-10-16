@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Correct the shared design guide link to the existing protected engineering host.
+- Consolidate duplicate agent governance instructions while retaining release,
+  credential, authorization and physical-controller safety requirements.
+
 ## 2026-10-16 — Protected Oracle VM operations documentation
 
 - Added the shared VM layout, exact API routes/loopback ports, environment isolation,
