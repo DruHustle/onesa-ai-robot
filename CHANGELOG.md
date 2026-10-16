@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Align the gateway's bounded acknowledgement deadline with journal confirmation,
+  below the existing client deadline; never replay uncertain mutations. Buffer a
+  complete upstream body before forwarding success or session cookies, and emit
+  fixed failure categories without credentials or private request details.
+- Capture allowlisted page/static-asset timing alongside API timing on a failed
+  browser case; keep navigation deadlines, completion checks and zero retries.
 - Let journal HTTP reads use the existing two-second statement budget; keep
   the total deadline, one-read reconciliation, lease freshness and fencing unchanged.
 - Keep anonymous browser fixtures away from protected session-cleanup endpoints;
