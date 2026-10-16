@@ -327,7 +327,12 @@ class TursoJournal:
             # and a one-second clock-resolution margin. The UPDATE need not
             # have committed: an existing sufficiently fresh lease is also real
             # ownership evidence. This read never extends the database lease.
-            remaining = 2 - (time.monotonic() - started)
+            # Reserve up to two additional seconds for the one read-only
+            # confirmation after a two-second uncertain write outcome. The
+            # 10-second renewal interval plus this four-second total stays
+            # within the existing 15-second readiness window. Per-statement
+            # bounds and the >=18-second database freshness proof are unchanged.
+            remaining = 4 - (time.monotonic() - started)
             try:
                 if remaining <= 0:
                     raise TimeoutError

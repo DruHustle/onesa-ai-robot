@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reserve a bounded read-only confirmation budget after an uncertain journal lease
+  renewal, without replaying the write or changing ownership/freshness checks.
 - Correct the shared design guide link to the existing protected engineering host.
 - Consolidate duplicate agent governance instructions while retaining release,
   credential, authorization and physical-controller safety requirements.

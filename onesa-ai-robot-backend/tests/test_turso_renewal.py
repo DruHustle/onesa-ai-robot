@@ -212,3 +212,70 @@ def test_confirmed_ack_loss_keeps_development_runtime_ready_and_stopped(remote, 
             assert api.portal.call(lambda: not sim.journal_failed)
         finally:
             network["after_execute"] = None
+
+
+@pytest.mark.parametrize("committed", [False, True])
+def test_full_write_timeout_keeps_a_bounded_readonly_confirmation_budget(remote, committed):
+    _, network = remote
+
+    async def run():
+        journal = TursoJournal(URL, SecretStr(TOKEN))
+        try:
+            await journal.initialize()
+            execute = journal.execute
+            statements = []
+
+            async def uncertain(sql, args=(), *, phase="query"):
+                statements.append(sql)
+                if phase == "lease_renew":
+                    if committed:
+                        await execute(sql, args, phase=phase)
+                    await asyncio.sleep(2.01)
+                    raise JournalFailure("timeout", phase, 2010, transport_kind="ReadTimeout")
+                return await execute(sql, args, phase=phase)
+
+            journal.execute = uncertain
+            started = time.monotonic()
+            await journal.renew()
+            assert 2 <= time.monotonic() - started < 3
+            assert len(statements) == 2
+            assert statements[0].startswith("UPDATE")
+            assert statements[1].startswith("SELECT")
+            assert "owner=? AND expires>=unixepoch()+18" in statements[1]
+        finally:
+            await journal.close()
+
+    asyncio.run(run())
+
+
+def test_confirmation_after_full_write_timeout_still_fails_within_total_budget(remote):
+    _, network = remote
+
+    async def run():
+        journal = TursoJournal(URL, SecretStr(TOKEN))
+        try:
+            await journal.initialize()
+            execute = journal.execute
+            statements = []
+
+            async def uncertain(sql, args=(), *, phase="query"):
+                statements.append(sql)
+                if phase == "lease_renew":
+                    await asyncio.sleep(2.01)
+                    raise JournalFailure("timeout", phase, 2010, transport_kind="ReadTimeout")
+                network["delay"] = 3
+                return await execute(sql, args, phase=phase)
+
+            journal.execute = uncertain
+            started = time.monotonic()
+            with pytest.raises(JournalFailure) as caught:
+                await asyncio.wait_for(journal.renew(), timeout=4.5)
+            assert 3.8 <= time.monotonic() - started < 4.5
+            assert caught.value.reconciliation == "unavailable"
+            assert len(statements) == 2
+            assert sum(sql.startswith("UPDATE") for sql in statements) == 1
+        finally:
+            network["delay"] = 0
+            await journal.close()
+
+    asyncio.run(run())
