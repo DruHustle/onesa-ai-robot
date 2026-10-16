@@ -28,12 +28,16 @@ export async function handler(req, res) {
       const chunks=[]; let size=0;
       for await (const chunk of req) { size+=chunk.length; if(size>16384) {res.writeHead(413).end();return;} chunks.push(chunk); }
       const response = await fetch(new URL(url.pathname,upstream), {method:req.method,headers,
-        ...(req.method==='POST'?{body:Buffer.concat(chunks)}:{}), redirect:'manual',signal:AbortSignal.timeout(4000)});
+        // A journal write plus its bounded read-only confirmation can take six
+        // seconds. Leave two seconds for ingress, below the client's ten-second
+        // deadline. Never retry a mutation after an uncertain acknowledgement.
+        ...(req.method==='POST'?{body:Buffer.concat(chunks)}:{}), redirect:'manual',signal:AbortSignal.timeout(8000)});
       if (response.status >= 300 && response.status < 400) {res.writeHead(502).end();return;}
+      const body=Buffer.from(await response.arrayBuffer());
       const cookies=response.headers.getSetCookie().filter(x=>/^robot_session=/.test(x));
       if(cookies.length) res.setHeader('Set-Cookie',cookies);
       res.setHeader('Content-Type',response.headers.get('content-type') || 'application/json');
-      res.writeHead(response.status).end(Buffer.from(await response.arrayBuffer()));
+      res.writeHead(response.status).end(body);
       return;
     }
     if (!['GET','HEAD'].includes(req.method)) {res.writeHead(405).end();return;}
@@ -47,7 +51,14 @@ export async function handler(req, res) {
     const type={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.webp':'image/webp','.txt':'text/plain; charset=utf-8','.svg':'image/svg+xml','.ico':'image/vnd.microsoft.icon'}[extname(file)];
     res.setHeader('Content-Type',type);res.setHeader('Cache-Control','no-cache');
     res.writeHead(200).end(req.method==='HEAD'?undefined:body);
-  } catch {if (!res.headersSent) res.writeHead(503,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end('{"detail":"Gateway unavailable"}');}
+  } catch (error) {
+    const codes=new Set(['ECONNRESET','ECONNREFUSED','ENOTFOUND','EAI_AGAIN','ETIMEDOUT','UND_ERR_CONNECT_TIMEOUT','UND_ERR_SOCKET']);
+    const category=error?.name==='TimeoutError'?'upstream_timeout':codes.has(error?.cause?.code)?error.cause.code:'gateway_unavailable';
+    // Fixed categories only: no URL, operator, cookie, password or error message.
+    console.error(JSON.stringify({event:'robot_gateway_failure',category}));
+    if (!res.headersSent) res.writeHead(503,{'Content-Type':'application/json','Cache-Control':'no-store','X-Onesa-Gateway-Error':category});
+    res.end('{"detail":"Gateway unavailable"}');
+  }
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 const server = http.createServer(handler);

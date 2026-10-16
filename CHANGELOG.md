@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Align the gateway's bounded acknowledgement deadline with journal confirmation,
+  below the existing client deadline; never replay uncertain mutations. Buffer a
+  complete upstream body before forwarding success or session cookies, and emit
+  fixed failure categories without credentials or private request details.
+- Capture allowlisted page/static-asset timing alongside API timing on a failed
+  browser case; keep navigation deadlines, completion checks and zero retries.
+- Let journal HTTP reads use the existing two-second statement budget; keep
+  the total deadline, one-read reconciliation, lease freshness and fencing unchanged.
+- Keep anonymous browser fixtures away from protected session-cleanup endpoints;
+  bound and verify logout/revocation when a test actually has an operator cookie.
+- Reserve a bounded read-only confirmation budget after an uncertain journal lease
+  renewal, without replaying the write or changing ownership/freshness checks.
 - Correct the shared design guide link to the existing protected engineering host.
 - Consolidate duplicate agent governance instructions while retaining release,
   credential, authorization and physical-controller safety requirements.

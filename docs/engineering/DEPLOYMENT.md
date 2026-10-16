@@ -143,8 +143,10 @@ receipts remain in the restricted release store; local changes are not hosted ac
 ## Journal connection failures
 
 The journal permits one HTTPX connection-establishment retry before a request is
-sent. HTTP phase deadlines remain one second and the outer operation deadline stays
-two seconds. At most two connections may run concurrently; connections are not kept
+sent. HTTP read inactivity and the outer operation deadline are both two seconds;
+connect, write and pool deadlines remain one second.
+The outer deadline bounds the whole statement, rather than allowing each phase
+to add another two seconds. At most two connections may run concurrently; connections are not kept
 for reuse between journal operations. A bounded 24-SELECT staging comparison observed
 one read timeout in 12 pooled requests and none in 12 fresh-connection requests.
 Fresh connections took longer in that sample; this is a conservative mitigation,
@@ -154,12 +156,19 @@ Read/write/protocol failures never resend a statement. A lost acknowledgement st
 requires one exact seven-field read under the same live lease; uncertainty fails closed.
 Diagnostics now record only an allowlisted HTTP exception class and reconciliation
 outcome alongside the existing fixed categories, never exception text or row contents.
+The Oracle staging failure captured a one-second `ReadTimeout`. Twelve approved
+read-only measurements from the same container succeeded, with end-to-end elapsed
+times of 1.19–2.21 seconds including client construction. This supports removing
+the earlier one-second phase cutoff within the unchanged two-second statement
+budget; it does not establish the cause of network variability. Isolated real-HTTP
+tests cover a delayed response within that budget and a response exceeding it,
+including no statement replay. Hosted qualification is still required.
 The earlier transport failure's exact subtype was not captured; do not retroactively
 claim it was a connect error. See [HTTPX transport retry semantics](https://www.python-httpx.org/advanced/transports/).
 
 A later staging preflight captured a `ReadTimeout` during lease renewal. An uncertain
-renewal acknowledgement now permits one SELECT, within the renewal's original
-two-second deadline, to confirm the same owner with at least 18 seconds remaining
+renewal acknowledgement now permits one SELECT, within a four-second total
+renewal/confirmation deadline, to confirm the same owner with at least 18 seconds remaining
 on the database clock: the 15-second readiness window, at most two seconds of
 response delay and a one-second clock-resolution margin. The previous 25-second
 threshold incorrectly rejected a still-valid unrenewed lease after the normal
@@ -169,6 +178,14 @@ expired lease or accepts another owner. A missing, short-lived, malformed or
 unavailable confirmation still stops the journal and revokes authority. Explicit
 provider denials do not attempt reconciliation. Successful observation proves a
 safely fresh lease; it does not establish why the original response was lost.
+
+The per-statement deadline remains two seconds. Reserving a further two seconds
+for this single read prevents an uncertain write from consuming the whole
+confirmation budget. The ten-second renewal interval plus four-second total is
+still inside the fifteen-second readiness window. Reconciliation never retries
+the UPDATE or extends the observed lease; unavailable confirmation fails closed.
+This correction is prepared source, pending exact-source CI, the owner's bounded
+Oracle staging qualification and preservation-checked new-source recovery.
 
 ## Restricted development release and owner deferral
 
@@ -353,6 +370,22 @@ versions and prior backend build/authorization provenance. Credential digests re
 ephemeral private files, never in Git, printed logs or uploaded receipt artifacts. The
 retained backend must not be redeployed for icons/CSS. Missing/expired baseline proof or
 backend/contract drift blocks this mode; never pass a false SHA to smoke or receipt checks.
+
+The gateway permits an eight-second upstream acknowledgement, below the generated
+client's ten-second cancellation deadline. The journal can consume two seconds for
+a statement and up to four seconds for bounded confirmation; ingress needs its own
+margin. The incoming-body limit, watchdog, lease freshness and task-completion
+limits are independent and unchanged. A timeout never authorizes a repeated POST.
+Buffer the complete upstream body before forwarding its status or session cookie;
+a body timeout must not become HTTP200 with an error appended. Failure responses
+and provider logs use fixed `X-Onesa-Gateway-Error` categories only, without URLs,
+operator identifiers, cookies, passwords or exception messages. Check current state
+before manually reconsidering an uncertain operation.
+
+Failed browser evidence includes only allowlisted page/static-asset and redacted
+API timing. An initial navigation timeout is not evidence of a backend journal
+failure. Keep the normal navigation deadline and zero automatic test retries;
+investigate the captured layer before requesting another qualification context.
 
 Route `/api/v1/:__onesa_route*` to `api/gateway.mjs`. The adapter removes only one
 metadata value matching the original nested API path; reject extra, duplicate or

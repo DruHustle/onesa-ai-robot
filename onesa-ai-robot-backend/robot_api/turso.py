@@ -131,10 +131,13 @@ class TursoJournal:
         self.url = endpoint(url)
         self.client = httpx.AsyncClient(
             headers={"Authorization": "Bearer " + token.get_secret_value()},
-            timeout=1.0,
+            # A read may use the existing two-second statement budget. A
+            # one-second inactivity limit prematurely rejected cloud responses;
+            # execute() still bounds the entire operation to two seconds.
+            timeout=httpx.Timeout(1.0, read=2.0),
             # Retry only connection establishment, before any HTTP request is sent.
             # Read/write/protocol failures never replay a statement. The existing
-            # one-second phase and two-second overall deadlines remain unchanged.
+            # two-second overall deadline remains unchanged.
             transport=httpx.AsyncHTTPTransport(
                 retries=1,
                 limits=httpx.Limits(max_connections=2, max_keepalive_connections=0),
@@ -327,7 +330,12 @@ class TursoJournal:
             # and a one-second clock-resolution margin. The UPDATE need not
             # have committed: an existing sufficiently fresh lease is also real
             # ownership evidence. This read never extends the database lease.
-            remaining = 2 - (time.monotonic() - started)
+            # Reserve up to two additional seconds for the one read-only
+            # confirmation after a two-second uncertain write outcome. The
+            # 10-second renewal interval plus this four-second total stays
+            # within the existing 15-second readiness window. Per-statement
+            # bounds and the >=18-second database freshness proof are unchanged.
+            remaining = 4 - (time.monotonic() - started)
             try:
                 if remaining <= 0:
                     raise TimeoutError
