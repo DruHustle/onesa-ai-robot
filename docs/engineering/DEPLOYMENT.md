@@ -158,8 +158,8 @@ The earlier transport failure's exact subtype was not captured; do not retroacti
 claim it was a connect error. See [HTTPX transport retry semantics](https://www.python-httpx.org/advanced/transports/).
 
 A later staging preflight captured a `ReadTimeout` during lease renewal. An uncertain
-renewal acknowledgement now permits one SELECT, within the renewal's original
-two-second deadline, to confirm the same owner with at least 18 seconds remaining
+renewal acknowledgement now permits one SELECT, within a four-second total
+renewal/confirmation deadline, to confirm the same owner with at least 18 seconds remaining
 on the database clock: the 15-second readiness window, at most two seconds of
 response delay and a one-second clock-resolution margin. The previous 25-second
 threshold incorrectly rejected a still-valid unrenewed lease after the normal
@@ -169,6 +169,14 @@ expired lease or accepts another owner. A missing, short-lived, malformed or
 unavailable confirmation still stops the journal and revokes authority. Explicit
 provider denials do not attempt reconciliation. Successful observation proves a
 safely fresh lease; it does not establish why the original response was lost.
+
+The per-statement deadline remains two seconds. Reserving a further two seconds
+for this single read prevents an uncertain write from consuming the whole
+confirmation budget. The ten-second renewal interval plus four-second total is
+still inside the fifteen-second readiness window. Reconciliation never retries
+the UPDATE or extends the observed lease; unavailable confirmation fails closed.
+This correction is prepared source, pending exact-source CI, the owner's bounded
+Oracle staging qualification and preservation-checked new-source recovery.
 
 ## Restricted development release and owner deferral
 
