@@ -371,6 +371,22 @@ ephemeral private files, never in Git, printed logs or uploaded receipt artifact
 retained backend must not be redeployed for icons/CSS. Missing/expired baseline proof or
 backend/contract drift blocks this mode; never pass a false SHA to smoke or receipt checks.
 
+The gateway permits an eight-second upstream acknowledgement, below the generated
+client's ten-second cancellation deadline. The journal can consume two seconds for
+a statement and up to four seconds for bounded confirmation; ingress needs its own
+margin. The incoming-body limit, watchdog, lease freshness and task-completion
+limits are independent and unchanged. A timeout never authorizes a repeated POST.
+Buffer the complete upstream body before forwarding its status or session cookie;
+a body timeout must not become HTTP200 with an error appended. Failure responses
+and provider logs use fixed `X-Onesa-Gateway-Error` categories only, without URLs,
+operator identifiers, cookies, passwords or exception messages. Check current state
+before manually reconsidering an uncertain operation.
+
+Failed browser evidence includes only allowlisted page/static-asset and redacted
+API timing. An initial navigation timeout is not evidence of a backend journal
+failure. Keep the normal navigation deadline and zero automatic test retries;
+investigate the captured layer before requesting another qualification context.
+
 Route `/api/v1/:__onesa_route*` to `api/gateway.mjs`. The adapter removes only one
 metadata value matching the original nested API path; reject extra, duplicate or
 mismatched values, arbitrary upstreams and direct gateway/private paths. Preserve
