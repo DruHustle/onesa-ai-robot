@@ -1,5 +1,10 @@
 # Onesa AI Robot
 
+Production API hosting moved to the existing Oracle Free VM on 2026-10-16; the
+Vercel frontend and existing data services remain. See the
+[verified hosting cutover](docs/engineering/DEPLOYMENT.md#verified-production-hosting-cutover--2026-10-16)
+for source identities, protected ingress, acceptance and rollback.
+
 Onesa UG's robotics software development line. The current production scope is an
 **authenticated software simulator**: propose a synthetic joint movement, confirm
 operator approval, inspect task history, cancel or stop, and test safe failure behavior.
