@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Prepare earlier journal lease renewal so one uncertain acknowledgement can be
+  reconciled while the prior lease still has the required freshness. Keep the
+  two-second statement deadline, four-second confirmation budget, 30-second lease,
+  18-second proof, 15-second readiness guard and no statement replay. Virtual-clock
+  tests cover lost/committed acknowledgements, scheduler jitter and fail-closed
+  late/foreign/repeated uncertainty. Hosted qualification and recovery remain pending.
+
 ## 2026-10-17 — Qualified Oracle Robot release live
 
 - Released frontend `f83b401f3af46d1fdd3459aa8b622d947d825373`, deployment
