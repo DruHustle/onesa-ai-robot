@@ -587,3 +587,29 @@ installation, real-model and physical-hardware verdicts.
 The public landing, operator and development-privacy footers route general contact to
 the Company Contact enquiry form. Approved controller/privacy contact particulars remain
 in the privacy notice body; the footer does not duplicate email or telephone links.
+
+## Early lease-renewal candidate (not deployed)
+
+The prepared backend renews every five seconds instead of ten. The previous
+successful response may already have consumed part of the database's 30-second
+lease. Waiting ten more seconds and then using the existing four-second uncertain-
+acknowledgement/confirmation budget can leave less than the required 18 seconds
+at the read, even though the lease has not expired. A late commit can subsequently
+appear after the process has already latched. The actual network/provider cause
+of a timeout must be distinguished from this reproducible timing sensitivity.
+
+The candidate keeps the existing lease TTL, same-owner/unexpired fencing, strict
+freshness check, statement/confirmation deadlines and 15-second readiness window.
+It neither retries a statement nor reacquires an expired/foreign lease. Missing
+proof still stops simulation, revokes permission and fails readiness. No task or
+physical operation resumes automatically. An unavailable provider is not a
+passing qualification, and a new timing test is not hosted recovery evidence.
+
+At idle, two continuously running environments would issue approximately
+1,071,360 renewal statements in 31 days before other workloads. Verify the actual
+account's plan, metering and remaining capacity; never enable paid overages or
+increase quotas as part of recovery. Preserve the accepted frontend when its tree
+is identical, and record its real source separately from the backend candidate.
+Use the existing exact-source pipeline and scoped failed-container preservation
+exception before any replacement. Do not restart the old failed source, edit SQL
+history or weaken readiness just to obtain a green status.
