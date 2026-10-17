@@ -1,13 +1,27 @@
 # Changelog
 
-## Unreleased
+## 2026-10-17 — Earlier journal renewal accepted in production
 
-- Prepare earlier journal lease renewal so one uncertain acknowledgement can be
+- Accepted candidate `632746daaf71c9f1785c35f7de95998fc50c3333` after fresh
+  exact-main CI. Its full tree matches staging `295e80a`; the actual deployed
+  backend remains identified as `f591af43b56417c43caf91620e00ec9e04b8b7e4`.
+  The unchanged frontend remains `f83b401`, deployment
+  `dpl_BbnqqJcwqqm9TSzhr35KJEpENnnD`; no redundant frontend deployment occurred.
+- All 14 staging API checks and 96 browser cases passed. The separately approved
+  read-only accounting continuation verified every prior record and all 36 new
+  owned records. The original failed compound observer result is retained.
+- Production operator sign-in, one owned simulation, Stop/logout and six private
+  access denials pass. All 77 previous records are unchanged; the single completed
+  test record brings history to 78. Credentials and the other eight services are
+  preserved. A 180-second observation passed seven health/readiness samples, with
+  no journal failure, restart or OOM. Physical operation was not performed.
+- Renew the journal lease earlier so one uncertain acknowledgement can be
   reconciled while the prior lease still has the required freshness. Keep the
   two-second statement deadline, four-second confirmation budget, 30-second lease,
   18-second proof, 15-second readiness guard and no statement replay. Virtual-clock
   tests cover lost/committed acknowledgements, scheduler jitter and fail-closed
-  late/foreign/repeated uncertainty. Hosted qualification and recovery remain pending.
+  late/foreign/repeated uncertainty. This does not promise uninterrupted provider
+  connectivity; ownership, freshness and fail-closed behavior remain enforced.
 
 ## 2026-10-17 — Qualified Oracle Robot release live
 

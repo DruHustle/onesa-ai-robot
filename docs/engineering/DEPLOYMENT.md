@@ -1,5 +1,35 @@
 # Robot simulator deployment and recovery
 
+## Current accepted recovery — 2026-10-17
+
+Candidate `632746d` passed fresh exact-main verification `39037311691` and hygiene
+`39037311612`. Its full Git tree equals qualified staging `295e80a`; all runtime
+component bytes match actual staging backend `f591af4`. Production now runs that
+reviewed ARM64 image, retaining the byte-identical frontend `f83b401`. Receipts
+retain each actual source rather than relabel a component as the merge commit.
+
+Fourteen API checks and 96 browser cases passed. The original post-run compound
+accounting failure is preserved; its separately approved read-only continuation
+verified all 917 prior staging records, 36 new owned terminal records and 77
+production records. No browser rerun or additional full main context was needed.
+The original assertion's failed subcondition remains unknown; the continuation
+does not invent its cause or change the original result.
+
+The single authorized new-source production replacement preserved all credentials,
+configuration bytes and eight other service identities. Production operator login,
+one approved software simulation, Stop, logout/revocation and six anonymous/spoofed
+private-route denials passed. All 77 prior records are unchanged, one owned completed
+record was added, and no pending task remains. Seven health/readiness samples over
+180 seconds and runtime logs show healthy operation without journal latch, restart
+or OOM. The owner-deferred development privacy scope is not legal certification.
+Physical permission remains separate from unimplemented hardware; no actuation ran.
+
+The existing restricted application-release evidence holds the source/CI/image,
+container, preservation, acceptance and observation receipts under
+`robot-postrelease-journal-incident/release/production/completion.json`.
+Older release sections below remain historical. Continue the pinned new-source
+recovery procedure on a future fault; this receipt grants no restart or SQL repair.
+
 For the shared Oracle host, use the protected [VM architecture and troubleshooting](https://onesa-engineering-docs.pages.dev/docs/engineering/ORACLE_VM_OPERATIONS).
 It includes exact Robot health routes and journal-failure preservation; it grants no
 old-source restart, lease repair or physical-operation authority.

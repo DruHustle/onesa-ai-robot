@@ -17,6 +17,15 @@ security diagnostics support that purpose. The owner has deferred the correspond
 privacy approval records until launch; that decision is not a legal certification.
 See the [scoped development release procedure](docs/engineering/DEPLOYMENT.md#restricted-development-release-and-owner-deferral).
 
+The latest qualified cloud release uses candidate `632746d`, with actual backend
+source `f591af4` and unchanged frontend `f83b401`. Staging API/browser checks,
+approved history accounting, production operator/simulation acceptance and bounded
+runtime observation pass. All 77 previous production records and credentials were
+preserved; one owned completed acceptance record was added. This remains software
+development and simulation, with no physical actuation. See
+[the release history](CHANGELOG.md) for the earlier journal-renewal correction and
+the distinction between candidate and actual retained component sources.
+
 The public [Robot product](https://robot.onesa.eu) explains that scope. The operator
 console serves protected simulation data through an independently authenticated API;
 an ordinary Onesa AI account grants no Robot operator permission. Production frontend and backend source
