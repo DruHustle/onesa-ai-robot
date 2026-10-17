@@ -30,6 +30,8 @@ from robot_api.turso import (
 
 REQUEST_BODY_SECONDS = 5
 JOURNAL_STARTUP_SECONDS = 90
+# Keep a genuine >=18s lease proof after a lost acknowledgement; safety bounds stay unchanged.
+JOURNAL_RENEW_SECONDS = 5
 JOURNAL_LOG = logging.getLogger("robot_api.journal")
 
 
@@ -272,6 +274,12 @@ class State:
             self.fail_journal(error, phase="lease_renew")
             raise
 
+    async def refresh_journal_when_due(self, renewed: float) -> float:
+        if self.journal and time.monotonic() - renewed >= JOURNAL_RENEW_SECONDS:
+            await self.refresh_journal_lease()
+            return time.monotonic()
+        return renewed
+
     def dirty(self, task_id: str) -> None:
         if self.journal:
             self.journal_version += 1
@@ -476,9 +484,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     continue
                 try:
                     await state.flush_journal()
-                    if state.journal and time.monotonic() - renewed >= 10:
-                        await state.refresh_journal_lease()
-                        renewed = time.monotonic()
+                    renewed = await state.refresh_journal_when_due(renewed)
                 except sqlite3.Error as error:
                     state.fail_journal(error, phase="flush")
                     return  # Bounded fail-closed; operator recovery requires restart.
