@@ -55,6 +55,17 @@ make no cleanup API calls. An existing session requires bounded session read,
 CSRF-protected logout and confirmed revocation; unavailable cleanup fails rather
 than silently passing. `node --test tests/session-cleanup.test.mjs` from the
 frontend verifies these boundaries without a browser, account or network target.
+Failed browser cases now retain bounded request-start, response-header, completion,
+transport-failure and document-lifecycle events, plus requests still pending when
+failure is reported. This closes the earlier diagnostic gap where a stalled request
+could leave an empty timing log. Only known same-origin route labels, masked task
+identifiers, methods, statuses and elapsed times are recorded; headers, bodies,
+query strings, arbitrary paths and credentials are excluded. Five isolated recorder
+regressions cover stalled navigation, terminal events, redaction and memory bounds.
+An isolated Firefox control and GET-only public console observation passed on
+17 October; API requests were blocked. That observation does not qualify the failed
+Preview or establish the cause of its earlier navigation timeout.
+
 The public navigation, image, isolation and accessibility assertions and their
 timeouts are unchanged. This corrects an observed anonymous cleanup-hook timeout;
 it does not establish the cause of a separate hosted navigation transport timeout.
