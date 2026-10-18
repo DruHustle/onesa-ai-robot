@@ -31,15 +31,17 @@
     {
       "type": "required_status_checks",
       "parameters": {
-        "strict_required_status_checks_policy": true,
-        "do_not_enforce_on_create": false,
         "required_status_checks": [
           {
             "context": "backend",
             "integration_id": 15368
           },
           {
-            "context": "frontend",
+            "context": "changes",
+            "integration_id": 15368
+          },
+          {
+            "context": "ci-summary",
             "integration_id": 15368
           },
           {
@@ -51,10 +53,23 @@
             "integration_id": 15368
           },
           {
+            "context": "frontend",
+            "integration_id": 15368
+          },
+          {
+            "context": "pipeline-security / workflow-security",
+            "integration_id": 15368
+          },
+          {
             "context": "publication-hygiene",
             "integration_id": 15368
+          },
+          {
+            "context": "ros-contracts",
+            "integration_id": 15368
           }
-        ]
+        ],
+        "strict_required_status_checks_policy": true
       }
     }
   ]
