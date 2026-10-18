@@ -17,18 +17,20 @@ security diagnostics support that purpose. The owner has deferred the correspond
 privacy approval records until launch; that decision is not a legal certification.
 See the [scoped development release procedure](docs/engineering/DEPLOYMENT.md#restricted-development-release-and-owner-deferral).
 
-The latest qualified cloud release uses candidate `632746d`, with actual backend
-source `f591af4` and unchanged frontend `f83b401`. Staging API/browser checks,
-approved history accounting, production operator/simulation acceptance and bounded
-runtime observation pass. All 77 previous production records and credentials were
-preserved; one owned completed acceptance record was added. This remains software
-development and simulation, with no physical actuation. See
-[the release history](CHANGELOG.md) for the earlier journal-renewal correction and
-the distinction between candidate and actual retained component sources.
+The latest accepted frontend is `a1258a6`, with retained backend source `f591af4`.
+The explicitly approved current-source backend recovery preserved all 78 production
+history records and credentials without adding a task. Exact-main CI and staged
+API/browser evidence passed, including the recorded one-case mocked Firefox
+continuation; canonical public/sign-in checks and bounded readiness observation pass.
+Authenticated workflows were tested in staging, not against a real production
+operator account. This remains software development and simulation, with no physical
+actuation. See [the release history](CHANGELOG.md) for actual component identities,
+the retained original navigation failure and current coverage limits.
 
 The public [Robot product](https://robot.onesa.eu) explains that scope. The operator
 console serves protected simulation data through an independently authenticated API;
-an ordinary Onesa AI account grants no Robot operator permission. Production frontend and backend source
+an ordinary Onesa AI account grants no Robot operator permission. In the earlier
+2026-10-15 release, frontend and backend source
 `595fd4f494e77de4fdecacbb9e64ac46c8c3597b` passed exact-main CI, hosted staging
 (16 API/safety checks and 96 browser cases), current owner authorization and production
 acceptance on 2026-10-15. Production verification passed 14 API/safety/administrator
