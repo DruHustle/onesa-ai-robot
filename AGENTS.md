@@ -59,8 +59,7 @@ Confidential history blocks publication pending actual owner remediation authori
 
 ## Repository governance and release trust
 
-Use credential-free disposable GitHub-hosted runners for PRs. Keep the retained
-local runner dormant/private-only unless explicitly isolated and authorized;
+Use credential-free disposable GitHub-hosted runners for PRs. Local/self-hosted runner implementation is removed. Use included hosted capacity only;
 never run untrusted PR code there or provide production credentials to PR jobs.
 Production credentials stay in external owner-controlled custody, outside editable
 Actions. Restrict repository write access: writers can alter workflows/secrets.
@@ -167,3 +166,8 @@ owner verifier may consume it after rechecking the latest immutable authorizatio
 Keep operations, exact-source CI/staging, authentication, preservation and physical
 safety gates. This cannot authorize a customer launch, new processing/provider,
 physical operation or an automatic deployment. See DEPLOYMENT for the scoped path.
+
+GitHub Free is permanent; only the owner changes current public visibility.
+Private hosted jobs require explicit included-allowance opt-in; no paid overages.
+Unavailable private protections are procedural; passing CI and external owner release
+gates remain mandatory. Follow docs/development/FREE_GITHUB_PLAN.md for transition checks.

@@ -14,8 +14,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   deploy:
-    if: ${{ github.event.repository.private == false && (always() && true && github.repository == 'DruHustle/onesa-ai-robot'
-      && github.actor == 'DruHustle' && github.ref == 'refs/heads/main') }}
+    if: ${{ always() && (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.event.repository.private == false && (always() && true && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.ref == 'refs/heads/main')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     environment: Production
