@@ -2,10 +2,6 @@
 
 ## Unreleased
 
-- Prepare a clearer one-joint simulator sign-in and operator sequence, a current next-step
-  explanation, proposal target/duration review and a persistent Stop toolbar. Keep future
-  hardware permission secondary and independent from readiness or movement.
-
 - Remove local-runner workflows, provisioning, hooks, configuration and CI consumers.
   Keep standard hosted validation and prepare the owner-managed private GitHub Free
   transition; exhausted included allowance blocks validation instead of paid fallback.
@@ -14,6 +10,26 @@
   identities, including the fail-closed summary and all applicable image scans.
   Preserve solo-owner review, administrator enforcement and external release authority.
 
+
+## 2026-10-18 — Operator experience released and accepted backend recovered
+
+- Frontend `a1258a692e4baacc8fc9f571264921937aaac6d7` is live at `robot.onesa.eu`,
+  deployment `dpl_Eah5Y8kXHzmETQ8rZdwH2FPBZ7nL`. The one-joint workflow shows the
+  current next step, reviews proposal target/duration and keeps Stop accessible.
+  Future hardware permission remains secondary and separate from connection or movement.
+- Backend source `f591af43b56417c43caf91620e00ec9e04b8b7e4` and its accepted image,
+  configuration and credentials are retained. The owner-approved single current-source
+  production restart restored readiness; all 78 history records are unchanged and
+  no production simulation command was sent. Seven readiness samples passed over
+  three minutes, alongside six anonymous/spoofed private-route denials.
+- Exact-main CI passed. Hosted acceptance retains 14 API checks, 95 passing original
+  browser cases and the approved unchanged Firefox mocked-case continuation. The
+  original navigation timeout remains recorded with its cause unproven. Canonical
+  acceptance verified 22 public artifact files and eight responsive/system-appearance
+  accessibility views. `www.robot.onesa.eu` redirects to the canonical host.
+- No isolated production operator fixture was available: production browser acceptance
+  covers public/sign-in screens and anonymous denial; authenticated workflows were
+  exercised in staging. No hardware or legal certification is claimed.
 
 ## 2026-10-18 — Protected Engineering Docs production hostname verified
 

@@ -44,7 +44,36 @@ local-runner fallback, paid overage, unavailable reviewer requirement or missing
 exception. G14 remains owner-deferred and unapproved.
 
 
-## Current accepted recovery — 2026-10-17
+## Current accepted interface and bounded recovery — 2026-10-18
+
+Production frontend `a1258a6` is accepted at `https://robot.onesa.eu/` with its
+actual Vercel deployment `dpl_Eah5Y8kXHzmETQ8rZdwH2FPBZ7nL`. The backend remains
+accepted source `f591af4`, with its immutable image and configuration unchanged.
+Both old containers had latched after a lease-renewal timeout; the separately
+approved current-source recovery used one staging restart and one production
+restart, preserving all history and the eight other service identities.
+
+Staging passed 14 API checks and 96 browser cases. Its original post-run accounting
+failure is retained alongside a read-only reconciliation. Exact-main CI passed;
+main hosted execution passed 14 API checks and 95 browser cases, then Firefox
+timed out navigating before login in a fully mocked administration case. The
+approved one-case continuation passed the original assertions and 30-second deadline,
+with real API traffic blocked. No passing browser cases were rerun. Its network
+cause remains unproven; it is not evidence of a backend journal failure.
+
+Read-only accounting verified all 989 pre-main staging records, 36 owned terminal
+additions and all 78 production records, with no pending task. Production recovery
+readback preserved those 78 records without adding a task. Seven readiness samples
+over 180 seconds, six private-route denials, 22 public artifact byte checks and eight
+canonical browser views passed. Authenticated production walkthrough is not claimed:
+there is no isolated production operator fixture; staging supplies that coverage.
+
+Restricted second-review receipts retain the original failures, controlled
+continuations, actual source/image/deployment identities and preservation evidence.
+This recovery consumes its explicit restart allowances; it grants no automatic
+future restart, SQL repair, account change, physical operation or legal approval.
+
+## Previous accepted recovery — 2026-10-17
 
 Candidate `632746d` passed fresh exact-main verification `39037311691` and hygiene
 `39037311612`. Its full Git tree equals qualified staging `295e80a`; all runtime
