@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Remove local-runner workflows, provisioning, hooks, configuration and CI consumers.
+  Keep standard hosted validation and prepare the owner-managed private GitHub Free
+  transition; exhausted included allowance blocks validation instead of paid fallback.
+
+- Activate public-repository main PR/check protection using actual successful check
+  identities, including the fail-closed summary and all applicable image scans.
+  Preserve solo-owner review, administrator enforcement and external release authority.
+
 ## 2026-10-17 — Earlier journal renewal accepted in production
 
 - Accepted candidate `632746daaf71c9f1785c35f7de95998fc50c3333` after fresh
