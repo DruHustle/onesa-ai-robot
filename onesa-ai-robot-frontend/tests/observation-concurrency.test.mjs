@@ -79,3 +79,12 @@ test('an obsolete polling batch cannot clear ownership of a restored-page batch'
  f.pending.status[1].resolve(status);f.pending.tasks[1].resolve(tasks);await tick();await duplicate;
  assert.equal(f.nodes.get('operator').hidden,false);assert.equal(f.nodes.get('login-form').hidden,true);
 });
+
+
+test('operator guidance follows verified stop/running/proposal state and does not imply movement from readiness',async()=>{
+ const f=await fixture();
+ for(const [status,proposal,expected] of [[null,'','Waiting'],[{},'','Waiting'],[{stopped:true,active_task:null},'','Stopped'],[{stopped:false,active_task:'owned-synthetic'},'','Simulation running'],[{stopped:false,active_task:null},'owned-proposal','Review'],[{stopped:false,active_task:null},'','Ready']]){
+  f.context.observed=status;f.context.proposal=proposal;assert.ok(vm.runInContext('operatorNextStep(observed,proposal)',f.context).startsWith(expected));
+ }
+ assert.equal(f.calls.heartbeat,0);assert.equal(f.calls.status,0);assert.equal(f.calls.tasks,0);
+});
