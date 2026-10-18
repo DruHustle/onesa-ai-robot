@@ -68,7 +68,7 @@ integration, edge installation and physical safety authorization.
 2. Reproduce a small issue with synthetic fixtures and implement a focused change.
 3. Follow shared Onesa design version `1.0.0`; inspect
    [the consumer manifest](design-system.consumer.json) and the protected
-   [design-system guide](https://engineering.docs.onesa.eu/architecture/onesa-design-system).
+   [design-system guide](https://docs.engineering.onesa.eu/architecture/onesa-design-system).
    Test both OS preferences and a live transition without losing form/task state.
 4. Run affected checks, contract validation and repository hygiene. Review the diff,
    update durable docs and record honest gaps. Preserve real release history.
