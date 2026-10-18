@@ -30,7 +30,7 @@ container, preservation, acceptance and observation receipts under
 Older release sections below remain historical. Continue the pinned new-source
 recovery procedure on a future fault; this receipt grants no restart or SQL repair.
 
-For the shared Oracle host, use the protected [VM architecture and troubleshooting](https://onesa-engineering-docs.pages.dev/docs/engineering/ORACLE_VM_OPERATIONS).
+For the shared Oracle host, use the protected [VM architecture and troubleshooting](https://docs.engineering.onesa.eu/docs/engineering/ORACLE_VM_OPERATIONS).
 It includes exact Robot health routes and journal-failure preservation; it grants no
 old-source restart, lease repair or physical-operation authority.
 
