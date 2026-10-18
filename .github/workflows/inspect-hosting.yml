@@ -8,8 +8,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   inspect:
-    if: github.event_name == 'workflow_dispatch' && github.event.repository.private == false && github.repository == 'DruHustle/onesa-ai-robot'
-      && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle'
+    if: (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.event_name == 'workflow_dispatch' && github.event.repository.private == false && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

@@ -20,6 +20,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   changes:
+    if: (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (success())
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -44,7 +45,7 @@ jobs:
   backend:
     needs:
     - changes
-    if: ${{ needs.changes.result == 'success' && needs.changes.outputs.backend == 'true' }}
+    if: ${{ (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (needs.changes.result == 'success' && needs.changes.outputs.backend == 'true') }}
     runs-on: ubuntu-latest
     steps:
     - name: Verify GitHub-hosted execution and actual visibility
@@ -81,7 +82,6 @@ jobs:
       working-directory: onesa-ai-robot-backend
     - name: 'Release requirement: qualification failure-path tests'
       run: python3 -m unittest discover -s scripts/release -p 'test_*.py'
-    - run: python3 -m unittest discover -s scripts/runner -p 'test_*.py'
     - name: Verify hosting diagnostic redaction and denied access
       run: python3 -m unittest discover -s scripts -p 'test_inspect_hosting.py'
     timeout-minutes: 30
@@ -94,7 +94,7 @@ jobs:
   frontend:
     needs:
     - changes
-    if: ${{ needs.changes.result == 'success' && needs.changes.outputs.frontend == 'true' }}
+    if: ${{ (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (needs.changes.result == 'success' && needs.changes.outputs.frontend == 'true') }}
     runs-on: ubuntu-latest
     steps:
     - name: Verify GitHub-hosted execution and actual visibility
@@ -156,7 +156,7 @@ jobs:
   containers:
     needs:
     - changes
-    if: ${{ needs.changes.result == 'success' && needs.changes.outputs.containers == 'true' }}
+    if: ${{ (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (needs.changes.result == 'success' && needs.changes.outputs.containers == 'true') }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -211,7 +211,7 @@ jobs:
   ros-contracts:
     needs:
     - changes
-    if: ${{ needs.changes.result == 'success' && needs.changes.outputs.edge == 'true' }}
+    if: ${{ (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (needs.changes.result == 'success' && needs.changes.outputs.edge == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -233,7 +233,7 @@ jobs:
     - frontend
     - containers
     - ros-contracts
-    if: always()
+    if: always() && (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (always())
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

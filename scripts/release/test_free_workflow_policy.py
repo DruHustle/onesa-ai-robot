@@ -91,7 +91,7 @@ for (const privateRepo of [false, true]) {
       const github = {repository, actor: trusted ? 'DruHustle' : 'outsider',
         triggering_actor: 'DruHustle', event_name: 'workflow_dispatch',
         ref: 'refs/heads/staging', event: {repository: {private: privateRepo}}};
-      const vars = {STAGING_SECRET_SCOPE: scope, STAGING_AUTOMATION_ENABLED: 'false'};
+      const vars = {STAGING_SECRET_SCOPE: scope, STAGING_AUTOMATION_ENABLED: 'false', ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED: 'true'};
       const selected = conditions.map(condition =>
         new Function('github', 'vars', 'return (' + condition + ')')(github, vars));
       const expected = trusted ? (privateRepo || scope !== 'environment' ? [true, false] : [false, true]) : [false, false];
@@ -190,9 +190,13 @@ for (const privateRepo of [true, false]) {
             self.assertIn("pull_request:", text)
             self.assertRegex(text, r"pull_request:\n    branches:\n    - main")
 
-    def test_temporary_security_refs_cannot_authorize_release_or_staging_credentials(self):
+    def test_temporary_security_refs_cannot_authorize_release_or_staging_credentials(
+        self,
+    ):
         authorization = (ROOT / ".github/workflows/free-authorization.yml").read_text()
-        condition = re.search(r"    if: ([\s\S]+?)\n    runs-on:", authorization).group(1)
+        condition = re.search(r"    if: ([\s\S]+?)\n    runs-on:", authorization).group(
+            1
+        )
         staging = (ROOT / ".github/workflows/release-staging.yml").read_text()
         staging_conditions = re.findall(r"^    if: (.+)", staging, re.MULTILINE)
         program = r"""
@@ -201,16 +205,25 @@ for(const ref of ['refs/heads/dependabot/pip/security-fixture','refs/heads/secur
  for(const actor of ['DruHustle','dependabot[bot]']) {
   const github={repository,actor,triggering_actor:actor,ref,event_name:'workflow_dispatch',
    event:{repository:{private:false}}};
-  const vars={STAGING_SECRET_SCOPE:'environment',STAGING_AUTOMATION_ENABLED:'true'};
+  const vars={STAGING_SECRET_SCOPE:'environment',STAGING_AUTOMATION_ENABLED:'true',ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED:'true'};
   for(const condition of conditions)if(new Function('github','vars','return ('+condition+')')(github,vars))process.exit(1);
  }
 }
-const github={repository,actor:'dependabot[bot]',triggering_actor:'dependabot[bot]',ref:'refs/heads/main'};
-if(new Function('github','return ('+conditions[0]+')')(github))process.exit(1);
+const github={repository,actor:'dependabot[bot]',triggering_actor:'dependabot[bot]',ref:'refs/heads/main',event:{repository:{private:false}}};
+const vars={ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED:'true'};
+if(new Function('github','vars','return ('+conditions[0]+')')(github,vars))process.exit(1);
 """
         result = subprocess.run(
-            ["node", "-e", program, json.dumps([condition, *staging_conditions]), "DruHustle/" + ROOT.name],
-            capture_output=True, text=True, check=False,
+            [
+                "node",
+                "-e",
+                program,
+                json.dumps([condition, *staging_conditions]),
+                "DruHustle/" + ROOT.name,
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
 
@@ -229,3 +242,66 @@ if(new Function('github','return ('+conditions[0]+')')(github))process.exit(1);
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HostedOnlyRunnerRemovalTests(unittest.TestCase):
+    def test_removed_runner_has_no_workflow_or_provisioning_consumer(self):
+        self.assertFalse((ROOT / "scripts/runner").exists())
+        self.assertFalse((ROOT / ".github/workflows/_local-validation.yml").exists())
+        for workflow in (ROOT / ".github/workflows").glob("*.yml"):
+            text = workflow.read_text()
+            self.assertNotIn("self-hosted", text, str(workflow))
+            self.assertNotIn("scripts/runner", text, str(workflow))
+            self.assertNotIn("_local-validation.yml", text, str(workflow))
+            if "runs-on:" in text:
+                self.assertIn("ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED", text)
+
+    def test_hosted_budget_guard_allows_public_and_blocks_private_without_opt_in(self):
+        ci = {
+            "onesa-company-portal": "verify.yml",
+            "onesa-ai-platform": "ci.yml",
+            "onesa-ai-robot": "scaffold.yml",
+        }[ROOT.name]
+        text = (ROOT / ".github/workflows" / ci).read_text()
+        job = text.split("  changes:\n", 1)[1]
+        condition = re.search(r"^    if: (.+)", job, re.MULTILINE).group(1)
+        condition = condition.removeprefix("${{ ").removesuffix(" }}")
+        program = r"""
+const condition=process.argv[1];
+for(const privateRepo of [false,true]) for(const allowance of ['', 'false', 'true']) {
+ const github={event:{repository:{private:privateRepo}}};
+ const vars={ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED:allowance};
+ const actual=new Function('github','vars','success','always','return ('+condition+')')(github,vars,()=>true,()=>true);
+ if(actual!==(!privateRepo || allowance==='true'))process.exit(1);
+}
+"""
+        result = subprocess.run(
+            ["node", "-e", program, condition], capture_output=True, text=True
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_every_hosted_job_denies_private_execution_without_allowance(self):
+        conditions = []
+        for path in (ROOT / ".github/workflows").glob("*.yml"):
+            text = path.read_text().split("jobs:\n", 1)[1]
+            for block in re.split(r"(?m)^  [A-Za-z0-9_-]+:\n", text)[1:]:
+                if "    runs-on:" not in block:
+                    continue
+                match = re.search(r"^    if: (.+)", block, re.MULTILINE)
+                self.assertIsNotNone(match, str(path))
+                conditions.append(
+                    match.group(1).removeprefix("${{ ").removesuffix(" }}")
+                )
+        program = r"""
+for(const condition of JSON.parse(process.argv[1])) {
+ const github={event:{repository:{private:true}}},vars={};
+ const result=new Function('github','vars','success','always','return ('+condition+')')(github,vars,()=>true,()=>true);
+ if(result!==false)process.exit(1);
+}
+"""
+        result = subprocess.run(
+            ["node", "-e", program, json.dumps(conditions)],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)

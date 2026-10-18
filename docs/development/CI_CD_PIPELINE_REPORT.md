@@ -1,3 +1,9 @@
+> Owner update — 2026-10-18: GitHub Free is permanent; public visibility is temporary.
+> Local-runner implementation has now been removed, superseding earlier private-first
+> runner plans below. Use standard hosted runners while public and included hosted
+> allowance after a future owner visibility change. No local executor is a fallback.
+> Historical runner/plan observations are retained as history, not current instructions.
+
 # CI/CD pipeline implementation and audit — onesa-ai-robot
 
 > Current branch/dependency policy: the owner's latest 14 October 2026 instruction
@@ -40,7 +46,6 @@ billed runner minutes. Empty entries are not proof a workflow is broken or unuse
 
 | Workflow | Final triggers | Runner | Before sample: completed / failed / mean seconds | Purpose / usefulness |
 | --- | --- | --- | --- | --- |
-| `_local-validation.yml` | workflow_call | ['self-hosted', 'Linux', 'ARM64', 'onesa-robot-local'] | No runs in sample | Dormant private-only local runner; no active CI caller; retain until hosted replacement is verified remotely |
 | `_pipeline-review.yml` | workflow_call | ubuntu-latest | No runs in sample | Reusable blocking offline workflow/secret scan, local annotations and pipeline regressions |
 | `deploy.yml` | workflow_dispatch | ubuntu-latest | No runs in sample | Retained manual native-protection deployment; private production jobs excluded; no push trigger |
 | `free-authorization.yml` | workflow_dispatch | ubuntu-latest | No runs in sample | Manual owner approval/revocation binding exact evidence digest; no deployment or provider keys |
@@ -431,7 +436,6 @@ commit IDs are reported in the task response; the commits also include the prece
 private-Free safeguards through their branch ancestry. No branch was pushed or PR opened.
 
 - `.github/dependabot.yml`
-- `.github/workflows/_local-validation.yml`
 - `.github/workflows/_pipeline-review.yml`
 - `.github/workflows/deploy.yml`
 - `.github/workflows/free-authorization.yml`
