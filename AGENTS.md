@@ -167,10 +167,7 @@ Keep operations, exact-source CI/staging, authentication, preservation and physi
 safety gates. This cannot authorize a customer launch, new processing/provider,
 physical operation or an automatic deployment. See DEPLOYMENT for the scoped path.
 
-GitHub Free is the permanent budget; repositories stay public until the owner changes
-visibility. All hosted jobs require public visibility or the explicit private-hosted
-validation allowance flag, default off. Never enable paid overages or recreate local
-runners. On private Free, unavailable PR/environment enforcement is procedural; exact
-source, passing CI and external owner production gates remain mandatory. Follow the
-visibility-transition procedure in docs/development/FREE_GITHUB_PLAN.md and read back
-actual provider/security eligibility after any owner visibility change.
+GitHub Free is permanent; only the owner changes current public visibility.
+Private hosted jobs require explicit included-allowance opt-in; no paid overages.
+Unavailable private protections are procedural; passing CI and external owner release
+gates remain mandatory. Follow docs/development/FREE_GITHUB_PLAN.md for transition checks.
