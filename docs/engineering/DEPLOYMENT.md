@@ -44,6 +44,43 @@ local-runner fallback, paid overage, unavailable reviewer requirement or missing
 exception. G14 remains owner-deferred and unapproved.
 
 
+## Current interface and journal release
+
+Accepted 2026-10-19: frontend `eb2490e87bf37b6159cfb3af75ee95369602eb4b` / Vercel `dpl_EivDvoeqd6A727icPUeeo3wbdouu` at
+`https://robot.onesa.eu/`; actual backend artifact `04e36d8c624125219c2a74f8051bcbf2cf3102e8`. The backend was
+built/scanned from its recorded source and not relabelled by later test-only commits.
+Staging retains that artifact and its original exact Preview. Runtime/application
+paths match the candidate byte for byte; only tests and their documentation differ.
+
+Fresh full exact-main CI passes, including40 frontend units and99 isolated browser
+cases. Hosted coverage preserves the earlier99-case staged application acceptance,
+14 real API checks and12 passing main-candidate browser cases. One bounded87-case
+continuation covers only the failed and unrun cases. All99 distinct case identities
+are verified; no passing case or API suite was rerun. These are explicit composite
+records, not a fabricated single passing original run or a GitHub-hosted observation.
+Original failures and attempt accounting remain retained.
+
+A stored failed-case task was actually completed; its typed fingerprint matched.
+A stalled status response delayed UI history beyond a premature6s assertion. The
+observer correction retains its original15s aggregate budget and6s DOM maximum,
+requiring the real owned-task completion response. The three-engine delayed-response
+controls reproduce the old failure and pass the correction; three updated fixtures
+model one intercepted response with no real API/account. Browser30s, client10s and
+backend deadlines, heartbeat, authority and safety behavior are unchanged.
+
+One source-bound production replacement preserves all78 history records and other
+eight service identities. Credentials, configuration boundaries and physical-control
+restrictions remain intact. Protected operator sign-in/status/history/read/logout
+and old-session refusal pass without a new production task.20 canonical anonymous
+layout/accessibility views, eight private denials, five readiness samples and one
+bounded postactivation history/runtime check pass. No old-source restart, SQL repair,
+new image rebuild for tests, staging activation or physical actuation was performed.
+
+The conditional persistence/connection/lease changes preserve ownership fencing,
+readiness and fail-closed behavior. Measured probes and bounded runtime acceptance
+do not guarantee uninterrupted future network availability. G14 is owner-deferred,
+not an external certification, contract approval or launch of new processing.
+
 ## Current accepted interface and bounded recovery — 2026-10-18
 
 Production frontend `a1258a6` is accepted at `https://robot.onesa.eu/` with its

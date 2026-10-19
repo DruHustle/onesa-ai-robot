@@ -2,40 +2,6 @@
 
 ## Unreleased
 
-- Prepare completion-observer sequencing within its existing15s aggregate budget.
-  Observe the actual completed owned-task response before the same history DOM
-  assertion; preserve client, test and watchdog deadlines, with no request/command
-  replay or application/runtime change. Hosted continuation remains pending.
-
-- Prepare owner-fenced conditional journal updates after a dropped connection.
-  Compare the last acknowledged state atomically, retain task IDs and allow one
-  bounded conditional recovery only after an exact prior/absent-state read.
-  Delayed older writes cannot overwrite newer acknowledged history; no schema,
-  ownership/readiness limit or browser deadline changes. Qualification is pending.
-
-- Prepare bounded reuse of two healthy journal HTTPS connections for ten idle
-  seconds, avoiding repeated TCP/TLS setup. Preserve statement/renewal deadlines,
-  same-owner fencing, idle-socket expiry and the prohibition on ambiguous-write
-  replay. New source still requires full CI and hosted qualification.
-
-- Retain safe HTTP, JSON and transport failure categories in hosted acceptance
-  instead of collapsing every failed request into an assertion category. Replay
-  denial, response validation, timeouts and no-retry gates remain unchanged.
-
-- Prepare a bounded read-only renewal confirmation for transient journal delays.
-  Ordinary writes remain two seconds; confirmation may take five seconds only for
-  the exact same-owner lease SELECT. Database lifetime must cover actual response
-  age, the unchanged readiness window and clock margin, retaining the existing
-  eighteen-second minimum. Seven-second total renewal never replays writes,
-  reacquires expired ownership or automatically clears a failure latch. Offline
-  backend checks pass; hosted qualification and new-source recovery remain pending.
-
-- Third review: simplify the operator sign-in hierarchy, keep the active form ahead
-  of secondary help/privacy disclosures, and restore operational guidance only after
-  authenticated entry. Authentication, roles, simulation and future hardware authority
-  are unchanged. Frontend publication requires healthy hosted qualification; the
-  19 October readiness observation returned 503 in both environments, with no restart.
-
 - Remove local-runner workflows, provisioning, hooks, configuration and CI consumers.
   Keep standard hosted validation and prepare the owner-managed private GitHub Free
   transition; exhausted included allowance blocks validation instead of paid fallback.
@@ -44,6 +10,35 @@
   identities, including the fail-closed summary and all applicable image scans.
   Preserve solo-owner review, administrator enforcement and external release authority.
 
+
+## 2026-10-19 — Robot interface and conditional journal recovery accepted
+
+- Frontend `eb2490e87bf37b6159cfb3af75ee95369602eb4b` / Vercel `dpl_EivDvoeqd6A727icPUeeo3wbdouu` is accepted at `robot.onesa.eu`.
+  Backend artifact `04e36d8c624125219c2a74f8051bcbf2cf3102e8` is identified independently; test-only source
+  corrections do not relabel the backend image or retained staging frontend.
+- Add owner-fenced conditional journal writes after a dropped connection. Compare
+  acknowledged state atomically so a delayed older request cannot replace newer
+  history. Preserve each2s statement,8s total persistence, lease fencing, readiness
+  and watchdog behavior.167 offline backend regressions pass.
+- Reuse two healthy HTTPS connections for10 idle seconds. Same-owner renewal
+  confirmation remains bounded at5s with measured database lifetime and the
+  existing readiness margin. No arbitrary uncertain-write replay or latch reset.
+- Hosted acceptance covers99 distinct staged application cases,14 retained API
+  checks and99 distinct main-candidate cases:12 retained passes plus87 targeted
+  failed/unrun cases. No passing case or API suite was repeated. Application bytes
+  are unchanged between the retained runtime and test-only candidate. Fresh exact-
+  main CI includes all99 isolated synthetic browser cases and40 frontend units.
+- Preserve every original failed result. The completion observer now waits for
+  the completed owned-task response within the original15s aggregate budget, then
+  applies the same6s DOM assertion within the remaining time. Browser30s, client10s,
+  backend safety deadlines and application code are unchanged. Four delayed-response
+  controls and three intercepted approval fixtures pass across the browser engines.
+- One guarded new-source production backend replacement preserves all78 original
+  history fingerprints, credentials and other eight services. No production
+  simulation record or physical action was added. Protected operator read/logout,
+  20 canonical accessibility/layout views, eight private denials and five readiness
+  samples pass. The bounded runtime/error-category check and typed read pass.
+- G14 remains owner-deferred, not legal approval or physical-hardware qualification.
 
 ## 2026-10-18 — Operator experience released and accepted backend recovered
 
