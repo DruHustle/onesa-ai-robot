@@ -31,6 +31,13 @@ The application checks readiness for at most 15 seconds before its 10-second
 credential request. A default five-second assertion can expire before login starts.
 Ordinary layout, simulation, request and safety deadlines remain unchanged.
 
+Reload and late-response regressions observe the existing session/logout HTTP
+acknowledgement within the client's existing 10-second request budget before
+checking the resulting UI with its unchanged assertion deadline. They issue no
+extra request and require HTTP 200 with CSRF or `signed_out` as appropriate.
+Offline tests retain failure behavior for missing fields, 401/403/503 and timeout;
+cleanup diagnostics expose only HTTP status, never bodies or credentials.
+
 `tests/browser/sign-in-readiness.spec.mjs` intercepts every API request with synthetic
 responses. It holds readiness unavailable beyond five seconds, verifies that no
 credentials are sent, then permits readiness and requires one login, cleared password
