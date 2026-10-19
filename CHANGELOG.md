@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Prepare bounded reuse of two healthy journal HTTPS connections for ten idle
+  seconds, avoiding repeated TCP/TLS setup. Preserve statement/renewal deadlines,
+  same-owner fencing, idle-socket expiry and the prohibition on ambiguous-write
+  replay. New source still requires full CI and hosted qualification.
+
 - Retain safe HTTP, JSON and transport failure categories in hosted acceptance
   instead of collapsing every failed request into an assertion category. Replay
   denial, response validation, timeouts and no-retry gates remain unchanged.

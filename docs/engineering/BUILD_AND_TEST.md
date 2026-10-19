@@ -142,3 +142,15 @@ A transport failure is never a passing assertion or a confirmed application defe
 Expected replay denial still requires HTTP409 and valid JSON; timeouts, assertions,
 mutation counts and retry limits are unchanged. Use the existing bounded repair
 authority before another failed-context attempt.
+
+
+## Bounded journal connection reuse
+
+The Turso transport retains at most two healthy HTTPS connections for ten idle
+seconds. This avoids a new TCP/TLS handshake for every five-second lease renewal.
+It does not retry ambiguous statements or extend the two-second statement/seven-second
+renewal budgets. Expired/disconnected idle sockets are discarded before sending;
+a read/write failure after send remains a failure and never replays the statement.
+Mock socket tests exercise healthy reuse, idle expiry, server disconnect and a
+lost acknowledgement on an already reused connection. Hosted qualification is
+still required; four staging SELECT1 samples establish overhead, not an uptime guarantee.
