@@ -4,6 +4,8 @@ import argparse
 import http.cookiejar
 import json
 import os
+import socket
+import ssl
 import tempfile
 import time
 import urllib.error
@@ -41,6 +43,37 @@ class SimulatorHTTPFailure(Rejected):
     def __init__(self, status):
         self.status = status if type(status) is int and 100 <= status <= 599 else 0
         super().__init__("Unexpected simulator HTTP status")
+
+
+def failure_details(error):
+    """Fixed categories only; never retain response text, URLs or credentials."""
+    if isinstance(error, SimulatorHTTPFailure):
+        return {"category": "http_status", "http_status": error.status}
+    if isinstance(error, json.JSONDecodeError):
+        return {
+            "category": "response_json",
+            "body_characters": min(len(error.doc), 1024 * 1024),
+        }
+    if isinstance(error, TimeoutError):
+        return {"category": "transport_timeout"}
+    if isinstance(error, urllib.error.URLError):
+        reason = error.reason
+        if isinstance(reason, TimeoutError):
+            return {"category": "transport_timeout"}
+        if isinstance(reason, ssl.SSLError):
+            return {"category": "transport_tls"}
+        if isinstance(reason, socket.gaierror):
+            return {"category": "transport_dns"}
+        if isinstance(reason, OSError):
+            number = reason.errno
+            return {
+                "category": "transport_socket",
+                "errno": number
+                if type(number) is int and -1000 <= number <= 1000
+                else None,
+            }
+        return {"category": "transport_unclassified"}
+    return {"category": "acceptance"}
 
 
 class Simulator:
@@ -361,14 +394,7 @@ def run(url, environment):
     ) as error:
         checks[phase] = "FAIL"
         record["status"] = "FAIL"
-        record["failure"] = {
-            "phase": phase,
-            "category": "http_status"
-            if isinstance(error, SimulatorHTTPFailure)
-            else "acceptance",
-        }
-        if isinstance(error, SimulatorHTTPFailure):
-            record["failure"]["http_status"] = error.status
+        record["failure"] = {"phase": phase, **failure_details(error)}
         reasons = {
             "Synthetic edge identity required": "EDGE_FIXTURE",
             "Missing edge telemetry": "EDGE_OBSERVATION",
