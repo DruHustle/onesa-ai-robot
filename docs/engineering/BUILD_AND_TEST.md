@@ -23,6 +23,20 @@ model endpoints, actual sensor/actuator behavior, emergency-stop hardware and re
 edge-network latency remain NOT TESTED or BLOCKED until their targets exist.
 Automated accessibility checks do not certify complete WCAG 2.2 AA compliance.
 
+## Bounded sign-in acceptance
+
+After submitting Sign in, browser scenarios use `waitForOperatorSignIn`: the same
+25-second acknowledgement bound already used by the main simulation journey.
+The application checks readiness for at most 15 seconds before its 10-second
+credential request. A default five-second assertion can expire before login starts.
+Ordinary layout, simulation, request and safety deadlines remain unchanged.
+
+`tests/browser/sign-in-readiness.spec.mjs` intercepts every API request with synthetic
+responses. It holds readiness unavailable beyond five seconds, verifies that no
+credentials are sent, then permits readiness and requires one login, cleared password
+input and zero task/control mutations. Its local three-engine result does not replace
+source-bound hosted qualification or authorize retrying a failed context.
+
 Release changes also require `.venv/bin/python -m unittest discover -s scripts/release
 -p 'test_*.py'` from the root, `actionlint .github/workflows/*.yml`, and backend
 `python -m mypy robot_api` with the hash-locked development requirements. ROS interface
