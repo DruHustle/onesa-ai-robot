@@ -141,11 +141,15 @@ class TursoJournal:
             # bounded five-second response budget in execute().
             timeout=httpx.Timeout(1.0, read=2.0),
             # Retry only connection establishment, before any HTTP request is sent.
-            # Read/write/protocol failures never replay a statement. The existing
+            # Read/write/protocol failures never replay a statement. Reuse at most
+            # two healthy connections for ten idle seconds; HTTPcore discards
+            # disconnected/expired idle sockets before sending. The existing
             # two-second overall deadline remains unchanged.
             transport=httpx.AsyncHTTPTransport(
                 retries=1,
-                limits=httpx.Limits(max_connections=2, max_keepalive_connections=0),
+                limits=httpx.Limits(
+                    max_connections=2, max_keepalive_connections=2, keepalive_expiry=10.0
+                ),
                 trust_env=False,
             ),
             follow_redirects=False,
