@@ -62,6 +62,18 @@ is no actual perception/model-policy path, connected ROS runtime or hardware saf
 certification. Those dependencies must remain explicit, never silently simulated
 inside a response labelled as a real robot or real model.
 
+## Remote-journal lease confirmation
+
+The cloud journal has one database-fenced writer. Ordinary statements remain
+bounded to two seconds. The prepared read-only renewal confirmation has a
+five-second bound and a seven-second complete renewal bound, below the existing
+fifteen-second readiness window after the five-second renewal interval. Only the
+exact same-owner lease SELECT receives this longer bound. Its database lifetime
+must retain the existing eighteen-second minimum and cover measured response
+age, fifteen-second readiness and a one-second resolution margin. An uncertain
+write is never replayed. Failure still stops and requires controlled recovery;
+this preparation is not evidence that it is deployed or that hardware is ready.
+
 ## Optional simulated edge telemetry
 
 The separate `edge/simulation-agent.py` sends version-1 HTTPS telemetry outbound to

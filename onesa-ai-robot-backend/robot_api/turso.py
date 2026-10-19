@@ -17,6 +17,11 @@ LEASE = "robot_simulation_lease_v1"
 PRODUCTION_DATABASE = "libsql://onesa-ai-robot-backend-druhustle.aws-eu-west-1.turso.io"
 COLUMNS = ("id", "owner", "proposal", "state", "reason", "created", "position")
 MAX_RESPONSE_BYTES = 16 * 1024 * 1024
+STATEMENT_SECONDS = 2
+RENEW_CONFIRM_SECONDS = 5
+RENEW_TOTAL_SECONDS = STATEMENT_SECONDS + RENEW_CONFIRM_SECONDS
+LEASE_READINESS_SECONDS = 15
+LEASE_CONFIRM_FRESH_SECONDS = 18
 DIAGNOSTIC_CATEGORIES = frozenset(
     {
         "timeout",
@@ -131,9 +136,9 @@ class TursoJournal:
         self.url = endpoint(url)
         self.client = httpx.AsyncClient(
             headers={"Authorization": "Bearer " + token.get_secret_value()},
-            # A read may use the existing two-second statement budget. A
-            # one-second inactivity limit prematurely rejected cloud responses;
-            # execute() still bounds the entire operation to two seconds.
+            # Ordinary statements retain their two-second bound. Only the
+            # exact read-only renewal confirmation may use its separately
+            # bounded five-second response budget in execute().
             timeout=httpx.Timeout(1.0, read=2.0),
             # Retry only connection establishment, before any HTTP request is sent.
             # Read/write/protocol failures never replay a statement. The existing
@@ -160,6 +165,15 @@ class TursoJournal:
                 return {"type": "text", "value": value}
             raise ValueError("Unsupported journal parameter")
 
+        confirmation = phase == "lease_renew_reconcile"
+        confirmation_sql = (
+            f"SELECT owner,expires-unixepoch() AS remaining FROM {LEASE} "
+            f"WHERE id=1 AND owner=? AND expires>=unixepoch()+{LEASE_CONFIRM_FRESH_SECONDS}"
+        )
+        if confirmation and (sql != confirmation_sql or args != (self.owner,)):
+            raise JournalFailure("protocol", phase, 0)
+        budget = RENEW_CONFIRM_SECONDS if confirmation else STATEMENT_SECONDS
+        request_timeout = httpx.Timeout(1.0, read=budget)
         body = {
             "requests": [
                 {"type": "execute", "stmt": {"sql": sql, "args": [encode(v) for v in args]}},
@@ -168,8 +182,10 @@ class TursoJournal:
         }
         started = time.monotonic()
         try:
-            async with asyncio.timeout(2):
-                async with self.client.stream("POST", self.url, json=body) as response:
+            async with asyncio.timeout(budget):
+                async with self.client.stream(
+                    "POST", self.url, json=body, timeout=request_timeout
+                ) as response:
                     response.raise_for_status()
                     payload = bytearray()
                     async for chunk in response.aiter_bytes():
@@ -323,26 +339,22 @@ class TursoJournal:
         except JournalFailure as error:
             if error.category not in {"timeout", "transport"}:
                 raise
-            # An uncertain acknowledgement must never replay the UPDATE or
-            # refresh local authority from a nearly expired lease. Confirm this
-            # same owner with >=18 seconds remaining on the database clock:
-            # the 15-second readiness window, the <=2-second response deadline
-            # and a one-second clock-resolution margin. The UPDATE need not
-            # have committed: an existing sufficiently fresh lease is also real
-            # ownership evidence. This read never extends the database lease.
-            # Reserve up to two additional seconds for the one read-only
-            # confirmation after a two-second uncertain write outcome. The
-            # 10-second renewal interval plus this four-second total stays
-            # within the existing 15-second readiness window. Per-statement
-            # bounds and the >=18-second database freshness proof are unchanged.
-            remaining = 4 - (time.monotonic() - started)
+            # Never replay an uncertain UPDATE. One same-owner SELECT may use
+            # five seconds; its database lifetime must cover actual elapsed read
+            # time, readiness15s and a one-second resolution margin. Retain the
+            # existing18s minimum, and require up to21s for a five-second read.
+            # Write2s + confirmation5s + renewal interval5s =12s, below readiness15s.
+            # No other query/write receives the longer response budget.
+            remaining = RENEW_TOTAL_SECONDS - (time.monotonic() - started)
             try:
                 if remaining <= 0:
                     raise TimeoutError
+                confirmation_started = time.monotonic()
                 async with asyncio.timeout(remaining):
                     confirmed = await self.execute(
-                        f"SELECT owner FROM {LEASE} "
-                        "WHERE id=1 AND owner=? AND expires>=unixepoch()+18",
+                        f"SELECT owner,expires-unixepoch() AS remaining FROM {LEASE} "
+                        "WHERE id=1 AND owner=? AND "
+                        f"expires>=unixepoch()+{LEASE_CONFIRM_FRESH_SECONDS}",
                         (self.owner,),
                         phase="lease_renew_reconcile",
                     )
@@ -350,7 +362,16 @@ class TursoJournal:
                 error.reconciliation = "unavailable"
                 error.elapsed_ms = min(120_000, int((time.monotonic() - started) * 1000))
                 raise error from None
-            if confirmed == [{"owner": self.owner}]:
+            read_elapsed = time.monotonic() - confirmation_started
+            if (
+                0 <= read_elapsed <= RENEW_CONFIRM_SECONDS
+                and len(confirmed) == 1
+                and set(confirmed[0]) == {"owner", "remaining"}
+                and confirmed[0]["owner"] == self.owner
+                and type(confirmed[0]["remaining"]) is int
+                and LEASE_CONFIRM_FRESH_SECONDS <= confirmed[0]["remaining"] <= 30
+                and confirmed[0]["remaining"] - read_elapsed >= LEASE_READINESS_SECONDS + 1
+            ):
                 return
             error.reconciliation = "not_confirmed"
             error.elapsed_ms = min(120_000, int((time.monotonic() - started) * 1000))

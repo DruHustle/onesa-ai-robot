@@ -21,6 +21,7 @@ from robot_api.safety import Proposal, SafetyGate, SafetyViolation
 from robot_api.security import PasswordVerifier, VerificationBusy, token_hash
 from robot_api.turso import (
     COLUMNS,
+    LEASE_READINESS_SECONDS,
     PRODUCTION_DATABASE,
     JournalAlreadyOwned,
     JournalFailure,
@@ -30,7 +31,7 @@ from robot_api.turso import (
 
 REQUEST_BODY_SECONDS = 5
 JOURNAL_STARTUP_SECONDS = 90
-# Keep a genuine >=18s lease proof after a lost acknowledgement; safety bounds stay unchanged.
+# Renewal plus its bounded confirmation must finish within the lease-readiness window.
 JOURNAL_RENEW_SECONDS = 5
 JOURNAL_LOG = logging.getLogger("robot_api.journal")
 
@@ -714,7 +715,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 raise HTTPException(503, "Remote simulation journal requires recovery")
             # Anonymous health traffic must not consume remote connections. The
             # background lease renewal supplies a bounded, real database proof.
-            if time.monotonic() - sim.journal_lease_confirmed_at > 15:
+            if time.monotonic() - sim.journal_lease_confirmed_at > LEASE_READINESS_SECONDS:
                 sim.fail_journal(
                     category="lease_stale",
                     phase="ready",

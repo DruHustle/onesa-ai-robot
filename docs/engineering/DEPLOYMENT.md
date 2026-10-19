@@ -691,9 +691,11 @@ The public landing, operator and development-privacy footers route general conta
 the Company Contact enquiry form. Approved controller/privacy contact particulars remain
 in the privacy notice body; the footer does not duplicate email or telephone links.
 
-## Early lease-renewal candidate (not deployed)
+## Retained early lease-renewal backend and prepared confirmation correction
 
-The prepared backend renews every five seconds instead of ten. The previous
+The retained accepted backend `f591af43b56417c43caf91620e00ec9e04b8b7e4`
+renews every five seconds; this is already part of the accepted 18 October release.
+The earlier timing motivation remains relevant: the previous
 successful response may already have consumed part of the database's 30-second
 lease. Waiting ten more seconds and then using the existing four-second uncertain-
 acknowledgement/confirmation budget can leave less than the required 18 seconds
@@ -701,7 +703,7 @@ at the read, even though the lease has not expired. A late commit can subsequent
 appear after the process has already latched. The actual network/provider cause
 of a timeout must be distinguished from this reproducible timing sensitivity.
 
-The candidate keeps the existing lease TTL, same-owner/unexpired fencing, strict
+That accepted correction keeps the existing lease TTL, same-owner/unexpired fencing, strict
 freshness check, statement/confirmation deadlines and 15-second readiness window.
 It neither retries a statement nor reacquires an expired/foreign lease. Missing
 proof still stops simulation, revokes permission and fails readiness. No task or
@@ -716,3 +718,23 @@ is identical, and record its real source separately from the backend candidate.
 Use the existing exact-source pipeline and scoped failed-container preservation
 exception before any replacement. Do not restart the old failed source, edit SQL
 history or weaken readiness just to obtain a green status.
+
+
+### Prepared longer read-only confirmation (not deployed)
+
+The next prepared correction retains two-second ordinary statements and one
+uncertain renewal UPDATE, then permits one bounded read-only confirmation lasting
+at most five seconds. Its SQL is restricted to the same owner and the existing
+minimum eighteen-second database lifetime. The response also returns remaining
+database lifetime; subtracting measured monotonic read duration must still leave
+the fifteen-second readiness window and a one-second clock-resolution margin.
+Thus a five-second response requires at least twenty-one seconds at the database.
+An eighteen-second response cannot establish authority after a long read.
+
+The complete renewal is bounded to seven seconds; with the existing five-second
+scheduler interval this remains below fifteen-second readiness freshness. No write
+is replayed, expired/foreign ownership is never reacquired, and an unavailable or
+malformed confirmation still latches stopped and revokes permission. This is a
+prepared source change, not hosted acceptance or permission to restart a failed
+container. New-source staging and production replacement require exact-source CI,
+fresh typed-history/lease preservation and the owner-approved bounded amendment.
