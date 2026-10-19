@@ -148,12 +148,12 @@ def test_unavailable_confirmation_preserves_redacted_failure(remote, uncertainty
     asyncio.run(run())
 
 
-def test_renewal_confirmation_shares_two_second_deadline(remote):
+def test_renewal_confirmation_has_its_readonly_five_second_deadline(remote):
     _, network = remote
 
     def lose_ack(sql):
         if sql.startswith(f"UPDATE {LEASE}"):
-            network["delay"] = 3
+            network["delay"] = 6
             raise httpx.ReadTimeout("synthetic-response")
 
     async def run():
@@ -163,10 +163,10 @@ def test_renewal_confirmation_shares_two_second_deadline(remote):
             network["after_execute"] = lose_ack
             calls, started = network["calls"], time.monotonic()
             with pytest.raises(JournalFailure) as caught:
-                await asyncio.wait_for(journal.renew(), timeout=2.5)
+                await asyncio.wait_for(journal.renew(), timeout=5.5)
             assert caught.value.reconciliation == "unavailable"
             assert network["calls"] == calls + 2
-            assert 1.8 <= time.monotonic() - started < 2.5
+            assert 4.8 <= time.monotonic() - started < 5.5
         finally:
             network.update(after_execute=None, delay=0)
             await journal.close()
@@ -263,14 +263,14 @@ def test_confirmation_after_full_write_timeout_still_fails_within_total_budget(r
                 if phase == "lease_renew":
                     await asyncio.sleep(2.01)
                     raise JournalFailure("timeout", phase, 2010, transport_kind="ReadTimeout")
-                network["delay"] = 3
+                network["delay"] = 6
                 return await execute(sql, args, phase=phase)
 
             journal.execute = uncertain
             started = time.monotonic()
             with pytest.raises(JournalFailure) as caught:
-                await asyncio.wait_for(journal.renew(), timeout=4.5)
-            assert 3.8 <= time.monotonic() - started < 4.5
+                await asyncio.wait_for(journal.renew(), timeout=7.5)
+            assert 6.8 <= time.monotonic() - started < 7.5
             assert caught.value.reconciliation == "unavailable"
             assert len(statements) == 2
             assert sum(sql.startswith("UPDATE") for sql in statements) == 1
