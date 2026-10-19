@@ -4,6 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {waitForApprovedSimulationCompletion,waitForSimulationReset} from './simulation-acceptance.mjs';
 import {cleanupOperatorSession} from './session-cleanup.mjs';
+import {waitForOperatorSignIn} from './sign-in-acceptance.mjs';
 import {observeRequestTimings} from './request-timings.mjs';
 const requestTimings=new WeakMap();
 test.beforeEach(async({page,baseURL})=>{requestTimings.set(page,observeRequestTimings(page,baseURL));});
@@ -41,7 +42,7 @@ test('late unauthorized telemetry cannot sign out a newer operator session',asyn
   await route.fulfill({status:401,contentType:'application/json',body:'{"detail":"Old session expired"}'});
  });
  await page.goto('/console');
- async function signIn(){await page.getByLabel('Operator name').fill(process.env.ROBOT_TEST_OPERATOR || 'operator');await page.getByLabel('Password',{exact:true}).fill((process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only'));await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible();}
+ async function signIn(){await page.getByLabel('Operator name').fill(process.env.ROBOT_TEST_OPERATOR || 'operator');await page.getByLabel('Password',{exact:true}).fill((process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only'));await page.getByRole('button',{name:'Sign in',exact:true}).click();await waitForOperatorSignIn(page);}
  await signIn();await received;
  await page.getByRole('button',{name:'Sign out'}).click();
  await expect(page.getByRole('button',{name:'Sign in',exact:true})).toBeVisible();
@@ -83,7 +84,7 @@ for(const mode of ['light','dark'])for(const width of [320,390,768,1024,1440])te
 });
 test('system preference change preserves a proposal draft, focus and simulation authority',async({page})=>{
  await page.emulateMedia({colorScheme:'light'});await page.goto('/console');
- await page.getByLabel('Operator name').fill(process.env.ROBOT_TEST_OPERATOR || 'operator');await page.getByLabel('Password',{exact:true}).fill(process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible();
+ await page.getByLabel('Operator name').fill(process.env.ROBOT_TEST_OPERATOR || 'operator');await page.getByLabel('Password',{exact:true}).fill(process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only');await page.getByRole('button',{name:'Sign in',exact:true}).click();await waitForOperatorSignIn(page);
  await page.getByLabel('Confirm password to reset').fill(process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only');await page.getByRole('button',{name:'Reset simulation stop'}).click();await waitForSimulationReset(page);
  const target=page.getByLabel('Target position');await target.fill('0.08');await target.focus();await page.emulateMedia({colorScheme:'dark'});await expect(target).toHaveValue('0.08');await expect(target).toBeFocused();await expect(page.getByRole('button',{name:'Sign out'})).toBeVisible();
  await page.getByRole('button',{name:'Create proposal'}).click();await expect(page.locator('#proposed-id')).toContainText(/[a-f0-9-]{36}/);const taskId=await page.locator('#proposed-id').textContent();await page.getByLabel('Confirm operator password',{exact:true}).fill(process.env.ROBOT_TEST_PASSWORD || 'browser-test-operator-only');await page.getByRole('button',{name:'Approve simulation task'}).click();await expect(page.locator('#notice')).toContainText('Simulation running');
