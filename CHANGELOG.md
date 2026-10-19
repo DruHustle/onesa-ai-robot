@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Third review: simplify the operator sign-in hierarchy, keep the active form ahead
+  of secondary help/privacy disclosures, and restore operational guidance only after
+  authenticated entry. Authentication, roles, simulation and future hardware authority
+  are unchanged. Frontend publication requires healthy hosted qualification; the
+  19 October readiness observation returned 503 in both environments, with no restart.
+
 - Remove local-runner workflows, provisioning, hooks, configuration and CI consumers.
   Keep standard hosted validation and prepare the owner-managed private GitHub Free
   transition; exhausted included allowance blocks validation instead of paid fallback.
@@ -42,8 +48,8 @@
   deployment `dpl_TZfvysWGbjASje3bcw2WCoostdLG`, redirects `/engineering` to that
   exact protected hostname. Existing Onesa sign-in, audience and approved membership
   boundaries are retained. Other application/backend identities were not relabelled.
-- Later second-review changes above remain unreleased until their own exact-source
-  CI, qualification and canonical-host acceptance are recorded.
+- The later protected Docs artifact has its own qualification/publication identity;
+  it does not relabel the accepted Robot frontend/backend components above.
 
 ## 2026-10-17 — Earlier journal renewal accepted in production
 

@@ -14,3 +14,16 @@ h1,h2,h3{font-weight:600;letter-spacing:-.035em;line-height:1.12}h1{font-size:cl
 @media print{.site-header nav,.hero-actions,.toolbar,button{display:none}.hero,.section{padding:24px}.hero,.architecture-overview{display:block}.concept-figure{max-width:400px}footer{break-inside:avoid}}
 
 .operator-shell .toolbar{position:sticky;top:0;z-index:5;padding:12px 0;background:var(--onesa-canvas);border-bottom:1px solid var(--onesa-border)}.operator-shell #next-step{max-width:760px;padding:16px 20px;border-left:4px solid var(--onesa-accent);background:var(--onesa-surface);line-height:1.6}.operator-flow{font-size:.95rem;max-width:760px;line-height:1.8;overflow-wrap:anywhere}.operator-privacy{max-width:760px;margin:16px 0}.operator-privacy summary{padding:10px 0;cursor:pointer}.operator-shell #administrator{margin-top:40px;border-top:1px solid var(--onesa-border);padding-top:24px}.operator-shell #administrator h2{font-size:1.5rem}#proposal-summary{line-height:1.6;max-width:60ch}
+
+/* Signed-out operators get a focused entry; active safety controls keep their layout. */
+.operator-shell[data-session="signed-out"] .site-header{min-height:72px;padding:16px max(24px,4vw)}
+.operator-shell[data-session="signed-out"] .site-header .secondary-nav{display:none}
+.operator-shell[data-session="signed-out"] #console{max-width:560px;padding:32px 24px}
+.operator-shell[data-session="signed-out"] .console-heading{align-items:flex-start;gap:16px;flex-direction:column}
+.operator-shell[data-session="signed-out"] h1{font-size:clamp(2rem,5vw,2.6rem);margin:0 0 4px}
+.operator-shell[data-session="signed-out"] .context-labels{font-size:.7rem}
+.operator-shell[data-session="signed-out"] #login-form{padding:24px;margin:24px 0 16px;border-radius:16px;gap:10px}
+.operator-shell[data-session="signed-out"] #login-form button{margin-top:8px;min-height:48px}
+.operator-shell[data-session="signed-out"] .scope-note{max-width:45ch;color:var(--onesa-muted)}
+#notice:empty{display:none}.operator-help,.operator-privacy{max-width:760px;margin:8px 0}.operator-help summary,.operator-privacy summary{padding:12px 0;min-height:44px;cursor:pointer}.operator-help p,.operator-privacy p{font-size:.9rem}
+@media(max-width:430px){.operator-shell[data-session="signed-out"] .site-header{padding:14px 20px;min-height:64px}.operator-shell[data-session="signed-out"] #console{padding:28px 20px}.operator-shell[data-session="signed-out"] #login-form{padding:20px}}
