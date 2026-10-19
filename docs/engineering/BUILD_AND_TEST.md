@@ -171,3 +171,15 @@ renewal deadlines and safety/readiness limits remain unchanged. Real SQLite test
 cover late request ordering, committed/uncommitted acknowledgements, restored
 snapshots, conflict, missing history and exhaustion. This is not an API command
 replay or a promise to detect privileged out-of-band database tampering.
+
+
+## Hosted completion observation
+
+The simulation observer retains its original15-second total completion budget
+(9s durable running acknowledgement plus6s history assertion). It starts observing
+the existing GET task response immediately, requires the exact owned task to be
+completed, then applies the unchanged6s DOM assertion within the remaining total.
+It sends no extra request, retries no command and changes no browser30s test,
+client10s request or backend safety/watchdog deadline. A real delayed response
+control distinguishes this sequencing correction from an application failure.
+Unknown/unauthorized/malformed responses and another task never satisfy it.

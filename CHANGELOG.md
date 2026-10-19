@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Prepare completion-observer sequencing within its existing15s aggregate budget.
+  Observe the actual completed owned-task response before the same history DOM
+  assertion; preserve client, test and watchdog deadlines, with no request/command
+  replay or application/runtime change. Hosted continuation remains pending.
+
 - Prepare owner-fenced conditional journal updates after a dropped connection.
   Compare the last acknowledged state atomically, retain task IDs and allow one
   bounded conditional recovery only after an exact prior/absent-state read.
