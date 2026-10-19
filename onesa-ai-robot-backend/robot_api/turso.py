@@ -18,6 +18,7 @@ PRODUCTION_DATABASE = "libsql://onesa-ai-robot-backend-druhustle.aws-eu-west-1.t
 COLUMNS = ("id", "owner", "proposal", "state", "reason", "created", "position")
 MAX_RESPONSE_BYTES = 16 * 1024 * 1024
 STATEMENT_SECONDS = 2
+SAVE_TOTAL_SECONDS = 4 * STATEMENT_SECONDS
 RENEW_CONFIRM_SECONDS = 5
 RENEW_TOTAL_SECONDS = STATEMENT_SECONDS + RENEW_CONFIRM_SECONDS
 LEASE_READINESS_SECONDS = 15
@@ -133,6 +134,7 @@ class JournalAlreadyOwned(sqlite3.OperationalError):
 class TursoJournal:
     def __init__(self, url: str, token: SecretStr):
         self.owner = secrets.token_hex(16)
+        self.acknowledged: dict[str, dict] = {}
         self.url = endpoint(url)
         self.client = httpx.AsyncClient(
             headers={"Authorization": "Bearer " + token.get_secret_value()},
@@ -292,44 +294,84 @@ class TursoJournal:
                 raise JournalFailure(
                     "schema", "history_validate", int((time.monotonic() - started) * 1000)
                 )
+        self.acknowledged = {row["id"]: dict(row) for row in rows}
         return rows
 
     async def save(self, row: dict) -> None:
         started = time.monotonic()
         expected = {col: row[col] for col in COLUMNS}
-        try:
-            saved = await self.execute(
-                f"INSERT INTO {TABLE}({','.join(COLUMNS)}) SELECT ?,?,?,?,?,?,? "
-                f"WHERE EXISTS(SELECT 1 FROM {LEASE} "
-                "WHERE id=1 AND owner=? AND expires>unixepoch()) "
-                "ON CONFLICT(id) DO UPDATE SET owner=excluded.owner,proposal=excluded.proposal,"
-                "state=excluded.state,reason=excluded.reason,created=excluded.created,"
-                "position=excluded.position RETURNING id",
-                (*expected.values(), self.owner),
-                phase="task_save",
-            )
-        except JournalFailure as error:
-            if error.category not in {"timeout", "transport"}:
-                raise
-            # The write may have committed before its acknowledgement was lost.
-            # Observe once, under the same live lease; never retry the write.
-            try:
-                persisted = await self.execute(
-                    f"SELECT {','.join(COLUMNS)} FROM {TABLE} WHERE id=? "
-                    f"AND EXISTS(SELECT 1 FROM {LEASE} "
-                    "WHERE id=1 AND owner=? AND expires>unixepoch())",
-                    (expected["id"], self.owner),
-                    phase="task_save_reconcile",
-                )
-            except JournalFailure:
-                error.reconciliation = "unavailable"
-                raise error from None
-            if persisted == [expected]:
+        previous = self.acknowledged.get(expected["id"])
+        equal = " AND ".join(f"{TABLE}.{col} IS ?" for col in COLUMNS)
+        # One atomic statement accepts only the last acknowledged state or this
+        # identical desired state. A late old request cannot overwrite a later
+        # acknowledged revision. The independent live-owner fence still applies.
+        guard = f"({equal})" if previous is not None else "0"
+        sql = (
+            f"INSERT INTO {TABLE}({','.join(COLUMNS)}) SELECT ?,?,?,?,?,?,? "
+            f"WHERE EXISTS(SELECT 1 FROM {LEASE} "
+            "WHERE id=1 AND owner=? AND expires>unixepoch()) "
+            "ON CONFLICT(id) DO UPDATE SET owner=excluded.owner,proposal=excluded.proposal,"
+            "state=excluded.state,reason=excluded.reason,created=excluded.created,"
+            f"position=excluded.position WHERE ({guard} OR ({equal})) RETURNING id"
+        )
+        args = (
+            *expected.values(),
+            self.owner,
+            *((previous[col] for col in COLUMNS) if previous is not None else ()),
+            *expected.values(),
+        )
+
+        async def persist():
+            for attempt in range(2):
+                try:
+                    saved = await self.execute(sql, args, phase="task_save")
+                except JournalFailure as error:
+                    if error.category not in {"timeout", "transport"}:
+                        raise
+                    try:
+                        persisted = await self.execute(
+                            f"SELECT {','.join(COLUMNS)} FROM {TABLE} WHERE id=? "
+                            f"AND EXISTS(SELECT 1 FROM {LEASE} "
+                            "WHERE id=1 AND owner=? AND expires>unixepoch())",
+                            (expected["id"], self.owner),
+                            phase="task_save_reconcile",
+                        )
+                    except JournalFailure:
+                        error.reconciliation = "unavailable"
+                        raise error from None
+                    if persisted == [expected]:
+                        self.acknowledged[expected["id"]] = dict(expected)
+                        return
+                    # Only the observed dropped-connection class gets one
+                    # conditional retry, after an exact prior/absent-state read.
+                    # Timeouts, missing known history, changed rows, expired
+                    # ownership and unavailable reads never authorize that retry.
+                    prior_confirmed = persisted == ([previous] if previous is not None else [])
+                    if (
+                        attempt == 0
+                        and error.transport_kind == "RemoteProtocolError"
+                        and prior_confirmed
+                    ):
+                        continue
+                    error.reconciliation = "not_confirmed"
+                    raise error from None
+                if saved != [{"id": expected["id"]}]:
+                    raise JournalFailure(
+                        "ownership", "task_save", int((time.monotonic() - started) * 1000)
+                    )
+                self.acknowledged[expected["id"]] = dict(expected)
                 return
-            error.reconciliation = "not_confirmed"
-            raise error from None
-        if saved != [{"id": row["id"]}]:
-            raise JournalFailure("ownership", "task_save", int((time.monotonic() - started) * 1000))
+
+        try:
+            async with asyncio.timeout(SAVE_TOTAL_SECONDS):
+                await persist()
+        except TimeoutError:
+            raise JournalFailure(
+                "timeout",
+                "task_save",
+                int((time.monotonic() - started) * 1000),
+                reconciliation="unavailable",
+            ) from None
 
     async def renew(self) -> None:
         started = time.monotonic()

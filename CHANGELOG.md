@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Prepare owner-fenced conditional journal updates after a dropped connection.
+  Compare the last acknowledged state atomically, retain task IDs and allow one
+  bounded conditional recovery only after an exact prior/absent-state read.
+  Delayed older writes cannot overwrite newer acknowledged history; no schema,
+  ownership/readiness limit or browser deadline changes. Qualification is pending.
+
 - Prepare bounded reuse of two healthy journal HTTPS connections for ten idle
   seconds, avoiding repeated TCP/TLS setup. Preserve statement/renewal deadlines,
   same-owner fencing, idle-socket expiry and the prohibition on ambiguous-write

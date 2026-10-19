@@ -154,3 +154,20 @@ a read/write failure after send remains a failure and never replays the statemen
 Mock socket tests exercise healthy reuse, idle expiry, server disconnect and a
 lost acknowledgement on an already reused connection. Hosted qualification is
 still required; four staging SELECT1 samples establish overhead, not an uptime guarantee.
+
+
+## Conditional journal recovery after a dropped connection
+
+Task persistence compares the current record with its last acknowledged snapshot
+inside the same owner-fenced UPSERT. An identical desired snapshot is idempotent;
+a delayed older request cannot replace a newer acknowledged state. No schema or
+existing history rewrite is required. After RemoteProtocolError only, an exact
+read of the prior state (or an absent new ID) permits one conditional retry using
+the same task ID and payload. Unknown/changed/missing known history, unavailable
+confirmation, ordinary timeouts and explicit provider denials remain failures.
+Each HTTP statement still has two seconds; total task-save recovery is bounded at
+eight seconds, below the unchanged browser request deadline. Lease ownership,
+renewal deadlines and safety/readiness limits remain unchanged. Real SQLite tests
+cover late request ordering, committed/uncommitted acknowledgements, restored
+snapshots, conflict, missing history and exhaustion. This is not an API command
+replay or a promise to detect privileged out-of-band database tampering.
