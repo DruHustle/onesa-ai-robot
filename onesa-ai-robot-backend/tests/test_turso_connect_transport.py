@@ -33,6 +33,7 @@ class Stream(httpcore.AsyncNetworkStream):
             self.response = self.response.replace(b"Connection: close", b"Connection: keep-alive")
         self.template = self.response
         self.written = bytearray()
+        self.server_disconnected = False
         self.write_error = (
             read_error if read_error in {httpcore.WriteError, httpcore.WriteTimeout} else None
         )
@@ -62,7 +63,7 @@ class Stream(httpcore.AsyncNetworkStream):
         return self
 
     def get_extra_info(self, info):
-        return None
+        return self.server_disconnected if info == "is_readable" else None
 
 
 class Backend(httpcore.AsyncNetworkBackend):
@@ -100,7 +101,7 @@ def test_one_pre_request_connect_failure_sends_the_statement_once(error):
     asyncio.run(run())
 
 
-def test_journal_does_not_reuse_a_connection_even_if_server_advertises_keepalive():
+def test_journal_reuses_one_healthy_keepalive_connection_without_statement_replay():
     class FreshBackend(Backend):
         def __init__(self):
             super().__init__(httpcore.ConnectError, 0, None)
@@ -119,12 +120,9 @@ def test_journal_does_not_reuse_a_connection_even_if_server_advertises_keepalive
         try:
             assert await journal.execute("SELECT 1") == []
             assert await journal.execute("SELECT 1") == []
-            assert backend.connections == 2
-            assert len(backend.streams) == 2
-            assert all(
-                bytes(stream.written).count(b"POST /v2/pipeline HTTP/1.1") == 1
-                for stream in backend.streams
-            )
+            assert backend.connections == 1
+            assert len(backend.streams) == 1
+            assert bytes(backend.streams[0].written).count(b"POST /v2/pipeline HTTP/1.1") == 2
         finally:
             await journal.client.aclose()
 
@@ -175,6 +173,69 @@ def test_ambiguous_after_send_errors_never_reconnect_or_resend(error):
             assert backend.connections == 1
             assert bytes(stream.written).count(b"POST /v2/pipeline HTTP/1.1") == 1
             assert "private" not in str(caught.value)
+        finally:
+            await journal.client.aclose()
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("expired", [False, True])
+def test_disconnected_or_ten_second_expired_idle_socket_is_replaced_before_send(
+    monkeypatch, expired
+):
+    import types
+
+    import httpcore._async.http11 as http11
+
+    clock = [100.0]
+    monkeypatch.setattr(http11, "time", types.SimpleNamespace(monotonic=lambda: clock[0]))
+
+    class FreshBackend(Backend):
+        def __init__(self):
+            super().__init__(httpcore.ConnectError, 0, None)
+            self.streams = []
+
+        async def connect_tcp(self, host, port, timeout=None, **kwargs):
+            self.connections += 1
+            stream = Stream(keep_alive=True)
+            self.streams.append(stream)
+            return stream
+
+    async def run():
+        journal = TursoJournal("libsql://synthetic.example.turso.io", SecretStr("synthetic"))
+        backend = FreshBackend()
+        journal.client._transport._pool._network_backend = backend
+        try:
+            assert await journal.execute("SELECT 1") == []
+            if expired:
+                clock[0] += 10.1
+            else:
+                backend.streams[0].server_disconnected = True
+            assert await journal.execute("SELECT 1") == []
+            assert backend.connections == 2
+            assert all(
+                bytes(s.written).count(b"POST /v2/pipeline HTTP/1.1") == 1 for s in backend.streams
+            )
+        finally:
+            await journal.client.aclose()
+
+    asyncio.run(run())
+
+
+def test_ambiguous_failure_on_reused_connection_never_replays_the_second_statement():
+    async def run():
+        journal = TursoJournal("libsql://synthetic.example.turso.io", SecretStr("synthetic"))
+        stream = Stream(keep_alive=True)
+        backend = Backend(httpcore.ConnectError, 0, stream)
+        journal.client._transport._pool._network_backend = backend
+        try:
+            assert await journal.execute("SELECT 1") == []
+            stream.read_error = httpcore.ReadTimeout
+            with pytest.raises(JournalFailure) as caught:
+                await journal.execute("SELECT 2", phase="task_save")
+            assert caught.value.transport_kind == "ReadTimeout"
+            assert backend.connections == 1
+            assert bytes(stream.written).count(b"POST /v2/pipeline HTTP/1.1") == 2
         finally:
             await journal.client.aclose()
 
