@@ -23,6 +23,27 @@ model endpoints, actual sensor/actuator behavior, emergency-stop hardware and re
 edge-network latency remain NOT TESTED or BLOCKED until their targets exist.
 Automated accessibility checks do not certify complete WCAG 2.2 AA compliance.
 
+## Bounded sign-in acceptance
+
+After submitting Sign in, browser scenarios use `waitForOperatorSignIn`: the same
+25-second acknowledgement bound already used by the main simulation journey.
+The application checks readiness for at most 15 seconds before its 10-second
+credential request. A default five-second assertion can expire before login starts.
+Ordinary layout, simulation, request and safety deadlines remain unchanged.
+
+Reload and late-response regressions observe the existing session/logout HTTP
+acknowledgement within the client's existing 10-second request budget before
+checking the resulting UI with its unchanged assertion deadline. They issue no
+extra request and require HTTP 200 with CSRF or `signed_out` as appropriate.
+Offline tests retain failure behavior for missing fields, 401/403/503 and timeout;
+cleanup diagnostics expose only HTTP status, never bodies or credentials.
+
+`tests/browser/sign-in-readiness.spec.mjs` intercepts every API request with synthetic
+responses. It holds readiness unavailable beyond five seconds, verifies that no
+credentials are sent, then permits readiness and requires one login, cleared password
+input and zero task/control mutations. Its local three-engine result does not replace
+source-bound hosted qualification or authorize retrying a failed context.
+
 Release changes also require `.venv/bin/python -m unittest discover -s scripts/release
 -p 'test_*.py'` from the root, `actionlint .github/workflows/*.yml`, and backend
 `python -m mypy robot_api` with the hash-locked development requirements. ROS interface
@@ -111,3 +132,13 @@ staging/main; necessary urgent candidates start from exact production and exclud
 unfinished dev work. No alert dismissal, check suppression, credential rotation or
 branch deletion is implied. Direct graph SBOM readback previously returned HTTP404;
 no dependency-graph setting was changed by this source update.
+
+## Safe acceptance failure evidence
+
+The hosted observer keeps the failing phase and distinguishes unexpected HTTP
+status, invalid JSON, timeout, DNS, TLS and socket failures using fixed categories
+and bounded numbers only. It retains no URLs, error text, response bodies or credentials.
+A transport failure is never a passing assertion or a confirmed application defect.
+Expected replay denial still requires HTTP409 and valid JSON; timeouts, assertions,
+mutation counts and retry limits are unchanged. Use the existing bounded repair
+authority before another failed-context attempt.

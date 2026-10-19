@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Retain safe HTTP, JSON and transport failure categories in hosted acceptance
+  instead of collapsing every failed request into an assertion category. Replay
+  denial, response validation, timeouts and no-retry gates remain unchanged.
+
+- Prepare a bounded read-only renewal confirmation for transient journal delays.
+  Ordinary writes remain two seconds; confirmation may take five seconds only for
+  the exact same-owner lease SELECT. Database lifetime must cover actual response
+  age, the unchanged readiness window and clock margin, retaining the existing
+  eighteen-second minimum. Seven-second total renewal never replays writes,
+  reacquires expired ownership or automatically clears a failure latch. Offline
+  backend checks pass; hosted qualification and new-source recovery remain pending.
+
 - Third review: simplify the operator sign-in hierarchy, keep the active form ahead
   of secondary help/privacy disclosures, and restore operational guidance only after
   authenticated entry. Authentication, roles, simulation and future hardware authority

@@ -12,6 +12,7 @@ from robot_api.main import State
 from robot_api.turso import LEASE, JournalFailure, TursoJournal
 
 runtime = importlib.import_module("robot_api.main")
+transport = importlib.import_module("robot_api.turso")
 
 
 def scenario(monkeypatch, *, delay=5.1, committed=False, foreign=False, rounds=1):
@@ -50,6 +51,7 @@ def scenario(monkeypatch, *, delay=5.1, committed=False, foreign=False, rounds=1
 
         state.fail_journal = fault
         monkeypatch.setattr(runtime, "time", SimpleNamespace(monotonic=lambda: clock.now))
+        monkeypatch.setattr(transport, "time", SimpleNamespace(monotonic=lambda: clock.now))
         renewed = clock.now
         try:
             clock.now = renewed + 4.9
