@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Retain safe HTTP, JSON and transport failure categories in hosted acceptance
+  instead of collapsing every failed request into an assertion category. Replay
+  denial, response validation, timeouts and no-retry gates remain unchanged.
+
 - Prepare a bounded read-only renewal confirmation for transient journal delays.
   Ordinary writes remain two seconds; confirmation may take five seconds only for
   the exact same-owner lease SELECT. Database lifetime must cover actual response

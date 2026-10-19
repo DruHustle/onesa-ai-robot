@@ -125,3 +125,13 @@ staging/main; necessary urgent candidates start from exact production and exclud
 unfinished dev work. No alert dismissal, check suppression, credential rotation or
 branch deletion is implied. Direct graph SBOM readback previously returned HTTP404;
 no dependency-graph setting was changed by this source update.
+
+## Safe acceptance failure evidence
+
+The hosted observer keeps the failing phase and distinguishes unexpected HTTP
+status, invalid JSON, timeout, DNS, TLS and socket failures using fixed categories
+and bounded numbers only. It retains no URLs, error text, response bodies or credentials.
+A transport failure is never a passing assertion or a confirmed application defect.
+Expected replay denial still requires HTTP409 and valid JSON; timeouts, assertions,
+mutation counts and retry limits are unchanged. Use the existing bounded repair
+authority before another failed-context attempt.
