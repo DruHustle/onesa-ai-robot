@@ -6,13 +6,13 @@ export async function cleanupOperatorSession(page, baseURL) {
  const options = {timeout: 10000};
  const me = await page.request.get('/api/v1/auth/me', options);
  if (me.status() === 401) return;
- if (me.status() !== 200) throw new Error('Operator cleanup session read failed');
+ if (me.status() !== 200) throw new Error(`Operator cleanup session read failed: HTTP ${me.status()}`);
  const session = await me.json();
  if (typeof session.csrf !== 'string' || !session.csrf) throw new Error('Operator cleanup CSRF missing');
  const signedOut = await page.request.post('/api/v1/auth/logout', {
   ...options, headers: {Origin: baseURL, 'X-CSRF-Token': session.csrf}, data: {},
  });
- if (signedOut.status() !== 200) throw new Error('Operator cleanup logout failed');
+ if (signedOut.status() !== 200) throw new Error(`Operator cleanup logout failed: HTTP ${signedOut.status()}`);
  const revoked = await page.request.get('/api/v1/auth/me', options);
  if (revoked.status() !== 401) throw new Error('Operator cleanup session remains active');
 }
