@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Clarify the existing Neon private object-storage recipient for encrypted Robot recovery copies; disclose no endpoint, bucket, object key or credential. This is factual development information, not approval of processing/retention decisions. Source prepared; updated publication remains separately qualified.
+
 - Remove local-runner workflows, provisioning, hooks, configuration and CI consumers.
   Keep standard hosted validation and prepare the owner-managed private GitHub Free
   transition; exhausted included allowance blocks validation instead of paid fallback.
