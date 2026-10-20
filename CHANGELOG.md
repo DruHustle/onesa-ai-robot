@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Preserve sanitized synthetic browser outcomes and browser-process diagnostics
+  after a CI page-fixture startup timeout. All 111 cases, assertions, 30-second
+  test deadline and zero retries remain unchanged. Original run 39475752875 remains
+  failed; the startup cause is unproven. No runtime artifact is changed.
+
 - Remove local-runner workflows, provisioning, hooks, configuration and CI consumers.
   Keep standard hosted validation and prepare the owner-managed private GitHub Free
   transition; exhausted included allowance blocks validation instead of paid fallback.

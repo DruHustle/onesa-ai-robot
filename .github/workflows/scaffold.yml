@@ -133,10 +133,13 @@ jobs:
         --noEmit --pretty false && npm test && npm audit --audit-level=high
       working-directory: onesa-ai-robot-frontend
     - run: python scripts/check-contracts.py
+    - name: Verify sanitized browser diagnostic controls
+      run: python3 -m unittest discover -s scripts/ci -p test_browser_diagnostics.py
     - run: npx playwright install --with-deps chromium firefox webkit
       working-directory: onesa-ai-robot-frontend
     - name: Synthetic cross-browser operator acceptance
       env:
+        DEBUG: pw:browser
         ROBOT_DATABASE_PATH: /tmp/robot-browser-test.sqlite3
         ROBOT_PUBLIC_ORIGIN: http://localhost:3431
       run: "ROBOT_OPERATOR_PASSWORD_HASH=$(cd onesa-ai-robot-backend && python -c \"from robot_api.security import password_hash;\
@@ -146,6 +149,17 @@ jobs:
         \ || true' EXIT\nfor attempt in $(seq 1 30); do\n  if curl -fsS http://localhost:3431/api/v1/ready > /dev/null; then\
         \ break; fi\n  echo \"Waiting for Robot readiness: $attempt\"\n  sleep 1\ndone\ncurl -fsS http://localhost:3431/api/v1/ready\
         \ > /dev/null\nnpm --prefix onesa-ai-robot-frontend run test:e2e\n"
+    - name: Retain sanitized synthetic browser outcomes
+      id: browser_diagnostics
+      if: ${{ always() }}
+      run: python3 scripts/ci/browser_diagnostics.py onesa-ai-robot-frontend/test-results/results.json "$RUNNER_TEMP/robot-browser-diagnostics.json"
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      if: ${{ always() && steps.browser_diagnostics.outcome == 'success' }}
+      with:
+        name: robot-browser-diagnostics
+        path: ${{ runner.temp }}/robot-browser-diagnostics.json
+        retention-days: 1
+        if-no-files-found: error
     timeout-minutes: 30
     env:
       REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
