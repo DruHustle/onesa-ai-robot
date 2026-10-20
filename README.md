@@ -17,14 +17,14 @@ security diagnostics support that purpose. The owner has deferred the correspond
 privacy approval records until launch; that decision is not a legal certification.
 See the [scoped development release procedure](docs/engineering/DEPLOYMENT.md#restricted-development-release-and-owner-deferral).
 
-Latest accepted public frontend `1d35af7ca3cf0dae57e223271d430cc2326f035b` is Vercel `dpl_6Ux58YrQGBmi44z6vCcMtVpusiPY` at
-`https://robot.onesa.eu/`. Actual backend artifact `04e36d8c624125219c2a74f8051bcbf2cf3102e8` remains independently
-identified. Full exact-main CI,24 affected staged public views and8 canonical
-responsive/system-appearance accessibility views pass. Retained operator/backend
-qualification, the separately approved current-source recovery and read-only access
-checks are distinct from public-page acceptance. No production task or physical
-operation was performed. See [CHANGELOG.md](CHANGELOG.md) for component identities;
-new simulator-example source still requires its own qualified publication.
+Latest accepted public frontend `b6b6b10f474b0ccfbeb083ef3ace31964740225b` is Vercel `dpl_7CHirm6uA5ETYFXUFpAn5M2v3GCg` at
+`https://robot.onesa.eu/`. Backend `04e36d8c624125219c2a74f8051bcbf2cf3102e8`
+remains independently identified. Full exact-main CI,24 affected hosted public
+views and eight canonical accessibility/reflow views pass. The interface example
+uses local synthetic data, not live operator history. Retained operator/backend
+qualification and the separately approved recovery remain distinct evidence.
+No new production task or physical operation occurred. See [CHANGELOG.md](CHANGELOG.md)
+for actual component identities and limitations.
 
 
 The public [Robot product](https://robot.onesa.eu) explains that scope. The operator
