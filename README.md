@@ -17,14 +17,17 @@ security diagnostics support that purpose. The owner has deferred the correspond
 privacy approval records until launch; that decision is not a legal certification.
 See the [scoped development release procedure](docs/engineering/DEPLOYMENT.md#restricted-development-release-and-owner-deferral).
 
-Latest accepted public frontend `b6b6b10f474b0ccfbeb083ef3ace31964740225b` is Vercel `dpl_7CHirm6uA5ETYFXUFpAn5M2v3GCg` at
-`https://robot.onesa.eu/`. Backend `04e36d8c624125219c2a74f8051bcbf2cf3102e8`
-remains independently identified. Full exact-main CI,24 affected hosted public
-views and eight canonical accessibility/reflow views pass. The interface example
-uses local synthetic data, not live operator history. Retained operator/backend
-qualification and the separately approved recovery remain distinct evidence.
-No new production task or physical operation occurred. See [CHANGELOG.md](CHANGELOG.md)
-for actual component identities and limitations.
+Latest accepted public frontend `ca1a0a54e51eb039f5bd8c39442a49ab55d5665b`, Vercel
+`dpl_EXpzMcMmmhrNnVnqU9PcqaYzBFAJ`, serves `https://robot.onesa.eu/`. Its development
+privacy notice now names the existing encrypted Neon recovery-storage recipient.
+Full exact-main CI, 12 affected staged privacy views and four canonical privacy
+accessibility/reflow views pass; readiness is200 and anonymous private status401.
+The public product/image/CSS and operator runtime are unchanged from accepted
+frontend `b6b6b10f474b0ccfbeb083ef3ace31964740225b`, whose 24 staged/eight canonical
+public views remain separate evidence. Backend `04e36d8c624125219c2a74f8051bcbf2cf3102e8`
+is independently retained. No new processing flow, task, backend restart, account,
+credential or physical operation accompanied the notice correction. See
+[CHANGELOG.md](CHANGELOG.md) for accepted components and limits.
 
 
 The public [Robot product](https://robot.onesa.eu) explains that scope. The operator
