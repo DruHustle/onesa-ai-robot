@@ -2,7 +2,10 @@
 
 ## Unreleased
 
-- Clarify the existing Neon private object-storage recipient for encrypted Robot recovery copies; disclose no endpoint, bucket, object key or credential. This is factual development information, not approval of processing/retention decisions. Source prepared; updated publication remains separately qualified.
+- Preserve sanitized synthetic browser outcomes and browser-process diagnostics
+  after a CI page-fixture startup timeout. All 111 cases, assertions, 30-second
+  test deadline and zero retries remain unchanged. Original run 39475752875 remains
+  failed; the startup cause is unproven. No runtime artifact is changed.
 
 - Remove local-runner workflows, provisioning, hooks, configuration and CI consumers.
   Keep standard hosted validation and prepare the owner-managed private GitHub Free
@@ -12,6 +15,17 @@
   identities, including the fail-closed summary and all applicable image scans.
   Preserve solo-owner review, administrator enforcement and external release authority.
 
+
+## 2026-10-20 — Existing encrypted recovery recipient clarified
+
+- Frontend `ca1a0a54e51eb039f5bd8c39442a49ab55d5665b`, Vercel `dpl_EXpzMcMmmhrNnVnqU9PcqaYzBFAJ`, is accepted at `robot.onesa.eu`.
+  Name the existing private Neon recipient for encrypted recovery copies without
+  exposing operational identifiers or credentials. No new storage flow is added.
+- Full exact-source CI, 40 local units, 12 staged privacy views and four canonical
+  accessibility/reflow views pass. Readiness200/private-status401. Unchanged
+  public/operator behavior retains its original evidence and unextended expiry.
+- Backend `04e36d8c624125219c2a74f8051bcbf2cf3102e8` is retained. No task, restart, account, credential or physical
+  operation; G14 remains owner-deferred, not approved.
 
 ## 2026-10-20 — Public interface example and enlarged-text reflow accepted
 

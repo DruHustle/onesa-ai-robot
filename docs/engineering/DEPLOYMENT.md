@@ -46,25 +46,26 @@ exception. G14 remains owner-deferred and unapproved.
 
 ## Current accepted public interface — 2026-10-20
 
-Frontend `b6b6b10f474b0ccfbeb083ef3ace31964740225b`, Vercel
-`dpl_7CHirm6uA5ETYFXUFpAn5M2v3GCg`, is accepted at `https://robot.onesa.eu/`.
-This frontend-only release adds a clearly labelled, locally rendered synthetic
-interface example and public-page enlarged-text reflow. The operator shell,
-application logic, backend image, configuration and credentials are unchanged.
+Frontend `ca1a0a54e51eb039f5bd8c39442a49ab55d5665b`, Vercel
+`dpl_EXpzMcMmmhrNnVnqU9PcqaYzBFAJ`, is accepted at `https://robot.onesa.eu/`.
+The notice identifies the already configured private Neon recipient for encrypted
+recovery copies; no new storage or processing flow is introduced. Full exact-source
+CI, 12 staged privacy views and four canonical mobile/desktop light/dark
+accessibility/reflow views pass. Readiness200/private-status401. No endpoint,
+bucket, key or credential is disclosed.
 
-Full exact-source dev/staging/main CI,24 hosted public views and eight canonical
-mobile/desktop light/dark accessibility/reflow views pass. Canonical readiness
-returns200 and anonymous private status returns401. Existing operator/API evidence
-and the separately approved exact-container recovery are retained independently;
-these public-page checks are not a newly run full operator qualification.
+Public product/image/CSS, gateway and operator code remain byte-identical to
+accepted `b6b6b10f474b0ccfbeb083ef3ace31964740225b`. Its 24 staged/eight canonical
+public views and original operator/API acceptance remain distinct evidence.
+The verifier checked the original backend proof's unextended expiry and actual
+retained image/configuration/health; this notice cannot renew that proof.
 
-The actual backend remains `04e36d8c624125219c2a74f8051bcbf2cf3102e8`. No production
-task, backend build/restart or physical operation accompanied this frontend release.
-The original external CSS comparison stop and byte-exact correction are preserved.
-Subsequent documentation-only main commits do not relabel either serving component.
-See [CHANGELOG](../../CHANGELOG.md) for accepted identities; the next one-joint
-milestone remains proposed software work. The recurring remote lease-timeout cause
-is still unproven, and this single-host deployment is not high availability.
+Backend `04e36d8c624125219c2a74f8051bcbf2cf3102e8` is retained. No production task,
+backend build/restart, credential or physical operation accompanied this release.
+Later documentation-only main commits do not relabel either serving component.
+The proposed single-joint milestone and unresolved recurring lease-timeout cause
+remain separate; this single-host deployment is not high availability.
+
 
 <a id="current-interface-and-journal-release"></a>
 
