@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Add an actual locally rendered simulator interface example with isolated synthetic data and system light/dark images; expose only its two explicitly allowed static assets. Prepared source, not production acceptance.
+- Add an actual locally rendered simulator interface example with isolated synthetic data and system light/dark images; expose only its two explicitly allowed static assets. Make public product and privacy text reflow long words at enlarged text without changing the operator shell. Prepared source, not production acceptance.
 
 - Remove local-runner workflows, provisioning, hooks, configuration and CI consumers.
   Keep standard hosted validation and prepare the owner-managed private GitHub Free
