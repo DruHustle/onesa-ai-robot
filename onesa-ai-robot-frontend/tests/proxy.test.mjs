@@ -44,6 +44,8 @@ test('proxy preserves auth boundaries, strips unrelated secrets and rejects open
   assert.match(privacyHTML,/protected software development and testing by authorized operators/);
   assert.match(privacyHTML,/Oracle Cloud Infrastructure hosts the protected API/);
   assert.match(privacyHTML,/Cloudflare provides HTTPS ingress/);
+  assert.match(privacyHTML,/Encrypted recovery copies are kept in Onesa's existing private Neon object storage/);
+  assert.doesNotMatch(privacyHTML,/\.neon\.tech|S3_BUCKET|S3_ENDPOINT/);
   assert.match(privacyHTML,/Render is a former hosting provider/);
   assert.match(privacyHTML,/remain awaiting the owner's recorded decisions/);
   assert.doesNotMatch(privacyHTML,/<script\b/i);
