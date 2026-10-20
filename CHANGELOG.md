@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Correct current development-hosting information to Oracle/Cloudflare with retained Vercel/Turso and historical Render limits; separate Physical AI direction from the current one-joint simulator. Route product enquiries through Company contact. No backend recovery, privacy approval or physical operation is implied.
+
 - Remove local-runner workflows, provisioning, hooks, configuration and CI consumers.
   Keep standard hosted validation and prepare the owner-managed private GitHub Free
   transition; exhausted included allowance blocks validation instead of paid fallback.
