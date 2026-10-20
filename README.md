@@ -17,15 +17,14 @@ security diagnostics support that purpose. The owner has deferred the correspond
 privacy approval records until launch; that decision is not a legal certification.
 See the [scoped development release procedure](docs/engineering/DEPLOYMENT.md#restricted-development-release-and-owner-deferral).
 
-The latest accepted frontend is `a1258a6`, with retained backend source `f591af4`.
-The explicitly approved current-source backend recovery preserved all 78 production
-history records and credentials without adding a task. Exact-main CI and staged
-API/browser evidence passed, including the recorded one-case mocked Firefox
-continuation; canonical public/sign-in checks and bounded readiness observation pass.
-Authenticated workflows were tested in staging, not against a real production
-operator account. This remains software development and simulation, with no physical
-actuation. See [the release history](CHANGELOG.md) for actual component identities,
-the retained original navigation failure and current coverage limits.
+Latest accepted frontend `eb2490e87bf37b6159cfb3af75ee95369602eb4b` is Vercel `dpl_EivDvoeqd6A727icPUeeo3wbdouu` at
+`https://robot.onesa.eu/`. Actual backend artifact `04e36d8c624125219c2a74f8051bcbf2cf3102e8` remains independently
+identified. Exact-main CI and all99 distinct hosted cases pass; retained cases and
+API checks are explicitly distinguished from the targeted continuation. All78
+production records, credentials and other eight services are preserved. No physical
+operation or production simulation was performed. See the
+[current release](docs/engineering/DEPLOYMENT.md#current-interface-and-journal-release).
+
 
 The public [Robot product](https://robot.onesa.eu) explains that scope. The operator
 console serves protected simulation data through an independently authenticated API;
