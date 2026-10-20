@@ -103,6 +103,18 @@ until the new source passes Firefox in CI and hosted staging.
 
 ## Dependency maintenance
 
+The 20 October 2026 audit detected critical
+[GHSA-6q48-6c7w-9gw2](https://github.com/certifi/python-certifi/security/advisories/GHSA-6q48-6c7w-9gw2):
+certifi 2026.7.22 is affected; the reviewed source remedy is 2026.10.19. Andrew Gotora
+owns remediation in the existing restricted findings register. Preserve the original
+failed CI and any Dependabot advisory/PR references. Updated locks/audits are fix
+preparation, not deployed verification: qualify the backend candidate, rebuild its
+image and read back the installed version and trust store after release. Keep TLS
+hostname/certificate validation, scans and owner-controlled dev/staging/main promotion.
+Do not dismiss the finding or describe production as patched merely because a lock
+or default-branch alert changed. No unrelated dependency upgrade is included.
+
+
 The owner's latest 14 October 2026 instruction authorizes temporary Dependabot
 security-update PR branches and necessary narrowly scoped security-release candidates,
 while retaining exactly three permanent branches: dev, staging and main. It supersedes
