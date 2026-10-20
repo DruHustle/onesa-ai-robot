@@ -2,8 +2,6 @@
 
 ## Unreleased
 
-- Add an actual locally rendered simulator interface example with isolated synthetic data and system light/dark images; expose only its two explicitly allowed static assets. Make public product and privacy text reflow long words at enlarged text without changing the operator shell. Prepared source, not production acceptance.
-
 - Remove local-runner workflows, provisioning, hooks, configuration and CI consumers.
   Keep standard hosted validation and prepare the owner-managed private GitHub Free
   transition; exhausted included allowance blocks validation instead of paid fallback.
@@ -12,6 +10,23 @@
   identities, including the fail-closed summary and all applicable image scans.
   Preserve solo-owner review, administrator enforcement and external release authority.
 
+
+## 2026-10-20 — Public interface example and enlarged-text reflow accepted
+
+- Frontend `b6b6b10f474b0ccfbeb083ef3ace31964740225b`, Vercel `dpl_7CHirm6uA5ETYFXUFpAn5M2v3GCg`, is accepted at `robot.onesa.eu`.
+  Show the actual simulator interface using clearly identified local synthetic
+  data and system light/dark images; serve only two fixed approved image paths.
+- Reflow public text and the wordmark at enlarged text. Operator styles, console
+  logic and backend code are unchanged. Full dev/staging/main CI,24 staged public
+  views and eight canonical accessibility/reflow views pass. Readiness returns200;
+  anonymous private status returns401. No full operator context is newly claimed.
+- Backend `04e36d8c624125219c2a74f8051bcbf2cf3102e8` and its recovered configuration
+  are retained. No new task, backend build/restart, account or physical operation
+  accompanied this frontend release. The next single-joint evaluation milestone
+  is proposed software work, not learned control or hardware qualification.
+- Preserve the stopped external guard result: correct trimmed newline comparison
+  to exact raw bytes with three negative controls, and reuse the immutable build.
+  No deployment request or mandatory technical test was bypassed.
 
 ## 2026-10-20 — Public product and hosting information accepted
 
