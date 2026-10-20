@@ -53,6 +53,12 @@ test('proxy preserves auth boundaries, strips unrelated secrets and rejects open
     assert.equal(image.status,200);assert.equal(image.headers.get('content-type'),'image/webp');
     assert.deepEqual(Buffer.from(await image.arrayBuffer()),await readFile('dist/images/robot-concept-'+width+'.webp'));
   }
+  for(const mode of ['light','dark']){
+    const image=await fetch('http://127.0.0.1:3439/images/robot-workspace-example-'+mode+'.png');
+    assert.equal(image.status,200);assert.equal(image.headers.get('content-type'),'image/png');
+    assert.deepEqual(Buffer.from(await image.arrayBuffer()),await readFile('dist/images/robot-workspace-example-'+mode+'.png'));
+  }
+  assert.equal((await fetch('http://127.0.0.1:3439/images/robot-workspace-example-private.png')).status,404);
   for(const path of ['/images/robot-concept-999.webp','/images/../.env','/images%2frobot-concept-640.webp','/images/robot-concept-640.webp/..%2f..%2f.env'])assert.equal((await fetch('http://127.0.0.1:3439'+path)).status,404);
   assert.equal((await fetch('http://127.0.0.1:3439/')).headers.get('content-security-policy').includes("frame-ancestors 'none'"),true);
  } finally {child.kill('SIGTERM');await new Promise(resolve=>child.once('exit',resolve));await new Promise(resolve=>upstream.close(resolve));}

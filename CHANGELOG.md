@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Correct current development-hosting information to Oracle/Cloudflare with retained Vercel/Turso and historical Render limits; separate Physical AI direction from the current one-joint simulator. Route product enquiries through Company contact. No backend recovery, privacy approval or physical operation is implied.
+- Add an actual locally rendered simulator interface example with isolated synthetic data and system light/dark images; expose only its two explicitly allowed static assets. Prepared source, not production acceptance.
 
 - Remove local-runner workflows, provisioning, hooks, configuration and CI consumers.
   Keep standard hosted validation and prepare the owner-managed private GitHub Free
@@ -12,6 +12,12 @@
   identities, including the fail-closed summary and all applicable image scans.
   Preserve solo-owner review, administrator enforcement and external release authority.
 
+
+## 2026-10-20 — Public product and hosting information accepted
+
+- Public frontend `1d35af7ca3cf0dae57e223271d430cc2326f035b`, Vercel `dpl_6Ux58YrQGBmi44z6vCcMtVpusiPY`, serves `robot.onesa.eu`. Clarify Physical AI as the development direction, the implemented one-joint simulator, product contact and current Oracle/Cloudflare/Vercel/Turso hosting. Render is historical; G14 remains owner-deferred, not approved.
+- Full exact-source dev/staging/main CI,24 staged public views and8 canonical light/dark mobile/desktop accessibility views pass. Eight canonical readiness/private-denial reads pass; spoofed bot headers do not confer private access or prove actual crawler traffic.
+- Backend artifact `04e36d8c624125219c2a74f8051bcbf2cf3102e8` is retained. The separately approved exact-container recovery and read-only operator acceptance preserve existing history, credentials and physical restrictions. No new production task or backend image was deployed. Recurring lease-timeout cause remains unresolved; recovery is not an uptime guarantee.
 
 ## 2026-10-19 — Robot interface and conditional journal recovery accepted
 
