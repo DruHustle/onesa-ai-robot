@@ -77,7 +77,7 @@ this preparation is not evidence that it is deployed or that hardware is ready.
 ## Optional simulated edge telemetry
 
 The separate `edge/simulation-agent.py` sends version-1 HTTPS telemetry outbound to
-Render. It uses an independent per-device bearer token; the API stores only SHA256
+the current Oracle-hosted API through its existing HTTPS ingress. It uses an independent per-device bearer token; the API stores only SHA256
 of that token. Boot challenge, monotonic sequence, three-second freshness and ten
 requests/second are enforced. Telemetry is explicitly synthetic and stopped, and
 cannot create/approve/reset tasks or change the safety gate. Stale/disconnected
@@ -120,3 +120,29 @@ A tailnet connection grants no operator role or physical readiness. Do not expos
 public controller/DDS/model ports, alter unrelated access or put Tailscale node keys
 in docs. Current policy decisions remain in the Portal governance database rather
 than a competing mutable Markdown policy store.
+
+## Next software milestone: one bounded joint-position task (proposed)
+
+Use the existing single-joint simulator to evaluate one task: reach a requested
+position inside its configured SI-unit limits, then remain stopped. This is a
+software experiment plan, not demonstrated learned control or hardware operation.
+
+- **Observation:** synthetic joint position, task state and sample age. There is
+  no camera, object detection or physical perception claim.
+- **Baseline and planning:** compare the existing scripted trajectory with a future
+  advice-only policy proposal using identical seeded starting positions and goals.
+  The policy cannot approve tasks, alter limits or call physical controllers.
+- **Control and safety:** retain password-confirmed approval, the independent
+  deterministic motion gate, freshness checks, Stop and session/watchdog revocation.
+  Invalid or uncertain proposals stop; they never fall back to unlabelled motion.
+- **Evaluation:** report goal error, completion time, limit violations, stale/replay
+  rejection and Stop latency over the same retained seeds. Include expired sessions,
+  out-of-range goals and delayed observations. Report collision evaluation as not
+  applicable because this simulator has no collision geometry.
+- **Telemetry:** use isolated synthetic records with explicit simulation labels;
+  preserve operator authorization and record source, seed and failure categories.
+
+Before implementing a learned policy, review its model/data rights, supported
+interface and bounded evaluation budget separately. Physical controllers, local
+interlocks and emergency-stop qualification require their own hardware integration;
+passing this milestone grants no physical-operation authority.
