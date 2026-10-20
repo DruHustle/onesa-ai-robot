@@ -42,6 +42,10 @@ test('proxy preserves auth boundaries, strips unrelated secrets and rejects open
   const privacyHTML=await privacy.text();
   assert.match(privacyHTML,/<h1>Development privacy<\/h1>/);
   assert.match(privacyHTML,/protected software development and testing by authorized operators/);
+  assert.match(privacyHTML,/Oracle Cloud Infrastructure hosts the protected API/);
+  assert.match(privacyHTML,/Cloudflare provides HTTPS ingress/);
+  assert.match(privacyHTML,/Render is a former hosting provider/);
+  assert.match(privacyHTML,/remain awaiting the owner's recorded decisions/);
   assert.doesNotMatch(privacyHTML,/<script\b/i);
   assert.match(await (await fetch('http://127.0.0.1:3439/')).text(),/href="\/privacy">Development privacy/);
   for(const width of [640,1280]){
