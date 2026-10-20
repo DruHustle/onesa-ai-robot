@@ -44,7 +44,32 @@ local-runner fallback, paid overage, unavailable reviewer requirement or missing
 exception. G14 remains owner-deferred and unapproved.
 
 
-## Current interface and journal release
+## Current accepted public interface — 2026-10-20
+
+Frontend `b6b6b10f474b0ccfbeb083ef3ace31964740225b`, Vercel
+`dpl_7CHirm6uA5ETYFXUFpAn5M2v3GCg`, is accepted at `https://robot.onesa.eu/`.
+This frontend-only release adds a clearly labelled, locally rendered synthetic
+interface example and public-page enlarged-text reflow. The operator shell,
+application logic, backend image, configuration and credentials are unchanged.
+
+Full exact-source dev/staging/main CI,24 hosted public views and eight canonical
+mobile/desktop light/dark accessibility/reflow views pass. Canonical readiness
+returns200 and anonymous private status returns401. Existing operator/API evidence
+and the separately approved exact-container recovery are retained independently;
+these public-page checks are not a newly run full operator qualification.
+
+The actual backend remains `04e36d8c624125219c2a74f8051bcbf2cf3102e8`. No production
+task, backend build/restart or physical operation accompanied this frontend release.
+The original external CSS comparison stop and byte-exact correction are preserved.
+Subsequent documentation-only main commits do not relabel either serving component.
+See [CHANGELOG](../../CHANGELOG.md) for accepted identities; the next one-joint
+milestone remains proposed software work. The recurring remote lease-timeout cause
+is still unproven, and this single-host deployment is not high availability.
+
+<a id="current-interface-and-journal-release"></a>
+
+## Interface and journal release — 2026-10-19 (historical frontend)
+
 
 Accepted 2026-10-19: frontend `eb2490e87bf37b6159cfb3af75ee95369602eb4b` / Vercel `dpl_EivDvoeqd6A727icPUeeo3wbdouu` at
 `https://robot.onesa.eu/`; actual backend artifact `04e36d8c624125219c2a74f8051bcbf2cf3102e8`. The backend was
