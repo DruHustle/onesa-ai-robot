@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Prepare the supported certifi 2026.10.19 trust-store update for critical
+  GHSA-6q48-6c7w-9gw2. Regenerate only the affected runtime/development locks
+  preserving all other versions.
+  Source audits and targeted CA/TLS controls pass. Production images remain
+  unpatched until qualified replacement and deployed-package readback; no scan
+  exception, certificate-verification bypass or model/hardware change is granted.
+
 - Preserve sanitized synthetic browser outcomes and browser-process diagnostics
   after a CI page-fixture startup timeout. All 111 cases, assertions, 30-second
   test deadline and zero retries remain unchanged. Original run 39475752875 remains
