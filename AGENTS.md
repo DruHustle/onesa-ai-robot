@@ -98,6 +98,10 @@ recheck it, session, Origin/CSRF, password confirmation and revision on the back
 Block/Stop, logout, expiry and restart revoke permission. Permission alone must never
 send movement or claim connected hardware. Future physical activation needs its actual
 controller integration and independently qualified hardware safety/stop behavior.
+Idle-only renewal transport recovery must use new database-fenced ownership, exact
+terminal-history preservation and revoked sessions/permission. Preserve refusal for
+active/armed/pending/dirty work, non-transient errors and exhausted attempt budgets.
+It never resumes commands or restarts a process.
 No physical movement test, public DDS or automatic task replay is authorized. Real model/ROS/
 hardware capability must never be presented as a synthetic fallback.
 

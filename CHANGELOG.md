@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Prepare bounded idle-only journal recovery after transient renewal transport
+  failure. Require fresh fenced ownership, unchanged terminal history and no dirty
+  or pending work; revoke old sessions/permission and remain stopped. Preserve all
+  active-work and non-transient failure latches, statement deadlines and safety
+  checks. This is not a deployed availability or high-availability claim.
+- Keep hosted browser qualification free of Vercel's optional toolbar through its
+  documented request header; restrict automation authority to verified Robot
+  Preview origins and retain script-free assertions with safe failure categories.
+  The previous Firefox navigation stall and unknown-script failures remain recorded.
+
 - Prepare the supported certifi 2026.10.19 trust-store update for critical
   GHSA-6q48-6c7w-9gw2. Regenerate only the affected runtime/development locks
   preserving all other versions.
