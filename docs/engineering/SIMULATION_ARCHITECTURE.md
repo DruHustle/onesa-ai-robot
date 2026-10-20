@@ -74,6 +74,31 @@ age, fifteen-second readiness and a one-second resolution margin. An uncertain
 write is never replayed. Failure still stops and requires controlled recovery;
 this preparation is not evidence that it is deployed or that hardware is ready.
 
+## Prepared idle-only transport recovery
+
+This correction is source-tested and remains unreleased until the normal exact-source
+CI, staging and production acceptance gates pass. It does not establish high
+availability or identify the original provider/network timeout cause.
+
+A transient renewal timeout/transport error may enter bounded recovery only when
+this instance had already initialized, was stopped and idle, had no pending tasks
+or dirty writes, and had no physical actuation enabled. Other failure categories,
+active/armed/uncertain work, schema/history changes and exhausted attempts remain
+latched for controlled operator recovery.
+
+After delays of 30, 60 and 120 seconds, at most three attempts may acquire a fresh
+random lease identity through the existing atomic expired-owner condition. A live
+other owner is never displaced. Remote terminal history must exactly match the
+last acknowledged history and local cache; no task record is repaired, replayed,
+removed or resumed. A new successful renewal must precede readiness. Ordinary
+statement, confirmation and readiness bounds remain unchanged.
+
+Recovery revokes previous sessions and administrative motion permission, preserves
+the stopped state and requires fresh operator sign-in/reset. The simulator resumes
+no task. Each recovery attempt is bounded to 20 seconds; independent Stop/heartbeat/
+logout handling and the safety watchdog stay available. There is no process restart,
+new account, credential change, migration or hardware activation.
+
 ## Optional simulated edge telemetry
 
 The separate `edge/simulation-agent.py` sends version-1 HTTPS telemetry outbound to

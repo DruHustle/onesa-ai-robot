@@ -7,7 +7,15 @@ for(const route of ['/','/privacy'])for(const colorScheme of ['light','dark'])te
   await page.setViewportSize({width,height:844});
   await page.goto(route);
   await expect(page.locator('main h1')).toBeVisible();
-  await expect(page.locator('script[src]')).toHaveCount(0);
+  const scriptClasses=await page.locator('script[src]').evaluateAll(nodes=>nodes.slice(0,8).map(node=>{
+   try{
+    const url=new URL(node.src);
+    if(!['http:','https:'].includes(url.protocol))return 'NON_HTTP_SCRIPT';
+    if(url.origin===location.origin)return url.pathname.startsWith('/.well-known/vercel/security/')?'PROVIDER_SECURITY_SCRIPT':'OWN_ORIGIN_SCRIPT';
+    return url.hostname==='vercel.live'?'PROVIDER_TOOLBAR_SCRIPT':'OTHER_EXTERNAL_SCRIPT';
+   }catch{return 'MALFORMED_SCRIPT_SOURCE';}
+  }));
+  await expect(page.locator('script[src]'),`Public routes must remain script-free; observed classes: ${JSON.stringify(scriptClasses)}`).toHaveCount(0);
   await page.evaluate(async()=>{
    document.documentElement.style.setProperty('font-size','200%','important');
    await document.fonts.ready;

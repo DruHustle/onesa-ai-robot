@@ -195,3 +195,18 @@ It sends no extra request, retries no command and changes no browser30s test,
 client10s request or backend safety/watchdog deadline. A real delayed response
 control distinguishes this sequencing correction from an application failure.
 Unknown/unauthorized/malformed responses and another task never satisfy it.
+
+## Idle journal recovery and Preview observation regressions
+
+Run `python -m pytest -q tests/test_idle_journal_recovery.py` in the backend
+environment, then the complete affected backend suite. The fake Turso HTTP
+boundary uses isolated SQLite and synthetic credentials; it never targets a cloud
+database. Cover late old-owner writes, live-owner contention, changed/pending or
+unacknowledged history, revoked sessions, cancellation and bounded shared backoff.
+
+Frontend unit tests reject automation credentials for unintended origins. Browser
+qualification sends Vercel's documented `x-vercel-skip-toolbar: 1` request header
+without changing project protection or CSP. The zero-script public-page assertion
+remains mandatory and reports only fixed script classes on failure. This header
+is a hosting-interference precaution, not proof of the earlier unknown script's
+source. Navigation and assertion deadlines remain unchanged.
