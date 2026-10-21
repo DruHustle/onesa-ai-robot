@@ -38,6 +38,12 @@ qualification and owner authorization. Record actual component SHAs, not a false
 repository SHA. No caller PASS, weakened expiry or chained retained proofs. Never
 redeploy unchanged backend for CSS; keep runtime digests restricted. Read DEPLOYMENT.
 
+Detailed deployment/recovery documents in public Git are safe reference pages.
+Read the protected canonical or approved local engineering source bundle before
+operations; preserve its original hashes/revisions. Do not copy full runbooks back
+into public sources or give private bundles to PR jobs. Historical Git exposure
+is not removed by active-source cleanup.
+
 ## Security policy
 
 Supported software: the latest reviewed revision of `main`; no historical release

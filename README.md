@@ -24,9 +24,15 @@ Full exact-main CI, 12 affected staged privacy views and four canonical privacy
 accessibility/reflow views pass; readiness is200 and anonymous private status401.
 The public product/image/CSS and operator runtime are unchanged from accepted
 frontend `b6b6b10f474b0ccfbeb083ef3ace31964740225b`, whose 24 staged/eight canonical
-public views remain separate evidence. Backend `04e36d8c624125219c2a74f8051bcbf2cf3102e8`
-is independently retained. No new processing flow, task, backend restart, account,
-credential or physical operation accompanied the notice correction. See
+public views remain separate evidence. The subsequent backend-only release uses
+`d6e50fd01a1690167c1fbecb5ad995559b56e971`, qualified under main
+`41bce7f35017f4d755372a13da57fd720f4bff33`. All188 backend tests,14 API checks
+and111 distinct browser cases pass through preserved composite evidence. Production
+acceptance verifies seven readiness samples, protected operator access/logout and all78
+unchanged history records. The installed certifi2026.10.19 trust bundle is verified.
+Bounded idle-only fenced recovery never resumes tasks or physical operation; no
+single-host availability guarantee is implied. No production tasks or account/password
+changes accompanied this backend release. See
 [CHANGELOG.md](CHANGELOG.md) for accepted components and limits.
 
 
