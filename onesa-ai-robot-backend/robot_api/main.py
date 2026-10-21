@@ -33,6 +33,7 @@ REQUEST_BODY_SECONDS = 5
 JOURNAL_STARTUP_SECONDS = 90
 # Renewal plus its bounded confirmation must finish within the lease-readiness window.
 JOURNAL_RENEW_SECONDS = 5
+JOURNAL_IDLE_RECOVERY_DELAYS = (30, 60, 120)
 JOURNAL_LOG = logging.getLogger("robot_api.journal")
 
 
@@ -210,6 +211,9 @@ class State:
         self.journal_version = 0
         self.journal_lock = asyncio.Lock()
         self.journal_failed = False
+        self.journal_recovery_allowed = False
+        self.journal_recovery_attempts = 0
+        self.journal_recovery_next_at = 0.0
         self.journal_initialized = self.journal is None
         self.journal_lease_confirmed_at = 0.0
         self.stop_epoch = 0
@@ -295,6 +299,18 @@ class State:
         elapsed_ms: int = 0,
     ) -> None:
         first = not self.journal_failed
+        idle_before_failure = (
+            self.journal is not None
+            and self.journal_initialized
+            and self.active is None
+            and self.stopped
+            and not self.journal_dirty
+            and not self.settings.actuation_enabled
+            and self.db.execute(
+                "SELECT 1 FROM tasks WHERE state IN ('running','proposed') LIMIT 1"
+            ).fetchone()
+            is None
+        )
         self.journal_failed = True
         self.cancel("storage_unavailable", stop=True)
         if first:
@@ -310,6 +326,15 @@ class State:
                 if isinstance(error, JournalFailure)
                 else JournalFailure(category, phase, elapsed_ms)
             )
+            # Only a known idle renewal transport failure permits a new lease
+            # attempt. Never reset this budget on repeated readiness/flush errors.
+            self.journal_recovery_allowed = (
+                idle_before_failure
+                and diagnostic.phase == "lease_renew"
+                and diagnostic.category in {"timeout", "transport"}
+            )
+            self.journal_recovery_attempts = 0
+            self.journal_recovery_next_at = time.monotonic() + JOURNAL_IDLE_RECOVERY_DELAYS[0]
             JOURNAL_LOG.warning(
                 "Simulation journal latched category=%s phase=%s elapsed_ms=%d http_status=%d "
                 "transport_kind=%s reconciliation=%s",
@@ -320,6 +345,108 @@ class State:
                 diagnostic.transport_kind,
                 diagnostic.reconciliation,
             )
+
+    async def recover_idle_journal(self) -> bool:
+        """Acquire new ownership after idle failure; never repair or replay tasks."""
+        if (
+            not self.journal
+            or not self.journal_failed
+            or not self.journal_recovery_allowed
+            or time.monotonic() < self.journal_recovery_next_at
+        ):
+            return False
+        async with self.mutation_lock, self.journal_lock:
+            # A queued observer must honor a preceding attempt's new backoff.
+            if time.monotonic() < self.journal_recovery_next_at:
+                return False
+            if (
+                not self.journal_failed
+                or not self.journal_recovery_allowed
+                or self.journal_recovery_attempts >= len(JOURNAL_IDLE_RECOVERY_DELAYS)
+                or self.active is not None
+                or not self.stopped
+                or self.journal_dirty
+                or self.settings.actuation_enabled
+                or self.db.execute(
+                    "SELECT 1 FROM tasks WHERE state IN ('running','proposed') LIMIT 1"
+                ).fetchone()
+                is not None
+            ):
+                self.journal_recovery_allowed = False
+                return False
+            previous = self.journal
+            local_rows = self.db.execute(f"SELECT {','.join(COLUMNS)} FROM tasks").fetchall()
+            if {row["id"]: dict(row) for row in local_rows} != previous.acknowledged:
+                self.journal_recovery_allowed = False
+                return False
+            self.journal_recovery_attempts += 1
+            attempt = self.journal_recovery_attempts
+            replacement = TursoJournal(
+                self.settings.turso_database_url, self.settings.turso_auth_token
+            )
+            activated = False
+            try:
+                async with asyncio.timeout(20):
+                    rows = await replacement.initialize()
+                    # A competing live owner cannot be displaced by initialize().
+                    # Changed/new/missing/pending history requires operator recovery.
+                    if (
+                        any(row["state"] not in {"completed", "cancelled"} for row in rows)
+                        or {row["id"]: row for row in rows} != previous.acknowledged
+                    ):
+                        self.journal_recovery_allowed = False
+                        JOURNAL_LOG.warning("Idle journal recovery blocked: history_changed")
+                        return False
+                    await replacement.renew()
+                    # No await between final safety checks and replacement. Mutation
+                    # and journal locks exclude a late old-session decision/write.
+                    if (
+                        self.journal is not previous
+                        or self.active is not None
+                        or self.journal_dirty
+                        or not self.stopped
+                        or self.settings.actuation_enabled
+                        or self.db.execute(
+                            "SELECT 1 FROM tasks WHERE state IN ('running','proposed') LIMIT 1"
+                        ).fetchone()
+                        is not None
+                    ):
+                        self.journal_recovery_allowed = False
+                        return False
+                    self.db.execute("DELETE FROM sessions")
+                    self.cancel("journal_recovered", stop=True)
+                    self.journal = replacement
+                    self.journal_failed = False
+                    self.journal_recovery_allowed = False
+                    self.journal_lease_confirmed_at = time.monotonic()
+                    activated = True
+                    JOURNAL_LOG.info("Idle journal recovery completed attempt=%d", attempt)
+                    return True
+            except JournalAlreadyOwned:
+                JOURNAL_LOG.warning("Idle journal recovery blocked: live_owner")
+            except (sqlite3.Error, TimeoutError) as error:
+                if not isinstance(error, (JournalFailure, TimeoutError)) or (
+                    isinstance(error, JournalFailure)
+                    and error.category not in {"timeout", "transport"}
+                ):
+                    self.journal_recovery_allowed = False
+                JOURNAL_LOG.warning("Idle journal recovery attempt unavailable attempt=%d", attempt)
+            finally:
+                if activated:
+                    # The obsolete owner cannot write again. No lease DELETE or
+                    # history operation is needed against the recovered journal.
+                    with contextlib.suppress(Exception):
+                        async with asyncio.timeout(2):
+                            await previous.client.aclose()
+                else:
+                    await replacement.close()  # Conditional release of its own nonce only.
+                    if attempt >= len(JOURNAL_IDLE_RECOVERY_DELAYS):
+                        self.journal_recovery_allowed = False
+                    else:
+                        self.journal_recovery_next_at = (
+                            time.monotonic() + JOURNAL_IDLE_RECOVERY_DELAYS[attempt]
+                        )
+            return False
 
     async def flush_journal(self) -> None:
         if not self.journal:
@@ -466,6 +593,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             startup_deadline = renewed + JOURNAL_STARTUP_SECONDS
             while True:
                 await asyncio.sleep(0.1)
+                if state.journal_failed:
+                    if not state.journal_recovery_allowed:
+                        return
+                    if await state.recover_idle_journal():
+                        renewed = time.monotonic()
+                    continue
                 if not state.journal_initialized:
                     if time.monotonic() >= startup_deadline:
                         state.fail_journal(
@@ -488,7 +621,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     renewed = await state.refresh_journal_when_due(renewed)
                 except sqlite3.Error as error:
                     state.fail_journal(error, phase="flush")
-                    return  # Bounded fail-closed; operator recovery requires restart.
+                    # The next loop may attempt only the bounded, idle recovery.
+                    # Active, dirty, ownership/schema and exhausted failures stay latched.
 
         journal_task = asyncio.create_task(journal_watch()) if state.journal else None
         task = asyncio.create_task(watch())

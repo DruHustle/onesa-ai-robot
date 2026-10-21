@@ -103,6 +103,18 @@ until the new source passes Firefox in CI and hosted staging.
 
 ## Dependency maintenance
 
+The 20 October 2026 audit detected critical
+[GHSA-6q48-6c7w-9gw2](https://github.com/certifi/python-certifi/security/advisories/GHSA-6q48-6c7w-9gw2):
+certifi 2026.7.22 is affected; the reviewed source remedy is 2026.10.19. Andrew Gotora
+owns remediation in the existing restricted findings register. Preserve the original
+failed CI and any Dependabot advisory/PR references. Updated locks/audits are fix
+preparation, not deployed verification: qualify the backend candidate, rebuild its
+image and read back the installed version and trust store after release. Keep TLS
+hostname/certificate validation, scans and owner-controlled dev/staging/main promotion.
+Do not dismiss the finding or describe production as patched merely because a lock
+or default-branch alert changed. No unrelated dependency upgrade is included.
+
+
 The owner's latest 14 October 2026 instruction authorizes temporary Dependabot
 security-update PR branches and necessary narrowly scoped security-release candidates,
 while retaining exactly three permanent branches: dev, staging and main. It supersedes
@@ -183,3 +195,18 @@ It sends no extra request, retries no command and changes no browser30s test,
 client10s request or backend safety/watchdog deadline. A real delayed response
 control distinguishes this sequencing correction from an application failure.
 Unknown/unauthorized/malformed responses and another task never satisfy it.
+
+## Idle journal recovery and Preview observation regressions
+
+Run `python -m pytest -q tests/test_idle_journal_recovery.py` in the backend
+environment, then the complete affected backend suite. The fake Turso HTTP
+boundary uses isolated SQLite and synthetic credentials; it never targets a cloud
+database. Cover late old-owner writes, live-owner contention, changed/pending or
+unacknowledged history, revoked sessions, cancellation and bounded shared backoff.
+
+Frontend unit tests reject automation credentials for unintended origins. Browser
+qualification sends Vercel's documented `x-vercel-skip-toolbar: 1` request header
+without changing project protection or CSP. The zero-script public-page assertion
+remains mandatory and reports only fixed script classes on failure. This header
+is a hosting-interference precaution, not proof of the earlier unknown script's
+source. Navigation and assertion deadlines remain unchanged.
