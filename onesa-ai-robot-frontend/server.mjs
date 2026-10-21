@@ -1,3 +1,4 @@
+import './lib/tls-trust.mjs';
 /** Independent static operator frontend with a fixed, server-only API proxy. */
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
