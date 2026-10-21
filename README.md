@@ -27,22 +27,22 @@ security diagnostics support that purpose. The owner has deferred the correspond
 privacy approval records until launch; that decision is not a legal certification.
 See the [scoped development release procedure](docs/engineering/DEPLOYMENT.md).
 
-Latest accepted public frontend `ca1a0a54e51eb039f5bd8c39442a49ab55d5665b`, Vercel
-`dpl_EXpzMcMmmhrNnVnqU9PcqaYzBFAJ`, serves `https://robot.onesa.eu/`. Its development
-privacy notice now names the existing encrypted Neon recovery-storage recipient.
-Full exact-main CI, 12 affected staged privacy views and four canonical privacy
-accessibility/reflow views pass; readiness is200 and anonymous private status401.
-The public product/image/CSS and operator runtime are unchanged from accepted
-frontend `b6b6b10f474b0ccfbeb083ef3ace31964740225b`, whose 24 staged/eight canonical
-public views remain separate evidence. The subsequent backend-only release uses
-`d6e50fd01a1690167c1fbecb5ad995559b56e971`, qualified under main
-`41bce7f35017f4d755372a13da57fd720f4bff33`. All188 backend tests,14 API checks
-and111 distinct browser cases pass through preserved composite evidence. Production
-acceptance verifies seven readiness samples, protected operator access/logout and all78
-unchanged history records. The installed certifi2026.10.19 trust bundle is verified.
-Bounded idle-only fenced recovery never resumes tasks or physical operation; no
-single-host availability guarantee is implied. No production tasks or account/password
-changes accompanied this backend release. See
+Latest accepted frontend `09cdae669a8a3f2cf74cc0602c38d42ab679df78`, Vercel
+`dpl_HcTeqGXv8XH6HWgn9jEwZnJgwsWv`, serves `https://robot.onesa.eu/`.
+Oracle backend `4f5e6c56f6b81f87e4326cf7cd6f956b91d79107` is qualified under
+that exact main revision. Full required main CI passes. The affected staging
+qualification passes 14 API checks and five synthetic numeric-transport checks;
+all 1,321 earlier staging records are preserved with three owned terminal test tasks.
+Browser runtime, product images/CSS and application dependencies are unchanged;
+prior 111-case browser acceptance remains separately source-bound evidence.
+Production acceptance verifies seven readiness samples, protected operator
+read-only history/sign-in/logout, six private-route denials and all 78 unchanged
+history records. Credentials and the eight other services are preserved.
+The journal fix preserves exact floating-point values across the remote protocol;
+Node and certifi trust-store checks pass. Bounded fenced idle recovery never
+resumes tasks or physical operation. The historical network-timeout cause remains
+unproven, and a single VM does not guarantee future availability. No production
+tasks, account/password changes or physical operation accompanied this release. See
 [CHANGELOG.md](CHANGELOG.md) for accepted components and limits.
 
 
