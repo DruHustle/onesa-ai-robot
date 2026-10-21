@@ -119,6 +119,8 @@ jobs:
         node-version: '24'
         cache: npm
         cache-dependency-path: onesa-ai-robot-frontend/package-lock.json
+    - name: Verify application TLS trust and isolated certificate rejection
+      run: node --test scripts/test_tls_trust.mjs
     - name: Verify system appearance and pinned design artifact
       run: node --test scripts/test_system_appearance.mjs
     - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97

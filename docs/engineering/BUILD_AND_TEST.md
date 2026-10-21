@@ -210,3 +210,22 @@ without changing project protection or CSP. The zero-script public-page assertio
 remains mandatory and reports only fixed script classes on failure. This header
 is a hosting-interference precaution, not proof of the earlier unknown script's
 source. Navigation and assertion deadlines remain unchanged.
+
+## Node TLS trust regression
+
+Use Node 24.12 or later in the 24 series. Run
+`node --test scripts/test_tls_trust.mjs` from the repository root. The test uses
+a known public CA certificate and newly generated synthetic localhost certificates
+in isolated child processes. It proves native fetch/HTTPS trust, rejection of
+untrusted certificates and hostname mismatches, idempotence and fail-closed startup.
+Temporary test keys are removed; it sends no application/provider requests.
+
+The startup policy excludes only the SHA-256 fingerprint of the affected
+emSign ECC Root CA - G3 from the effective application default store. It retains
+other default/extra authorities and never disables certificate verification.
+Node changes are thread-local. The gateway imports the policy before its
+handler; container Node entry points also preload it. The protected Python
+simulator backend remains an independently qualified component.
+See the [advisory](https://github.com/advisories/GHSA-6q48-6c7w-9gw2) and
+[Node TLS API](https://nodejs.org/api/tls.html#tlssetdefaultcacertificatescerts).
+Source tests are separate from source-bound staging and production acceptance.
