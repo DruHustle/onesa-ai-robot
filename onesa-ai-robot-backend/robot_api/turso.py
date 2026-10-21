@@ -16,6 +16,17 @@ TABLE = "robot_simulation_tasks_v1"
 LEASE = "robot_simulation_lease_v1"
 PRODUCTION_DATABASE = "libsql://onesa-ai-robot-backend-druhustle.aws-eu-west-1.turso.io"
 COLUMNS = ("id", "owner", "proposal", "state", "reason", "created", "position")
+# Numeric JSON parameters can lose one ULP at the remote parser. Transport
+# decimal text instead, with SQLite performing the explicit REAL conversion.
+# Read numeric history as high-precision text too; do not weaken exact equality.
+READ_COLUMNS = ",".join(
+    [*COLUMNS[:5]]
+    + [
+        f"CASE WHEN typeof({column})='real' THEN printf('%!.26g',{column}) "
+        f"WHEN typeof({column})='integer' THEN {column} ELSE NULL END AS {column}"
+        for column in COLUMNS[5:]
+    ]
+)
 MAX_RESPONSE_BYTES = 16 * 1024 * 1024
 STATEMENT_SECONDS = 2
 SAVE_TOTAL_SECONDS = 4 * STATEMENT_SECONDS
@@ -166,7 +177,7 @@ class TursoJournal:
             if isinstance(value, int):
                 return {"type": "integer", "value": str(value)}
             if isinstance(value, float) and math.isfinite(value):
-                return {"type": "float", "value": value}
+                return {"type": "text", "value": repr(value)}
             if isinstance(value, str):
                 return {"type": "text", "value": value}
             raise ValueError("Unsupported journal parameter")
@@ -178,11 +189,22 @@ class TursoJournal:
         )
         if confirmation and (sql != confirmation_sql or args != (self.owner,)):
             raise JournalFailure("protocol", phase, 0)
+        # All statements are fixed internal SQL with positional placeholders;
+        # user strings stay bound values, never interpolated SQL.
+        wire_sql = sql
+        if any(isinstance(value, float) for value in args):
+            pieces = sql.split("?")
+            if len(pieces) != len(args) + 1:
+                raise JournalFailure("protocol", phase, 0)
+            wire_sql = pieces[0] + "".join(
+                ("CAST(? AS REAL)" if isinstance(value, float) else "?") + suffix
+                for value, suffix in zip(args, pieces[1:], strict=True)
+            )
         budget = RENEW_CONFIRM_SECONDS if confirmation else STATEMENT_SECONDS
         request_timeout = httpx.Timeout(1.0, read=budget)
         body = {
             "requests": [
-                {"type": "execute", "stmt": {"sql": sql, "args": [encode(v) for v in args]}},
+                {"type": "execute", "stmt": {"sql": wire_sql, "args": [encode(v) for v in args]}},
                 {"type": "close"},
             ]
         }
@@ -210,7 +232,7 @@ class TursoJournal:
             rows = []
             for row in result["result"]["rows"]:
                 values: list[str | int | float | None] = []
-                for cell in row:
+                for column, cell in zip(columns, row, strict=True):
                     kind = cell["type"]
                     value = cell.get("value")
                     if kind == "null":
@@ -223,7 +245,16 @@ class TursoJournal:
                             raise ValueError("Invalid journal number")
                         values.append(number)
                     elif kind == "text" and isinstance(value, str):
-                        values.append(value)
+                        if (
+                            phase in {"history_read", "task_save_reconcile"}
+                            and column in COLUMNS[5:]
+                        ):
+                            number = float(value)
+                            if not math.isfinite(number):
+                                raise ValueError("Invalid journal number")
+                            values.append(number)
+                        else:
+                            values.append(value)
                     else:
                         raise ValueError("Unsupported journal cell")
                 rows.append(dict(zip(columns, values, strict=True)))
@@ -277,7 +308,7 @@ class TursoJournal:
             phase="history_schema",
         )
         rows = await self.execute(
-            f"SELECT {','.join(COLUMNS)} FROM {TABLE} LIMIT 10001", phase="history_read"
+            f"SELECT {READ_COLUMNS} FROM {TABLE} LIMIT 10001", phase="history_read"
         )
         if len(rows) > 10000:
             raise JournalFailure(
@@ -330,7 +361,7 @@ class TursoJournal:
                         raise
                     try:
                         persisted = await self.execute(
-                            f"SELECT {','.join(COLUMNS)} FROM {TABLE} WHERE id=? "
+                            f"SELECT {READ_COLUMNS} FROM {TABLE} WHERE id=? "
                             f"AND EXISTS(SELECT 1 FROM {LEASE} "
                             "WHERE id=1 AND owner=? AND expires>unixepoch())",
                             (expected["id"], self.owner),

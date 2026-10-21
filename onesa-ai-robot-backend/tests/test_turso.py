@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import math
 import sqlite3
 import time
 
@@ -109,6 +110,7 @@ def remote(tmp_path, monkeypatch):
         "malformed": False,
         "after_execute": None,
         "before_execute": None,
+        "round_float_json": False,
     }
 
     async def handler(request):
@@ -131,7 +133,11 @@ def remote(tmp_path, monkeypatch):
         args = []
         for cell in statement["args"]:
             kind = cell["type"]
-            args.append(int(cell["value"]) if kind == "integer" else cell.get("value"))
+            value = int(cell["value"]) if kind == "integer" else cell.get("value")
+            if state["round_float_json"] and kind == "float":
+                if value == math.nextafter(0.1, 0):
+                    value = 0.1
+            args.append(value)
         with sqlite3.connect(path) as db:
             cursor = db.execute(statement["sql"], args)
             columns = [col[0] for col in cursor.description or []]
@@ -143,6 +149,8 @@ def remote(tmp_path, monkeypatch):
             if isinstance(value, int):
                 return {"type": "integer", "value": str(value)}
             if isinstance(value, float):
+                if state["round_float_json"] and value == math.nextafter(0.1, 0):
+                    value = 0.1
                 return {"type": "float", "value": value}
             return {"type": "text", "value": value}
 

@@ -1,5 +1,11 @@
 # Independent software builds and tests
 
+`tests/test_numeric_history.py` reproduces one-ULP numeric JSON transport drift,
+then checks exact decimal-text/SQLite conversion, adjacent representable values,
+unchanged persisted history, idle recovery and stale-owner refusal. Numeric history
+projections must reject invalid stored types rather than coerce them into valid
+records. No tolerance comparison, schema migration or history repair is involved.
+
 > Current pipeline: [automated review, staging qualification and owner activation](../development/CI_CD_PIPELINE_REPORT.md). Prepared local changes are not live deployments; branch/PR optimization and automatic technical evidence supersede older manual-only details.
 
 Use the [frontend](../../onesa-ai-robot-frontend/README.md) and
@@ -210,3 +216,22 @@ without changing project protection or CSP. The zero-script public-page assertio
 remains mandatory and reports only fixed script classes on failure. This header
 is a hosting-interference precaution, not proof of the earlier unknown script's
 source. Navigation and assertion deadlines remain unchanged.
+
+## Node TLS trust regression
+
+Use Node 24.12 or later in the 24 series. Run
+`node --test scripts/test_tls_trust.mjs` from the repository root. The test uses
+a known public CA certificate and newly generated synthetic localhost certificates
+in isolated child processes. It proves native fetch/HTTPS trust, rejection of
+untrusted certificates and hostname mismatches, idempotence and fail-closed startup.
+Temporary test keys are removed; it sends no application/provider requests.
+
+The startup policy excludes only the SHA-256 fingerprint of the affected
+emSign ECC Root CA - G3 from the effective application default store. It retains
+other default/extra authorities and never disables certificate verification.
+Node changes are thread-local. The gateway imports the policy before its
+handler; container Node entry points also preload it. The protected Python
+simulator backend remains an independently qualified component.
+See the [advisory](https://github.com/advisories/GHSA-6q48-6c7w-9gw2) and
+[Node TLS API](https://nodejs.org/api/tls.html#tlssetdefaultcacertificatescerts).
+Source tests are separate from source-bound staging and production acceptance.
