@@ -2,7 +2,7 @@
 
 Production API hosting moved to the existing Oracle Free VM on 2026-10-16; the
 Vercel frontend and existing data services remain. See the
-[verified hosting cutover](docs/engineering/DEPLOYMENT.md#verified-production-hosting-cutover--2026-10-16)
+[verified hosting cutover](docs/engineering/DEPLOYMENT.md)
 for source identities, protected ingress, acceptance and rollback.
 
 Onesa UG's robotics software development line. The current production scope is an
@@ -15,7 +15,7 @@ not implemented. Simulation results do not certify physical robot safety.
 and testing. Essential sign-in sessions, operator-linked synthetic task history and
 security diagnostics support that purpose. The owner has deferred the corresponding
 privacy approval records until launch; that decision is not a legal certification.
-See the [scoped development release procedure](docs/engineering/DEPLOYMENT.md#restricted-development-release-and-owner-deferral).
+See the [scoped development release procedure](docs/engineering/DEPLOYMENT.md).
 
 Latest accepted public frontend `ca1a0a54e51eb039f5bd8c39442a49ab55d5665b`, Vercel
 `dpl_EXpzMcMmmhrNnVnqU9PcqaYzBFAJ`, serves `https://robot.onesa.eu/`. Its development
