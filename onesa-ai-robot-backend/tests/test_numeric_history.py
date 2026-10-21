@@ -64,6 +64,34 @@ def test_adjacent_numeric_values_round_trip_without_changing_stored_rows(remote)
     asyncio.run(run())
 
 
+def test_numeric_projection_retains_exact_integer_types(remote):
+    path, _ = remote
+
+    async def run():
+        first = TursoJournal(URL, SecretStr(TOKEN))
+        second = TursoJournal(URL, SecretStr(TOKEN))
+        value = (1 << 60) + 1
+        try:
+            await first.initialize()
+            with sqlite3.connect(path) as db:
+                db.execute(f"DROP TABLE {TABLE}")
+                db.execute(f"CREATE TABLE {TABLE} ({','.join(COLUMNS)})")
+                db.execute(
+                    f"INSERT INTO {TABLE} VALUES(?,?,?,?,?,?,?)",
+                    ("integer-history", "operator", "{}", "completed", "", value, value),
+                )
+                db.execute(f"UPDATE {LEASE} SET expires=unixepoch()-1")
+            rows = await second.initialize()
+            assert len(rows) == 1
+            assert type(rows[0]["created"]) is int and type(rows[0]["position"]) is int
+            assert rows[0]["created"] == rows[0]["position"] == value
+        finally:
+            await second.close()
+            await first.close()
+
+    asyncio.run(run())
+
+
 def test_numeric_transport_preserves_exact_history_and_idle_recovery(remote, tmp_path):
     path, fault = remote
     fault["round_float_json"] = True

@@ -22,8 +22,8 @@ COLUMNS = ("id", "owner", "proposal", "state", "reason", "created", "position")
 READ_COLUMNS = ",".join(
     [*COLUMNS[:5]]
     + [
-        f"CASE WHEN typeof({column}) IN ('real','integer') "
-        f"THEN printf('%!.26g',{column}) ELSE NULL END AS {column}"
+        f"CASE WHEN typeof({column})='real' THEN printf('%!.26g',{column}) "
+        f"WHEN typeof({column})='integer' THEN {column} ELSE NULL END AS {column}"
         for column in COLUMNS[5:]
     ]
 )
