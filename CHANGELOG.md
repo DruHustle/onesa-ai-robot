@@ -21,6 +21,26 @@
   Preserve solo-owner review, administrator enforcement and external release authority.
 
 
+## 2026-10-21 — Exact numeric journal and Node trust correction accepted
+
+- Frontend `09cdae669a8a3f2cf74cc0602c38d42ab679df78` /
+  `dpl_HcTeqGXv8XH6HWgn9jEwZnJgwsWv` and Oracle backend
+  `4f5e6c56f6b81f87e4326cf7cd6f956b91d79107` are live and accepted after normal
+  promotion and full required exact-main CI.
+- Preserve precise REAL and native INTEGER history values through the remote
+  protocol. Synthetic controls reproduce JSON float rounding; parameterized text
+  with explicit REAL casts and lossless numeric reads retain exact comparisons.
+  No history rewrite, relaxed fingerprint comparison or SQL repair is introduced.
+- All 14 affected hosted API checks and five numeric SELECT controls pass; 1,321
+  previous staging records and three new owned terminal tasks are accounted for.
+  Reuse the prior 111-case browser evidence with verified unchanged browser bytes.
+- Production passes seven readiness samples, six private-data denials and approved
+  operator read-only access/logout. All 78 production records, credentials and other
+  eight process identities are preserved. No production task or physical operation.
+- Package the Node trust initializer in the server only; preserve verified TLS and
+  other roots. The exact historical lease network-timeout cause remains unproven;
+  this release does not claim high availability or zero future downtime.
+
 ## 2026-10-21 — Bounded idle recovery and trust-store patch accepted
 
 - Oracle backend source `d6e50fd01a1690167c1fbecb5ad995559b56e971`, qualified main
