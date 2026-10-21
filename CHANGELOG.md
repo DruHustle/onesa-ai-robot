@@ -2,22 +2,10 @@
 
 ## Unreleased
 
-- Prepare bounded idle-only journal recovery after transient renewal transport
-  failure. Require fresh fenced ownership, unchanged terminal history and no dirty
-  or pending work; revoke old sessions/permission and remain stopped. Preserve all
-  active-work and non-transient failure latches, statement deadlines and safety
-  checks. This is not a deployed availability or high-availability claim.
-- Keep hosted browser qualification free of Vercel's optional toolbar through its
-  documented request header; restrict automation authority to verified Robot
-  Preview origins and retain script-free assertions with safe failure categories.
-  The previous Firefox navigation stall and unknown-script failures remain recorded.
-
-- Prepare the supported certifi 2026.10.19 trust-store update for critical
-  GHSA-6q48-6c7w-9gw2. Regenerate only the affected runtime/development locks
-  preserving all other versions.
-  Source audits and targeted CA/TLS controls pass. Production images remain
-  unpatched until qualified replacement and deployed-package readback; no scan
-  exception, certificate-verification bypass or model/hardware change is granted.
+- Replace detailed public operational runbooks with protected-reference pages after
+  preserving exact original source/hash provenance in restricted custody. Historical
+  Git copies remain public; this is active-source classification, not history removal.
+  Private Docs publication and approved-user acceptance are recorded separately.
 
 - Preserve sanitized synthetic browser outcomes and browser-process diagnostics
   after a CI page-fixture startup timeout. All 111 cases, assertions, 30-second
@@ -32,6 +20,25 @@
   identities, including the fail-closed summary and all applicable image scans.
   Preserve solo-owner review, administrator enforcement and external release authority.
 
+
+## 2026-10-21 — Bounded idle recovery and trust-store patch accepted
+
+- Oracle backend source `d6e50fd01a1690167c1fbecb5ad995559b56e971`, qualified main
+  `41bce7f35017f4d755372a13da57fd720f4bff33`, is live and accepted. Retain frontend
+  `ca1a0a54e51eb039f5bd8c39442a49ab55d5665b` / `dpl_EXpzMcMmmhrNnVnqU9PcqaYzBFAJ`.
+- Recover only a verified idle journal after transient renewal transport failure,
+  with fresh fenced ownership, exact terminal-history preservation, revoked sessions
+  and permission. Active, armed, dirty or uncertain work still fails closed; attempts
+  remain bounded. No command replay, process restart or physical operation.
+- All188 backend tests,14 hosted API checks and111 distinct browser cases pass.
+  Composite evidence reuses26 passing cases and85 passing remaining cases; the original
+  failed context is retained. Full exact-main CI passes without a workflow rerun.
+- Production readback verifies installed certifi2026.10.19, the reviewed trust bundle
+  and absent affected root. Seven readiness samples, approved-operator read-only access,
+  logout and six anonymous private denials pass. All78 history records, credentials and
+  the eight other service identities are preserved; no new production task.
+- This addresses the idle failure latch; the upstream transient transport cause remains
+  unproven. A single VM is not high availability and no future zero-downtime claim is made.
 
 ## 2026-10-20 — Existing encrypted recovery recipient clarified
 
