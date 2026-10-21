@@ -1,5 +1,11 @@
 # Independent software builds and tests
 
+`tests/test_numeric_history.py` reproduces one-ULP numeric JSON transport drift,
+then checks exact decimal-text/SQLite conversion, adjacent representable values,
+unchanged persisted history, idle recovery and stale-owner refusal. Numeric history
+projections must reject invalid stored types rather than coerce them into valid
+records. No tolerance comparison, schema migration or history repair is involved.
+
 > Current pipeline: [automated review, staging qualification and owner activation](../development/CI_CD_PIPELINE_REPORT.md). Prepared local changes are not live deployments; branch/PR optimization and automatic technical evidence supersede older manual-only details.
 
 Use the [frontend](../../onesa-ai-robot-frontend/README.md) and
