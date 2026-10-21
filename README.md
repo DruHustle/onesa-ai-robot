@@ -5,6 +5,11 @@ regressions in `node --test scripts/test_tls_trust.mjs`. Use Node 24.12+ in the 
 series. Source implementation is separate from the accepted component releases
 recorded below; no production update follows merely from merging source.
 
+Journal transport preserves finite numeric values through decimal text and explicit
+SQLite REAL conversion. History reads use a lossless text projection before exact
+comparison; schema checks, ownership fences and bounded recovery remain enforced.
+This source correction is not evidence of a deployed recovery or a history rewrite.
+
 Production API hosting moved to the existing Oracle Free VM on 2026-10-16; the
 Vercel frontend and existing data services remain. See the
 [verified hosting cutover](docs/engineering/DEPLOYMENT.md)
