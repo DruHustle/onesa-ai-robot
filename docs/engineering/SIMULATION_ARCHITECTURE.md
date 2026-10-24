@@ -171,3 +171,27 @@ Before implementing a learned policy, review its model/data rights, supported
 interface and bounded evaluation budget separately. Physical controllers, local
 interlocks and emergency-stop qualification require their own hardware integration;
 passing this milestone grants no physical-operation authority.
+
+## Next physical-controller acceptance plan — proposed, not authorised to execute
+
+Before a hardware experiment, the owner must supply the actual controller, joint,
+limits, enclosure/work area, device identities, qualified safety engineer and local
+emergency-stop/interlock design. Record manufacturer manuals and firmware/revision
+provenance, permitted operators, hazards, test boundaries, stopping criteria and
+an explicit hardware-test authorisation. No physical target or measured safety
+performance is established by this plan.
+
+| Gate | Required evidence before proceeding |
+| --- | --- |
+| Bench identification | Controller/drive/motor/sensor serials and firmware; wiring, units, gearing, limits and independently reviewed hazards. |
+| Passive connection | Read-only device authentication and telemetry; timestamp/sequence/freshness, disconnect and wrong-device refusal; zero motion output. |
+| Independent stop | Hardware emergency stop/interlock/watchdog proven without relying on browser, model or remote API; actual measured stop response under the reviewed procedure. |
+| Authority | Fresh designated-operator session, explicit scoped permission, proposal expiry, password confirmation, limits and physical enabling are independently checked. |
+| Bounded movement | Only after the preceding gates and separate motion authority: one approved joint/trajectory within the reviewed work area; record actual position/velocity/current and failure observations. |
+| Failure and restart | Lost heartbeat/network/sensor, stale/replayed command, operator logout/revocation and process/controller restart stop/refuse; no command replay or automatic resume. |
+| Review | Named engineer reviews raw measurements, deviations and residual risk for the exact hardware/firmware/configuration. No safety certification or general deployment approval is inferred. |
+
+Every failed or unobserved gate stops the next stage. Software simulator results,
+future speech/perception/VLA plans and session permission do not substitute for
+physical qualification. Preserve the current software simulator and its data while
+this separate development target remains unavailable.
