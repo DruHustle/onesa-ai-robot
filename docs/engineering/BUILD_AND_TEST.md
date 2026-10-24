@@ -1,5 +1,9 @@
 # Independent software builds and tests
 
+CI and hosted artifact-build workflows pin Node 24.22.1 explicitly; a cached
+`24` major selector can otherwise select an older vulnerable patch. Runtime images
+and provider-managed runtimes require their own source-bound verification.
+
 `tests/test_numeric_history.py` reproduces one-ULP numeric JSON transport drift,
 then checks exact decimal-text/SQLite conversion, adjacent representable values,
 unchanged persisted history, idle recovery and stale-owner refusal. Numeric history
@@ -219,7 +223,7 @@ source. Navigation and assertion deadlines remain unchanged.
 
 ## Node TLS trust regression
 
-Use Node 24.12 or later in the 24 series. Run
+Use Node 24.22.1 or a later reviewed security patch in the 24 series. Run
 `node --test scripts/test_tls_trust.mjs` from the repository root. The test uses
 a known public CA certificate and newly generated synthetic localhost certificates
 in isolated child processes. It proves native fetch/HTTPS trust, rejection of

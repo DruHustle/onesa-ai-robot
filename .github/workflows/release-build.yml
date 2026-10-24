@@ -33,7 +33,7 @@ jobs:
       run: python3 scripts/release/cloud.py preflight Production
     - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
       with:
-        node-version: '24'
+        node-version: '24.22.1'
     - name: Install pinned deployment CLI
       run: npm install --global vercel@63.1.0
     - name: Install locked frontend tooling
