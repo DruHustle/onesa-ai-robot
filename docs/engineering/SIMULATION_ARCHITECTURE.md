@@ -195,3 +195,5 @@ Every failed or unobserved gate stops the next stage. Software simulator results
 future speech/perception/VLA plans and session permission do not substitute for
 physical qualification. Preserve the current software simulator and its data while
 this separate development target remains unavailable.
+
+The runtime security candidate uses official Node 24.22.1 for the separately packaged frontend image, following the [Node maintainer security advisory](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases). This changes no simulator/controller authority, hardware readiness or physical motion scope; provider-managed frontend and Python API image identities remain independently qualified.
