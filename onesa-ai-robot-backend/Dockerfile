@@ -3,11 +3,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 COPY --from=ghcr.io/astral-sh/uv:0.13.0@sha256:cdc6093146eb3ff6a40107b38f008b789e050e77ad87865e381d9917da55a168 /uv /usr/local/bin/uv
 WORKDIR /build
 COPY requirements.lock ./
-RUN apk upgrade --no-cache && uv pip install --no-cache --require-hashes --prefix=/install -r requirements.lock
+RUN apk upgrade --no-cache && apk add --no-cache 'musl>=1.2.6-r3' 'musl-utils>=1.2.6-r3' && uv pip install --no-cache --require-hashes --prefix=/install -r requirements.lock
 FROM python:3.11.17-alpine3.24@sha256:d9368b3a5ac59afea7b5d4f2e2aea0941dbf9fdee9c369c5bec00b98244bc929
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
-RUN apk upgrade --no-cache && adduser -D -u 10001 onesa && mkdir storage && chown onesa:onesa storage
+RUN apk upgrade --no-cache && apk add --no-cache 'musl>=1.2.6-r3' 'musl-utils>=1.2.6-r3' && adduser -D -u 10001 onesa && mkdir storage && chown onesa:onesa storage
 COPY --from=build /install /usr/local
 COPY robot_api ./robot_api
 COPY start.sh ./
