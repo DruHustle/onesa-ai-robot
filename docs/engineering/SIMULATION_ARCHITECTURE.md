@@ -197,3 +197,55 @@ physical qualification. Preserve the current software simulator and its data whi
 this separate development target remains unavailable.
 
 The runtime security candidate uses official Node 24.22.1 for the separately packaged frontend image, following the [Node maintainer security advisory](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases). This changes no simulator/controller authority, hardware readiness or physical motion scope; provider-managed frontend and Python API image identities remain independently qualified.
+
+## Versioned industrial inspection
+
+The `inspection` module separates immutable mission requests/plans, profile and
+skill declarations, deterministic observations, evaluation and read-only reporting.
+`POST /api/v1/missions` builds the P-101 plan on the server. Plans bind the scenario
+and seed, reference asset/limits, complete profile, skill digest, starting pose,
+bounded target/durations and five versioned steps. A SHA256 covers the whole plan.
+Approval requires the existing session, Origin/CSRF and password plus that exact
+hash within15seconds. The legacy task approval path cannot approve a mission.
+Changed capabilities, skills, source context or starting pose fail independent
+validation. One mission uses the existing single-active-task authority; no model,
+imported text, render frame or replay command becomes another executor.
+
+A run contains at most16 transitions, three observations, three telemetry values
+and nine findings. The optional proposal extension fits within the existing16KiB
+fenced journal payload; no migration or second journal is introduced. Simulator
+motion is calculated by the independent quintic gate. Journal writes occur at
+step/terminal transitions, not per rendered frame. Normal execution, completed
+findings, interruption and failure are distinct outcomes. Stop/watchdog/session
+loss/storage failure/restart cancel authority and preserve partial evidence. Reset
+never resumes a mission. Restart duration is the last recorded evidence duration;
+no unobserved interval or exact crash time is reconstructed.
+
+The native SVG scene illustrates the industrial task and observed/calculated joint
+position. It is not rigid-body physics, camera/OCR, learned inference or hardware.
+Terminal replay interpolates the same recorded bounded trajectory and displays
+recorded events; slider/play/pause operate entirely in the browser and issue no
+API request. Structured exports are authenticated and object-owned. Public pages
+are script-free, contain only original illustration/copy, and never read records.
+The console polls at500ms for active/pending tasks and3s when idle, suspends reads
+and replay when hidden, and pauses replay off-screen or for reduced motion.
+
+Optional `ROBOT_CONTEXT_IMPORT_ENABLED` defaults false. An owned AI Platform
+`/api/v1/twins/assets/{id}/robotics/v1` download supplies a read-only file, never an
+AI-to-Robot login or service token. Robot accepts at most240KB of source JSON,
+16levels, strict contract/version and explicit three-tag mapping in expected P-101
+units. The AI contract’s UCUM `Cel` is an exact symbol alias for °C; the
+original `source_unit` remains in evidence. No Kelvin/Pascal conversion is guessed.
+Only this import HTTP path has a256KiB envelope; operational bodies remain
+16KiB. Preserve source asset UUID, source/tag reference, original timestamp/unit,
+declared connection/quality and server-computed raw-file digest. Imported content
+is untrusted, not signed operational authority or a verified live feed. A session
+can review at most four snapshots, expiring after10minutes (global16); logout and
+restart discard transient imports. A new plan copies its reviewed bounded snapshot
+into the journal. The existing live export excludes simulated data; missing,
+revoked, stale or unmapped evidence cannot silently become a fresh observation.
+No external URL is fetched and no maintenance write is implemented.
+
+See [FluxVLA evaluation](FLUXVLA_EVALUATION.md) for the pinned third-party review
+and precise deferred model-evaluation path. No new service, GPU or paid resource
+is required by the deterministic workflow.

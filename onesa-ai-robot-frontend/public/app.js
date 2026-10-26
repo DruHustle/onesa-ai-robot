@@ -1,21 +1,24 @@
+import {createInspection} from './inspection.js';
 import {RobotClient} from './client.js';
 const client = new RobotClient();
 const byId = id => document.getElementById(id);
+let fastPoll=false,lastIdlePoll=0;
 let csrf = '', proposalId = '', timer, polling = null, generation=0, suspended=false, observationReady=false;
 const busyForms=new WeakSet();
-const observationForms=[['reset-form','reset-submit'],['proposal-form','proposal-submit'],['approval-form','approve-submit']];
+const observationForms=[['reset-form','reset-submit'],['proposal-form','proposal-submit'],['approval-form','approve-submit'],['mission-form','mission-submit'],['mission-approval','mission-approve-submit']];
 function setObservationReady(ready){observationReady=ready;for(const [formId,buttonId]of observationForms)byId(buttonId).disabled=!ready||busyForms.has(byId(formId));}
 let administrator=false,permissionRevision=null,permissionRead=null,lastPermissionRead=0;
 function operatorNextStep(status,proposal){if(!status||typeof status.stopped!=='boolean'||!(status.active_task===null||typeof status.active_task==='string'))return 'Waiting for a current simulator observation. Stop remains available.';if(status.stopped)return 'Stopped. Confirm your password to reset; no previous task resumes.';if(status.active_task)return 'Simulation running. Monitor the result or use Stop simulation.';if(proposal)return 'Review the proposed target and duration, then confirm within 15 seconds or cancel.';return 'Ready. Set a target and duration, then create a proposal.';}
 const notice = text => { byId('notice').textContent = text; };
+const inspector=createInspection(client,{run,notice});
 
 function sessionPresentation(authenticated){
  document.body?.setAttribute('data-session',authenticated?'authenticated':'signed-out');
  const heading=byId('console-title'),description=byId('console-description');
- if(heading)heading.textContent=authenticated?'Simulation operations':'Operator Console';
- if(description)description.textContent=authenticated?'A protected one-joint software simulator for authorized development and testing.':'Use your approved operator account to access development simulation.';
+ if(heading)heading.textContent=authenticated?'Industrial inspection':'Operator Console';
+ if(description)description.textContent=authenticated?'Plan, supervise and review a synthetic pump inspection. No physical device is connected.':'Use your approved operator account to access development simulation.';
 }
-function signedOut() {sessionPresentation(false);setObservationReady(false);generation++; clearInterval(timer);csrf='';client.csrf='';proposalId='';administrator=false;permissionRevision=null;permissionRead=null;lastPermissionRead=0;byId('administrator').hidden=true;byId('physical-permission-state').textContent='Unavailable';byId('physical-operation-state').textContent='Unavailable';byId('operator').hidden=true;byId('login-form').hidden=false;byId('approval-form').hidden=true;byId('history').replaceChildren();for(const field of document.querySelectorAll('input[type="password"]'))field.value=''; }
+function signedOut() {inspector.reset();fastPoll=false;lastIdlePoll=0;sessionPresentation(false);setObservationReady(false);generation++; clearInterval(timer);csrf='';client.csrf='';proposalId='';administrator=false;permissionRevision=null;permissionRead=null;lastPermissionRead=0;byId('administrator').hidden=true;byId('physical-permission-state').textContent='Unavailable';byId('physical-operation-state').textContent='Unavailable';byId('operator').hidden=true;byId('login-form').hidden=false;byId('approval-form').hidden=true;byId('history').replaceChildren();for(const field of document.querySelectorAll('input[type="password"]'))field.value=''; }
 function renderPhysicalPermission(value){
  if(!['allowed','blocked'].includes(value?.permission)||!Number.isSafeInteger(value.revision)||value.revision<0||value.controller_connection!=='not_connected'||value.controller_readiness!=='not_ready'||value.physical_operation!=='inactive'||value.physical_actuation!==false)throw new Error('Physical-operation state could not be verified.');
  if(permissionRevision!==null&&value.revision<permissionRevision)return;
@@ -33,7 +36,9 @@ async function readPhysicalPermission(){
  finally{if(permissionRead===owner)permissionRead=null;}
 }
 function setAdministrator(session){administrator=session.role==='administrator';permissionRevision=null;permissionRead=null;lastPermissionRead=0;byId('administrator').hidden=!administrator;if(administrator)void readPhysicalPermission();}
-async function refresh() {
+async function refresh(force=true) {
+  if(document.hidden||!force&&!fastPoll&&performance.now()-lastIdlePoll<3000)return;
+  lastIdlePoll=performance.now();
   if(suspended || polling || !csrf) return;
   const owner={};polling=owner;const current=generation,observations=[];
   try {
@@ -43,8 +48,10 @@ async function refresh() {
     const [status,{tasks}]=await Promise.all(observations);
     if(suspended || current!==generation) return;
     if(proposalId){const proposed=tasks.find(task=>task.id===proposalId);if(proposed&&proposed.state!=='proposed'){proposalId='';byId('approval-form').hidden=true;byId('approve-password').value='';}}
-    byId('next-step').textContent=operatorNextStep(status,proposalId);
+    fastPoll=Boolean(status.active_task)||Boolean(proposalId)||inspector.hasPending();
+    byId('next-step').textContent=status.stopped?operatorNextStep(status,proposalId):status.active_task?'Simulation running. Monitor the inspection below or use Stop simulation.':proposalId?operatorNextStep(status,proposalId):inspector.guidance?.(status)||'Ready. Choose an inspection scenario, review its plan, then approve.';
     byId('connection').textContent='Connected to software simulator';
+    byId('reset-form').hidden=!status.stopped;
     byId('stop-state').textContent=status.stopped?'Stopped — password-confirmed reset required':'Ready for a simulation proposal';
     byId('position').textContent=Number(status.position_radians).toFixed(4);
     byId('active').textContent=status.active_task || 'None';
@@ -55,8 +62,9 @@ async function refresh() {
     byId('history').replaceChildren(...tasks.map(task=>{const li=document.createElement('li');li.textContent=`${task.state} · ${task.id} · ${task.reason} · ${new Date(task.created*1000).toLocaleString()} · ${Number(task.position).toFixed(4)} rad`;if(task.state==='running'){const button=document.createElement('button');button.textContent='Cancel running task';button.addEventListener('click',()=>run(()=>client.cancel(task.id),'Task cancelled; simulation stopped.'));li.append(button);}return li;}));
     if(!tasks.length){const li=document.createElement('li');li.textContent='No simulation tasks yet. Reset the stop state to create a proposal.';byId('history').append(li);}
     setObservationReady(true);
+    void inspector.refresh(status);
     if(administrator&&performance.now()-lastPermissionRead>5000)void readPhysicalPermission();
-  } catch(error) {if(current!==generation) return;setObservationReady(false);byId('stop-state').textContent='Unavailable — current observation could not be verified';byId('connection').textContent='Disconnected — telemetry is stale; the gateway watchdog stops running simulation tasks.';byId('position').textContent='Stale · latest response unavailable';byId('next-step').textContent=operatorNextStep(null,'');if(error.status===401) signedOut();notice(error.message);}
+  } catch(error) {if(current!==generation) return;setObservationReady(false);byId('reset-form').hidden=false;inspector.stale();byId('stop-state').textContent='Unavailable — current observation could not be verified';byId('connection').textContent='Disconnected — telemetry is stale; the gateway watchdog stops running simulation tasks.';byId('position').textContent='Stale · latest response unavailable';byId('next-step').textContent=operatorNextStep(null,'');if(error.status===401) signedOut();notice(error.message);}
   finally {await Promise.allSettled(observations);if(polling===owner)polling=null;}
 }
 const unavailableSignIn='Simulator is unavailable. Your sign-in entries are retained. Wait a moment, then select Sign in again.';
@@ -90,7 +98,7 @@ async function run(action, success, form=null,expectedGeneration=null) {
   catch(error){if(suspended||expectedGeneration!==null&&expectedGeneration!==generation)return;if(error.status===401) signedOut();notice(form?.id==='login-form'&&([502,503,504].includes(error.status)||['AbortError','TimeoutError','TypeError'].includes(error.name))?unavailableSignIn:error.message);}
   finally{if(form){busyForms.delete(form);form.removeAttribute('aria-busy');controls.forEach(control=>control.disabled=observationForms.some(([id])=>id===form.id)&&!observationReady);}}
 }
-byId('login-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{await waitForSimulator();const session=await client.login({name:byId('name').value,password:byId('password').value});byId('password').value='';generation++;csrf=session.csrf;client.csrf=csrf;setAdministrator(session);byId('login-form').hidden=true;byId('operator').hidden=false;sessionPresentation(true);timer=setInterval(refresh,500);},'Signed in.',event.currentTarget);});
+byId('login-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{await waitForSimulator();const session=await client.login({name:byId('name').value,password:byId('password').value});byId('password').value='';generation++;csrf=session.csrf;client.csrf=csrf;setAdministrator(session);byId('login-form').hidden=true;byId('operator').hidden=false;sessionPresentation(true);inspector.authenticate();timer=setInterval(()=>refresh(false),500);},'Signed in.',event.currentTarget);});
 byId('physical-permission-form').addEventListener('submit',event=>{event.preventDefault();const password=byId('physical-permission-password').value,revision=permissionRevision,current=generation;byId('physical-permission-password').value='';run(async()=>{if(!administrator||revision===null)throw new Error('Refresh and review the current administrator permission before allowing operation.');const value=await client.allowPhysical({password,expected_revision:revision});if(current===generation&&administrator&&!suspended)renderPhysicalPermission(value);},'Permission request completed. The current confirmed state is shown in Robot administration; no movement started.',event.currentTarget,current);});
 byId('block-physical-permission').addEventListener('click',()=>{const current=generation;run(async()=>{const value=await client.blockPhysical();if(current===generation&&administrator&&!suspended)renderPhysicalPermission(value);},'Administrator permission blocked.',null,current);});
 byId('reset-form').addEventListener('submit',event=>{event.preventDefault();const password=byId('reset-password').value;byId('reset-password').value='';run(()=>client.reset({password}),'Simulation stop reset.',event.currentTarget);});
@@ -101,10 +109,12 @@ byId('stop').addEventListener('click',()=>run(()=>client.stop(),'Simulation stop
 byId('logout').addEventListener('click',()=>run(async()=>{await client.logout();signedOut();},'Signed out; this session cannot authorize further tasks.'));
 // No localStorage/sessionStorage, token URLs or persistence of operator credentials.
 
-function restoreSession(){const current=++generation;return client.me().then(session=>{if(current!==generation)return;csrf=session.csrf;client.csrf=csrf;setAdministrator(session);byId('login-form').hidden=true;byId('operator').hidden=false;sessionPresentation(true);timer=setInterval(refresh,500);return refresh();}).catch(error=>{if(current===generation&&error.status!==401&&error.name!=='AbortError')notice(error.message);});}
-function suspendRequests(){setObservationReady(false);suspended=true;generation++;clearInterval(timer);client.cancelPending();polling=null;}
+function restoreSession(){const current=++generation;return client.me().then(session=>{if(current!==generation)return;csrf=session.csrf;client.csrf=csrf;setAdministrator(session);byId('login-form').hidden=true;byId('operator').hidden=false;sessionPresentation(true);inspector.authenticate();timer=setInterval(()=>refresh(false),500);return refresh();}).catch(error=>{if(current!==generation)return;if(error.status===401)signedOut();else if(error.name!=='AbortError')notice(error.message);});}
+function suspendRequests(){inspector.stale();setObservationReady(false);suspended=true;generation++;clearInterval(timer);client.cancelPending();polling=null;}
 window.addEventListener('beforeunload',suspendRequests);
 window.addEventListener('pagehide',suspendRequests);
 window.addEventListener('pageshow',event=>{if(event.persisted){suspended=false;restoreSession();}});
 setObservationReady(false);
 restoreSession();
+
+document.addEventListener('visibilitychange',()=>{if(document.hidden)suspendRequests();else if(suspended){suspended=false;restoreSession();}});

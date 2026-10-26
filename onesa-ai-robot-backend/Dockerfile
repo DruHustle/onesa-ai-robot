@@ -11,6 +11,9 @@ RUN apk upgrade --no-cache && apk add --no-cache 'musl>=1.2.6-r3' 'musl-utils>=1
 COPY --from=build /install /usr/local
 COPY robot_api ./robot_api
 COPY start.sh ./
+ARG SOURCE_COMMIT
+ARG SOURCE_ARCHIVE_SHA256
+LABEL org.opencontainers.image.revision=$SOURCE_COMMIT org.onesa.source-archive-sha256=$SOURCE_ARCHIVE_SHA256
 RUN rm -rf /usr/local/lib/python3.11/ensurepip /usr/local/lib/python3.11/site-packages/pip* /usr/local/lib/python3.11/site-packages/setuptools* /usr/local/lib/python3.11/site-packages/wheel* /usr/local/bin/pip*
 USER onesa
 EXPOSE 8431

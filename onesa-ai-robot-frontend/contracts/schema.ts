@@ -191,6 +191,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/missions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Missions */
+        get: operations["missions_api_v1_missions_get"];
+        put?: never;
+        /** Plan Mission */
+        post: operations["plan_mission_api_v1_missions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/missions/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mission Catalog */
+        get: operations["mission_catalog_api_v1_missions_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/missions/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import Mission Context */
+        post: operations["import_mission_context_api_v1_missions_context_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/missions/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Mission */
+        get: operations["read_mission_api_v1_missions__task_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/missions/{task_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Mission */
+        post: operations["approve_mission_api_v1_missions__task_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/missions/{task_id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Mission */
+        get: operations["export_mission_api_v1_missions__task_id__export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ready": {
         parameters: {
             query?: never;
@@ -326,6 +429,56 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** Asset */
+        Asset: {
+            /** Context Imported At */
+            context_imported_at?: number | null;
+            /**
+             * Context Kind
+             * @default synthetic
+             * @enum {string}
+             */
+            context_kind: "synthetic" | "reviewed_import";
+            /**
+             * Context Version
+             * @default 1.0.0
+             * @constant
+             */
+            context_version: "1.0.0";
+            /** Id */
+            id: string;
+            /**
+             * Imported Telemetry
+             * @default []
+             */
+            imported_telemetry: components["schemas"]["Observation"][];
+            /** Measures */
+            measures: components["schemas"]["Measure"][];
+            /** Name */
+            name: string;
+            /** Operating Context */
+            operating_context: string;
+            /** Source */
+            source: string;
+            /**
+             * Source Asset Id
+             * @default
+             */
+            source_asset_id: string;
+            /**
+             * Source Asset Name
+             * @default
+             */
+            source_asset_name: string;
+            /** Source Asset Revision */
+            source_asset_revision?: number | null;
+            /** Source Model Id */
+            source_model_id?: string | null;
+            /** Source Observed At */
+            source_observed_at?: number | null;
+            /** Source Sha256 */
+            source_sha256?: string | null;
+        };
         /** Capabilities */
         Capabilities: {
             /**
@@ -371,10 +524,78 @@ export interface components {
              */
             vlm: "not_configured";
         };
+        /** CatalogScenario */
+        CatalogScenario: {
+            /**
+             * Id
+             * @enum {string}
+             */
+            id: "normal" | "threshold" | "discrepancy" | "interrupted" | "missing" | "stale" | "units";
+            /** Label */
+            label: string;
+            /**
+             * Source
+             * @constant
+             */
+            source: "synthetic scenario/v1";
+        };
         /** Confirmation */
         Confirmation: {
             /** Password */
             password: string;
+        };
+        /** ContextRequest */
+        ContextRequest: {
+            /** Document */
+            document: string;
+            /** Mapping */
+            mapping: {
+                [key: string]: string;
+            };
+        };
+        /** Event */
+        Event: {
+            /**
+             * Actor
+             * @default system
+             */
+            actor: string;
+            /** At */
+            at: number;
+            /** Detail */
+            detail: string;
+            /** Elapsed Seconds */
+            elapsed_seconds: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "planned" | "approved" | "execution_started" | "step_completed" | "completed" | "interrupted" | "failed";
+        };
+        /** Finding */
+        Finding: {
+            /** Explanation */
+            explanation: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "threshold" | "discrepancy" | "missing" | "stale" | "unit_mismatch";
+            /**
+             * Metric
+             * @enum {string}
+             */
+            metric: "temperature" | "pressure" | "vibration";
+            /** Observation Index */
+            observation_index: number;
+            /**
+             * Rule Version
+             * @default 1.0.0
+             * @constant
+             */
+            rule_version: "1.0.0";
+            /** Telemetry Index */
+            telemetry_index?: number | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -387,6 +608,155 @@ export interface components {
             name: string;
             /** Password */
             password: string;
+        };
+        /** Measure */
+        Measure: {
+            /** Discrepancy Tolerance */
+            discrepancy_tolerance: number;
+            /** Maximum */
+            maximum: number;
+            /**
+             * Metric
+             * @enum {string}
+             */
+            metric: "temperature" | "pressure" | "vibration";
+            /** Minimum */
+            minimum: number;
+            /**
+             * Stale Seconds
+             * @default 30
+             */
+            stale_seconds: number;
+            /** Unit */
+            unit: string;
+        };
+        /** MissionCatalog */
+        MissionCatalog: {
+            /**
+             * Asset Context Import
+             * @enum {string}
+             */
+            asset_context_import: "enabled" | "disabled_by_configuration";
+            /** Assets */
+            assets: components["schemas"]["Asset"][];
+            /**
+             * Mode
+             * @constant
+             */
+            mode: "simulation";
+            /**
+             * Model Inference
+             * @constant
+             */
+            model_inference: "not_configured";
+            /**
+             * Physical Actuation
+             * @constant
+             */
+            physical_actuation: false;
+            /** Robots */
+            robots: components["schemas"]["RobotProfile"][];
+            /** Scenarios */
+            scenarios: components["schemas"]["CatalogScenario"][];
+            /** Skills */
+            skills: components["schemas"]["Skill"][];
+            /**
+             * Version
+             * @constant
+             */
+            version: "1.0.0";
+        };
+        /** MissionConfirmation */
+        MissionConfirmation: {
+            /** Expected Plan Sha256 */
+            expected_plan_sha256: string;
+            /** Password */
+            password: string;
+        };
+        /** MissionDetail */
+        MissionDetail: {
+            /** Id */
+            id: string;
+            record: components["schemas"]["Record"];
+            /** Report */
+            report: {
+                [key: string]: unknown;
+            };
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "proposed" | "running" | "completed" | "cancelled";
+        };
+        /** MissionRequest */
+        MissionRequest: {
+            /**
+             * Asset Id
+             * @default pump-p-101
+             * @constant
+             */
+            asset_id: "pump-p-101";
+            /**
+             * Command Id
+             * Format: uuid
+             */
+            command_id: string;
+            /** Context Id */
+            context_id?: string | null;
+            /** Robot Profile Id */
+            robot_profile_id: string;
+            /**
+             * Scenario
+             * @enum {string}
+             */
+            scenario: "normal" | "threshold" | "discrepancy" | "interrupted" | "missing" | "stale" | "units";
+            /**
+             * Seed
+             * @default 101
+             */
+            seed: number;
+        };
+        /** Observation */
+        Observation: {
+            /**
+             * Declared Connection
+             * @default not_applicable
+             */
+            declared_connection: string;
+            /**
+             * Declared Freshness
+             * @default not_applicable
+             */
+            declared_freshness: string;
+            /**
+             * Metric
+             * @enum {string}
+             */
+            metric: "temperature" | "pressure" | "vibration";
+            /** Observed At */
+            observed_at: number;
+            /**
+             * Quality
+             * @default good
+             * @enum {string}
+             */
+            quality: "good" | "missing" | "unknown";
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "scenario_observation" | "synthetic_iot" | "reviewed_import";
+            /** Source Ref */
+            source_ref: string;
+            /**
+             * Source Unit
+             * @default
+             */
+            source_unit: string;
+            /** Unit */
+            unit: string;
+            /** Value */
+            value: number | null;
         };
         /** PhysicalPermissionConfirmation */
         PhysicalPermissionConfirmation: {
@@ -433,6 +803,91 @@ export interface components {
             /** Sampled At */
             sampled_at: number;
         };
+        /** Plan */
+        Plan: {
+            asset: components["schemas"]["Asset"];
+            /** Created At */
+            created_at: number;
+            /**
+             * Duration Seconds
+             * @default 6
+             */
+            duration_seconds: number;
+            /**
+             * Mission Id
+             * Format: uuid
+             */
+            mission_id: string;
+            /**
+             * Motion Duration Seconds
+             * @default 2
+             */
+            motion_duration_seconds: number;
+            /**
+             * Motion Starts At Seconds
+             * @default 1
+             */
+            motion_starts_at_seconds: number;
+            /**
+             * Observation Method
+             * @default deterministic_scenario/v1
+             * @constant
+             */
+            observation_method: "deterministic_scenario/v1";
+            /**
+             * Physical Actuation
+             * @default false
+             * @constant
+             */
+            physical_actuation: false;
+            profile: components["schemas"]["RobotProfile"];
+            /**
+             * Scenario
+             * @enum {string}
+             */
+            scenario: "normal" | "threshold" | "discrepancy" | "interrupted" | "missing" | "stale" | "units";
+            /**
+             * Scenario Version
+             * @default 1.0.0
+             * @constant
+             */
+            scenario_version: "1.0.0";
+            /** Seed */
+            seed: number;
+            /** Skills Sha256 */
+            skills_sha256: string;
+            /** Start Radians */
+            start_radians: number;
+            /** Steps */
+            steps: components["schemas"]["Step"][];
+            /**
+             * Target Radians
+             * @default 0.1
+             */
+            target_radians: number;
+            /**
+             * Task
+             * @default inspect_pump
+             * @constant
+             */
+            task: "inspect_pump";
+            /**
+             * Timeout Seconds
+             * @default 9
+             */
+            timeout_seconds: number;
+            /**
+             * Title
+             * @constant
+             */
+            title: "Inspect Pump P-101 and report abnormal readings";
+            /**
+             * Version
+             * @default 1.0.0
+             * @constant
+             */
+            version: "1.0.0";
+        };
         /** Proposal */
         Proposal: {
             /**
@@ -442,10 +897,82 @@ export interface components {
             command_id: string;
             /** Duration Seconds */
             duration_seconds: number;
+            inspection?: components["schemas"]["Record"] | null;
             /** Issued At */
             issued_at: number;
             /** Target Radians */
             target_radians: number;
+        };
+        /** Record */
+        Record: {
+            /**
+             * Elapsed Seconds
+             * @default 0
+             */
+            elapsed_seconds: number;
+            /**
+             * Events
+             * @default []
+             */
+            events: components["schemas"]["Event"][];
+            /**
+             * Findings
+             * @default []
+             */
+            findings: components["schemas"]["Finding"][];
+            /**
+             * Observations
+             * @default []
+             */
+            observations: components["schemas"]["Observation"][];
+            /**
+             * Outcome
+             * @default awaiting_approval
+             * @enum {string}
+             */
+            outcome: "awaiting_approval" | "running" | "completed_normal" | "completed_findings" | "interrupted" | "failed";
+            plan: components["schemas"]["Plan"];
+            /** Plan Sha256 */
+            plan_sha256: string;
+            /**
+             * Schema Version
+             * @default onesa-robot-inspection/v1
+             * @constant
+             */
+            schema_version: "onesa-robot-inspection/v1";
+            /** Started At */
+            started_at?: number | null;
+            /**
+             * Telemetry
+             * @default []
+             */
+            telemetry: components["schemas"]["Observation"][];
+        };
+        /** RobotProfile */
+        RobotProfile: {
+            /**
+             * Adapter
+             * @enum {string}
+             */
+            adapter: "synthetic_joint/v1" | "display_only/v1";
+            /** Capabilities */
+            capabilities: string[];
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Physical Connection
+             * @default not_connected
+             * @constant
+             */
+            physical_connection: "not_connected";
+            /**
+             * Version
+             * @default 1.0.0
+             * @constant
+             */
+            version: "1.0.0";
         };
         /** SessionResponse */
         SessionResponse: {
@@ -459,6 +986,31 @@ export interface components {
              * @enum {string}
              */
             role: "operator" | "administrator";
+        };
+        /** Skill */
+        Skill: {
+            /** Completion Condition */
+            completion_condition: string;
+            /** Id */
+            id: string;
+            /** Inputs */
+            inputs: string[];
+            /** Name */
+            name: string;
+            /** Operating Limits */
+            operating_limits: string;
+            /** Preconditions */
+            preconditions: string[];
+            /** Required Capabilities */
+            required_capabilities: string[];
+            /** Timeout Seconds */
+            timeout_seconds: number;
+            /**
+             * Version
+             * @default 1.0.0
+             * @constant
+             */
+            version: "1.0.0";
         };
         /** StatusResponse */
         StatusResponse: {
@@ -488,6 +1040,19 @@ export interface components {
             sampled_at: number;
             /** Stopped */
             stopped: boolean;
+        };
+        /** Step */
+        Step: {
+            /** Completes At Seconds */
+            completes_at_seconds: number;
+            /** Skill Id */
+            skill_id: string;
+            /**
+             * Skill Version
+             * @default 1.0.0
+             * @constant
+             */
+            skill_version: "1.0.0";
         };
         /** TaskList */
         TaskList: {
@@ -830,6 +1395,209 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ActionResponse"];
+                };
+            };
+        };
+    };
+    missions_api_v1_missions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    plan_mission_api_v1_missions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MissionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mission_catalog_api_v1_missions_catalog_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionCatalog"];
+                };
+            };
+        };
+    };
+    import_mission_context_api_v1_missions_context_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContextRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_mission_api_v1_missions__task_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_mission_api_v1_missions__task_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MissionConfirmation"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_mission_api_v1_missions__task_id__export_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

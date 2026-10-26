@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "asset": "pump-inspection.svg",
+  "sha256": "8c8c153a54697ad0e863c1e44cd5fd6e946b7e3b0108401de55943688ad02314",
+  "authorship": "Original Onesa native SVG illustration created for the deterministic P-101 software demonstration",
+  "third_party_media": false,
+  "hardware_depicted": "Illustrative software robot, not an Onesa physical product or LimX hardware",
+  "operator_data": false
+}

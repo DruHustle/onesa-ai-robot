@@ -6,6 +6,7 @@ export type SimulationStatus = components['schemas']['StatusResponse'];
 export type TaskList = components['schemas']['TaskList'];
 type ApiPath = keyof paths;
 const routes = {
+ missions:'/api/v1/missions',mission:'/api/v1/missions/{task_id}',missionCatalog:'/api/v1/missions/catalog',missionApprove:'/api/v1/missions/{task_id}/approve',missionExport:'/api/v1/missions/{task_id}/export',context:'/api/v1/missions/context',
  me:'/api/v1/auth/me',login:'/api/v1/auth/login',logout:'/api/v1/auth/logout',status:'/api/v1/status',
  tasks:'/api/v1/tasks',heartbeat:'/api/v1/heartbeat',stop:'/api/v1/stop',reset:'/api/v1/reset',
  approve:'/api/v1/tasks/{task_id}/approve',cancel:'/api/v1/tasks/{task_id}/cancel'
@@ -31,6 +32,13 @@ export class RobotClient {
   return data as T;
   }finally{clearTimeout(deadline);lifecycle.removeEventListener('abort',cancel);}
  }
+ missionCatalog(){return this.request<components['schemas']['MissionCatalog']>(routes.missionCatalog);}
+ missions(){return this.request<{missions:{id:string;asset:string;scenario:string;outcome:components['schemas']['Record']['outcome'];created:number;finding_count:number}[]}>(routes.missions);}
+ mission(id:string){return this.request<components['schemas']['MissionDetail']>(routes.mission.replace('{task_id}',encodeURIComponent(id)));}
+ planMission(value:components['schemas']['MissionRequest']){return this.request<components['schemas']['MissionDetail']>(routes.missions,value);}
+ approveMission(id:string,value:components['schemas']['MissionConfirmation']){return this.request<components['schemas']['MissionDetail']>(routes.missionApprove.replace('{task_id}',encodeURIComponent(id)),value);}
+ exportMission(id:string){return this.request<components['schemas']['MissionDetail']>(routes.missionExport.replace('{task_id}',encodeURIComponent(id)));}
+ importContext(value:components['schemas']['ContextRequest']){return this.request<{id:string;asset:components['schemas']['Asset']}>(routes.context,value);}
  me(){return this.request<components['schemas']['SessionResponse']>(routes.me);}
  login(value:Login){return this.request<components['schemas']['SessionResponse']>(routes.login,value);}
  logout(){return this.request<components['schemas']['ActionResponse']>(routes.logout,{});}
