@@ -6,6 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from robot_api import inspection as inspection_core
+
 
 class Proposal(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -13,6 +15,7 @@ class Proposal(BaseModel):
     issued_at: float
     target_radians: float = Field(ge=-1, le=1)
     duration_seconds: float = Field(ge=1, le=10)
+    inspection: inspection_core.Record | None = None
 
 
 class SafetyViolation(ValueError):
@@ -32,12 +35,27 @@ class SafetyGate:
         age = clock - command.issued_at
         if not isfinite(age) or age < -1 or age > self.freshness_seconds:
             raise SafetyViolation("Stale or future proposal")
+        duration = command.duration_seconds
+        if command.inspection is not None:
+            if command.issued_at != command.inspection.plan.created_at:
+                raise SafetyViolation("Proposal time differs from the approved plan")
+            try:
+                inspection_core.validate(
+                    command.inspection,
+                    command.command_id,
+                    start,
+                    command.target_radians,
+                    command.duration_seconds,
+                )
+            except ValueError as error:
+                raise SafetyViolation(str(error)) from None
+            duration = command.inspection.plan.motion_duration_seconds
         distance = abs(command.target_radians - start)
         # Exact peak derivatives of the quintic smooth-step trajectory.
         self.check(
             start,
-            1.875 * distance / command.duration_seconds,
-            5.774 * distance / command.duration_seconds**2,
+            1.875 * distance / duration,
+            5.774 * distance / duration**2,
         )
         self.check(command.target_radians, 0, 0)
 

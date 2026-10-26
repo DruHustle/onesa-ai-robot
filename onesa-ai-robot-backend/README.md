@@ -31,7 +31,7 @@ SameSite Strict and Secure on HTTPS. Mutations need exact Origin plus session CS
 proof. Stop is operator-authorized. Reset and approval also require password proof.
 There is one configured operator identity; multi-user roles are not claimed. Login
 attempts and active sessions are bounded. Tasks/history are bounded and persisted.
-Mutating request bodies are limited to 16 KiB and a five-second total receive
+Operational request bodies are limited to 16 KiB and a five-second total receive
 deadline, including clients that trickle bytes. Incomplete requests return 408;
 this does not replace frontend/network rate limits or authorize hardware control.
 
@@ -58,3 +58,14 @@ production rejects it. Use the [cloud release guide](../docs/engineering/AUTOMAT
 for exact provider gates and environment settings. Optional edge telemetry is read-only,
 synthetic, device-authenticated and independent of operator authority. It never grants
 actuator control. `python -m mypy robot_api` now runs alongside lint/unit checks.
+
+The bounded mission API (`/api/v1/missions`) extends the existing task journal;
+no database migration or second execution authority is added. Catalog, plan,
+exact-hash approval, owned detail/list and JSON export share existing session,
+Origin/CSRF, password, gate and watchdog controls. The optional read-only
+`/missions/context` import alone has a256KiB envelope (240KB source JSON,
+16levels, three mapped metrics). `ROBOT_CONTEXT_IMPORT_ENABLED=false` is the
+default. See the [inspection architecture](../docs/engineering/SIMULATION_ARCHITECTURE.md#versioned-industrial-inspection).
+Production image builds bind `SOURCE_COMMIT` and `SOURCE_ARCHIVE_SHA256` labels;
+verify the actual running image and qualified artifact independently of Compose
+container labels. An unlabelled local test build is not release evidence.

@@ -6,7 +6,7 @@ import vm from 'node:vm';
 // Execute the reviewed module offline; focus deliberately remains in another
 // form, as it can during WebKit button clicks. No backend or credentials enter.
 async function fixture() {
- const source=(await readFile(new URL('../public/app.js',import.meta.url),'utf8')).replace("import {RobotClient} from './client.js';",'');
+ const source=(await readFile(new URL('../public/app.js',import.meta.url),'utf8')).replace(/^import .*$/gm,'');
  const handlers=new Map(),nodes=new Map(),calls={reset:0,stop:0,logout:0,cancel:0};
  const form={querySelectorAll:()=>[],setAttribute(){},removeAttribute(){}};
  const unrelated={querySelectorAll:()=>[],setAttribute(){},removeAttribute(){}};
@@ -21,7 +21,7 @@ async function fixture() {
   logout(){calls.logout++;return Promise.resolve({});}
   cancel(){calls.cancel++;return Promise.resolve({});}
  }
- const context={RobotClient,document:{getElementById:node,activeElement:{closest:()=>unrelated},querySelectorAll:()=>[],createElement:()=>node('li')},window:{addEventListener(){}},setInterval(){return 1;},clearInterval(){},AbortController,AbortSignal,setTimeout,Date,performance};
+ const context={RobotClient,createInspection:()=>({reset(){},authenticate(){},stale(){},refresh(){},hasPending(){return false;}}),document:{addEventListener(){},getElementById:node,activeElement:{closest:()=>unrelated},querySelectorAll:()=>[],createElement:()=>node('li')},window:{addEventListener(){}},setInterval(){return 1;},clearInterval(){},AbortController,AbortSignal,setTimeout,Date,performance};
  vm.createContext(context);vm.runInContext(source,context);
  function submit(){const event={currentTarget:form,preventDefault(){}};handlers.get('reset-form:submit')(event);event.currentTarget=null;}
  const tick=()=>new Promise(resolve=>setImmediate(resolve));

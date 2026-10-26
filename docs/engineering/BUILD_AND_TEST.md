@@ -71,7 +71,7 @@ root isolation, live preference changes with drafts/simulation and accessibility
 screenshots; never set it to public assets or include private test credentials.
 The shared foundation digest is verified by the frontend build.
 
-The source browser matrix is 90 cases: 30 each in Chromium, Firefox and WebKit,
+The source browser matrix is 144 cases: 48 each in Chromium, Firefox and WebKit,
 with no skipped/flaky cases or automatic retries. The pending-form interaction
 fixture uses test-owned HTTP responses and no backend mutation; it requires Stop
 and Sign out to remain usable while an unrelated form response is pending. Existing
@@ -239,3 +239,10 @@ simulator backend remains an independently qualified component.
 See the [advisory](https://github.com/advisories/GHSA-6q48-6c7w-9gw2) and
 [Node TLS API](https://nodejs.org/api/tls.html#tlssetdefaultcacertificatescerts).
 Source tests are separate from source-bound staging and production acceptance.
+
+The inspection cases cover seven scenarios, three responsive/appearance layouts,
+and independent Stop during pending approval in each browser. Backend tests cover
+exact-plan authority, source conditions, unit/freshness findings, one active task,
+session-isolated imports, bounded caches/writes, real fenced journal acknowledgements
+and an actual owned-process crash/restart with disposable data. Browser/source test
+results are distinct from hosted qualification and production acceptance.

@@ -27,8 +27,8 @@ build verifies its digest; the engineering manifest is an identical reviewed cop
 `npm run test:e2e` requires an isolated simulator, synthetic operator
 `browser-test-operator-only`, and matching installed Chromium/Firefox/WebKit binaries.
 The suite checks five viewport widths, keyboard entry, login/reset/proposal/approval/
-completion/stop/logout and automated WCAG rules. The current matrix has 28 cases per
-browser (84 total), including a test-owned held-response fixture that verifies
+completion/stop/logout and automated WCAG rules. The current matrix has 48 cases per
+browser (144 total), including a test-owned held-response fixture that verifies
 independent Stop/Sign out and originating-form duplicate suppression. Four offline
 module regressions also exercise Stop, cancel, logout and duplicate submission.
 Manual accessibility acceptance
@@ -47,3 +47,10 @@ Hosted staging and owner-approved release instructions are in the
 server-only `ROBOT_API_URL` per Vercel environment. The monorepo CLI runs from repository
 root and project root remains `onesa-ai-robot-frontend`. `npm run lint` checks source
 syntax; build/types/unit, cross-browser flows and accessibility remain independent gates.
+
+The inspection workspace consolidates planning, reports and read-only replay around
+one owned run record. The scene is original SVG and calculated synthetic motion,
+not a physics engine or perception model. Native scenario data is explicitly
+synthetic. Optional file-import availability comes from authenticated runtime
+configuration; ordinary AI accounts receive no Robot permission. Active/pending
+polling is500ms, idle polling3s, and hidden pages suspend requests and replay.

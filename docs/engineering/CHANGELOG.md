@@ -30,3 +30,15 @@ A hosted WebKit run caught an old-page task request continuing after reload. The
   deployments at the scaffold root and frontend root. No provider release invoked.
 
 Staging device identity is copied only from the verified provider into a 0600 candidate-bound runner file, reused for the synthetic challenge, and removed after acceptance; no identity or credential is exposed in artifacts.
+
+
+## Pump inspection source — unreleased
+
+- Add deterministic P-101 mission planning, versioned skills/profiles, exact-plan
+  approval, event-bounded evidence, reports, export and read-only replay.
+- Add optional session-scoped read-only robotics/v1 file review; preserve source
+  identity, revisions, units, timestamps and declared quality. Import defaults off.
+- Reshape the protected console and public product journey around industrial tasks,
+  retain joint diagnostics and separate physical-operation permission, and document
+  the evidence-backed deferred FluxVLA evaluation. No production acceptance is
+  implied by this source record; the root changelog records verified go-live only.
