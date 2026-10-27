@@ -1,5 +1,12 @@
 # Independent software builds and tests
 
+Oracle CI selection keeps an existing push authoritative, including failed,
+pending, skipped or cancelled evidence. Only an absent push permits the existing
+owner-dispatched full workflow; both owner identities, a complete run listing,
+first attempt and every mandatory job/security step remain required. Signed
+references preserve the actual CI event. Synthetic mixed-event regressions must
+reject a newer successful manual run presented over a failing push.
+
 The disposable frontend job bounds APT requests and removes the observed Azure
 mirror from the runner's existing failover list, retaining its existing signed
 Ubuntu archive, suite, components and keys. It never runs on the workstation,
