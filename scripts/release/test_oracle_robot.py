@@ -5,11 +5,13 @@ import json
 import subprocess
 import tempfile
 import unittest
+from contextlib import ExitStack
 from pathlib import Path
 from unittest.mock import patch
 
 import oracle_owner as o
 import oracle_robot as r
+import oracle_robot_frontend as frontend_runner
 import oracle_robot_probe as probe
 import test_oracle_owner as owner_fixture
 
@@ -401,3 +403,67 @@ class BrowserCredentialCleanupTests(unittest.TestCase):
                 probe.browser(request)
             self.assertFalse((output / "browser-request.json").exists())
             self.assertTrue(marker.exists())
+
+
+class IndependentFrontendPreflightTests(unittest.TestCase):
+    def check(self, component="frontend", rows=None, identity_error=None):
+        binding = {"component": component, "candidate_commit": "a" * 40}
+        api = {**binding, "component": "api"}
+        plan = {
+            "bindings": {"api": api},
+            "baseline": {env: {"old_runtime": True} for env in r.ENV},
+            "history_baseline": {env: {"old-owned-row": "preserved"} for env in r.ENV},
+        }
+        inventory = {name: {} for name in r.TARGET.values()}
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch.object(r, "validate_plan", return_value=(None, plan))
+            )
+            stack.enter_context(patch.object(r, "inventory", return_value=inventory))
+            stack.enter_context(patch.object(r, "authenticated_state"))
+            stack.enter_context(
+                patch.object(
+                    r,
+                    "history",
+                    return_value=rows
+                    or {
+                        "old-owned-row": "preserved",
+                        "qualified-api-owned-row": "retained",
+                    },
+                )
+            )
+            stack.enter_context(patch.object(r, "probe_cpu_limit", return_value="1"))
+            stack.enter_context(
+                patch.object(
+                    r.shutil,
+                    "disk_usage",
+                    return_value=type("Disk", (), {"free": 20 * 1024**3})(),
+                )
+            )
+            stack.enter_context(patch.object(r, "unchanged"))
+            accepted = stack.enter_context(
+                patch.object(frontend_runner, "accepted_api")
+            )
+            identity = stack.enter_context(
+                patch.object(r, "local_identity", side_effect=identity_error)
+            )
+            result = r.preflight(binding)
+            accepted.assert_called_once_with(plan)
+            self.assertEqual(
+                [call.args for call in identity.call_args_list],
+                [(api, env, plan) for env in r.ENV],
+            )
+            return result
+
+    def test_newly_accepted_api_and_its_terminal_records_are_retained(self):
+        self.assertEqual(self.check()["provider_writes"], 0)
+
+    def test_modified_older_journal_record_refuses_frontend_qualification(self):
+        with self.assertRaisesRegex(r.Refused, "JOURNAL_HISTORY_CHANGED"):
+            self.check(rows={"old-owned-row": "modified"})
+
+    def test_wrong_running_api_identity_refuses_frontend_qualification(self):
+        with self.assertRaisesRegex(r.Refused, "ACTUAL_RUNNING_SOURCE"):
+            self.check(
+                identity_error=r.Refused("ACTUAL_RUNNING_SOURCE_OR_IMAGE_MISMATCH")
+            )

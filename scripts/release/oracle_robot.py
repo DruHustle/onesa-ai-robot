@@ -1295,17 +1295,33 @@ def authenticated_state(binding, env, plan):
 def preflight(binding):
     _folder, plan = validate_plan(binding)
     before = inventory()
+    frontend = binding["component"] == "frontend"
+    if frontend:
+        # The API release precedes independent frontend qualification. Require
+        # its genuine accepted chain, then inspect both actual API runtimes.
+        # Keep the original API baseline and all later terminal rows intact.
+        import oracle_robot_frontend as frontend_runner
+
+        frontend_runner.accepted_api(plan)
     for env in ENV:
-        require(
-            summary(before[TARGET[env]]) == plan["baseline"][env]
-            and healthy(before[TARGET[env]]),
-            "RUNTIME_CHANGED_SINCE_PREPARATION",
-        )
+        if frontend:
+            local_identity(plan["bindings"]["api"], env, plan)
+        else:
+            require(
+                summary(before[TARGET[env]]) == plan["baseline"][env]
+                and healthy(before[TARGET[env]]),
+                "RUNTIME_CHANGED_SINCE_PREPARATION",
+            )
         authenticated_state(binding, env, plan)
-        require(
-            history(env) == plan["history_baseline"][env],
-            "HISTORY_CHANGED_SINCE_PREPARATION",
-        )
+        current_history = history(env)
+        if frontend:
+            preserved(plan["history_baseline"][env], current_history)
+        else:
+            require(
+                current_history == plan["history_baseline"][env],
+                "HISTORY_CHANGED_SINCE_PREPARATION",
+            )
+    unchanged(before, inventory())
     probe_cpu_limit()
     require(shutil.disk_usage("/").free > 8 * 1024**3, "EXISTING_HOST_DISK_CAPACITY")
     return {
