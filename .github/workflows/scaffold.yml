@@ -123,6 +123,8 @@ jobs:
       run: node --test scripts/test_tls_trust.mjs
     - name: Verify system appearance and pinned design artifact
       run: node --test scripts/test_system_appearance.mjs
+    - name: Verify atomic owner deployment transport and duplicate rejection
+      run: node --test scripts/release/oracle_vercel_transport_guard.test.cjs
     - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
       with:
         python-version: '3.11'

@@ -20,6 +20,152 @@
         "title": "ActionResponse",
         "type": "object"
       },
+      "Asset": {
+        "additionalProperties": false,
+        "properties": {
+          "context_imported_at": {
+            "anyOf": [
+              {
+                "maximum": 4133980800.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Imported At"
+          },
+          "context_kind": {
+            "default": "synthetic",
+            "enum": [
+              "synthetic",
+              "reviewed_import"
+            ],
+            "title": "Context Kind",
+            "type": "string"
+          },
+          "context_version": {
+            "const": "1.0.0",
+            "default": "1.0.0",
+            "title": "Context Version",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "imported_telemetry": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Observation"
+            },
+            "maxItems": 3,
+            "title": "Imported Telemetry",
+            "type": "array"
+          },
+          "measures": {
+            "items": {
+              "$ref": "#/components/schemas/Measure"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Measures",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "operating_context": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Operating Context",
+            "type": "string"
+          },
+          "source": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Source",
+            "type": "string"
+          },
+          "source_asset_id": {
+            "default": "",
+            "maxLength": 128,
+            "title": "Source Asset Id",
+            "type": "string"
+          },
+          "source_asset_name": {
+            "default": "",
+            "maxLength": 160,
+            "title": "Source Asset Name",
+            "type": "string"
+          },
+          "source_asset_revision": {
+            "anyOf": [
+              {
+                "maximum": 1000000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Asset Revision"
+          },
+          "source_model_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Model Id"
+          },
+          "source_observed_at": {
+            "anyOf": [
+              {
+                "maximum": 4133980800.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Observed At"
+          },
+          "source_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Sha256"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "operating_context",
+          "source",
+          "measures"
+        ],
+        "title": "Asset",
+        "type": "object"
+      },
       "Capabilities": {
         "properties": {
           "camera": {
@@ -71,6 +217,39 @@
         "title": "Capabilities",
         "type": "object"
       },
+      "CatalogScenario": {
+        "properties": {
+          "id": {
+            "enum": [
+              "normal",
+              "threshold",
+              "discrepancy",
+              "interrupted",
+              "missing",
+              "stale",
+              "units"
+            ],
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "source": {
+            "const": "synthetic scenario/v1",
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "source"
+        ],
+        "title": "CatalogScenario",
+        "type": "object"
+      },
       "Confirmation": {
         "additionalProperties": false,
         "properties": {
@@ -85,6 +264,153 @@
           "password"
         ],
         "title": "Confirmation",
+        "type": "object"
+      },
+      "ContextRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "document": {
+            "maxLength": 240000,
+            "minLength": 2,
+            "title": "Document",
+            "type": "string"
+          },
+          "mapping": {
+            "additionalProperties": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "propertyNames": {
+              "enum": [
+                "temperature",
+                "pressure",
+                "vibration"
+              ]
+            },
+            "title": "Mapping",
+            "type": "object"
+          }
+        },
+        "required": [
+          "document",
+          "mapping"
+        ],
+        "title": "ContextRequest",
+        "type": "object"
+      },
+      "Event": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "default": "system",
+            "maxLength": 64,
+            "title": "Actor",
+            "type": "string"
+          },
+          "at": {
+            "maximum": 4133980800.0,
+            "minimum": 0.0,
+            "title": "At",
+            "type": "number"
+          },
+          "detail": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Detail",
+            "type": "string"
+          },
+          "elapsed_seconds": {
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Elapsed Seconds",
+            "type": "number"
+          },
+          "kind": {
+            "enum": [
+              "planned",
+              "approved",
+              "execution_started",
+              "step_completed",
+              "completed",
+              "interrupted",
+              "failed"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "elapsed_seconds",
+          "kind",
+          "detail"
+        ],
+        "title": "Event",
+        "type": "object"
+      },
+      "Finding": {
+        "additionalProperties": false,
+        "properties": {
+          "explanation": {
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Explanation",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "threshold",
+              "discrepancy",
+              "missing",
+              "stale",
+              "unit_mismatch"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "metric": {
+            "enum": [
+              "temperature",
+              "pressure",
+              "vibration"
+            ],
+            "title": "Metric",
+            "type": "string"
+          },
+          "observation_index": {
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Observation Index",
+            "type": "integer"
+          },
+          "rule_version": {
+            "const": "1.0.0",
+            "default": "1.0.0",
+            "title": "Rule Version",
+            "type": "string"
+          },
+          "telemetry_index": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telemetry Index"
+          }
+        },
+        "required": [
+          "metric",
+          "kind",
+          "explanation",
+          "observation_index"
+        ],
+        "title": "Finding",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -121,6 +447,341 @@
           "password"
         ],
         "title": "Login",
+        "type": "object"
+      },
+      "Measure": {
+        "additionalProperties": false,
+        "properties": {
+          "discrepancy_tolerance": {
+            "exclusiveMinimum": 0.0,
+            "title": "Discrepancy Tolerance",
+            "type": "number"
+          },
+          "maximum": {
+            "maximum": 1000000.0,
+            "minimum": -1000000.0,
+            "title": "Maximum",
+            "type": "number"
+          },
+          "metric": {
+            "enum": [
+              "temperature",
+              "pressure",
+              "vibration"
+            ],
+            "title": "Metric",
+            "type": "string"
+          },
+          "minimum": {
+            "maximum": 1000000.0,
+            "minimum": -1000000.0,
+            "title": "Minimum",
+            "type": "number"
+          },
+          "stale_seconds": {
+            "default": 30,
+            "maximum": 300.0,
+            "minimum": 1.0,
+            "title": "Stale Seconds",
+            "type": "integer"
+          },
+          "unit": {
+            "maxLength": 16,
+            "minLength": 1,
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric",
+          "unit",
+          "minimum",
+          "maximum",
+          "discrepancy_tolerance"
+        ],
+        "title": "Measure",
+        "type": "object"
+      },
+      "MissionCatalog": {
+        "properties": {
+          "asset_context_import": {
+            "enum": [
+              "enabled",
+              "disabled_by_configuration"
+            ],
+            "title": "Asset Context Import",
+            "type": "string"
+          },
+          "assets": {
+            "items": {
+              "$ref": "#/components/schemas/Asset"
+            },
+            "title": "Assets",
+            "type": "array"
+          },
+          "mode": {
+            "const": "simulation",
+            "title": "Mode",
+            "type": "string"
+          },
+          "model_inference": {
+            "const": "not_configured",
+            "title": "Model Inference",
+            "type": "string"
+          },
+          "physical_actuation": {
+            "const": false,
+            "title": "Physical Actuation",
+            "type": "boolean"
+          },
+          "robots": {
+            "items": {
+              "$ref": "#/components/schemas/RobotProfile"
+            },
+            "title": "Robots",
+            "type": "array"
+          },
+          "scenarios": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogScenario"
+            },
+            "title": "Scenarios",
+            "type": "array"
+          },
+          "skills": {
+            "items": {
+              "$ref": "#/components/schemas/Skill"
+            },
+            "title": "Skills",
+            "type": "array"
+          },
+          "version": {
+            "const": "1.0.0",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "mode",
+          "physical_actuation",
+          "assets",
+          "robots",
+          "skills",
+          "scenarios",
+          "asset_context_import",
+          "model_inference"
+        ],
+        "title": "MissionCatalog",
+        "type": "object"
+      },
+      "MissionConfirmation": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_plan_sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Expected Plan Sha256",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "password",
+          "expected_plan_sha256"
+        ],
+        "title": "MissionConfirmation",
+        "type": "object"
+      },
+      "MissionDetail": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "record": {
+            "$ref": "#/components/schemas/Record"
+          },
+          "report": {
+            "additionalProperties": true,
+            "title": "Report",
+            "type": "object"
+          },
+          "state": {
+            "enum": [
+              "proposed",
+              "running",
+              "completed",
+              "cancelled"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "state",
+          "record",
+          "report"
+        ],
+        "title": "MissionDetail",
+        "type": "object"
+      },
+      "MissionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "asset_id": {
+            "const": "pump-p-101",
+            "default": "pump-p-101",
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "command_id": {
+            "format": "uuid",
+            "title": "Command Id",
+            "type": "string"
+          },
+          "context_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Id"
+          },
+          "robot_profile_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Robot Profile Id",
+            "type": "string"
+          },
+          "scenario": {
+            "enum": [
+              "normal",
+              "threshold",
+              "discrepancy",
+              "interrupted",
+              "missing",
+              "stale",
+              "units"
+            ],
+            "title": "Scenario",
+            "type": "string"
+          },
+          "seed": {
+            "default": 101,
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "command_id",
+          "robot_profile_id",
+          "scenario"
+        ],
+        "title": "MissionRequest",
+        "type": "object"
+      },
+      "Observation": {
+        "additionalProperties": false,
+        "properties": {
+          "declared_connection": {
+            "default": "not_applicable",
+            "maxLength": 24,
+            "title": "Declared Connection",
+            "type": "string"
+          },
+          "declared_freshness": {
+            "default": "not_applicable",
+            "maxLength": 24,
+            "title": "Declared Freshness",
+            "type": "string"
+          },
+          "metric": {
+            "enum": [
+              "temperature",
+              "pressure",
+              "vibration"
+            ],
+            "title": "Metric",
+            "type": "string"
+          },
+          "observed_at": {
+            "maximum": 4133980800.0,
+            "minimum": 0.0,
+            "title": "Observed At",
+            "type": "number"
+          },
+          "quality": {
+            "default": "good",
+            "enum": [
+              "good",
+              "missing",
+              "unknown"
+            ],
+            "title": "Quality",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "scenario_observation",
+              "synthetic_iot",
+              "reviewed_import"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "source_ref": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Source Ref",
+            "type": "string"
+          },
+          "source_unit": {
+            "default": "",
+            "maxLength": 16,
+            "title": "Source Unit",
+            "type": "string"
+          },
+          "unit": {
+            "maxLength": 16,
+            "minLength": 1,
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "maximum": 1000000.0,
+                "minimum": -1000000.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "metric",
+          "value",
+          "unit",
+          "observed_at",
+          "source",
+          "source_ref"
+        ],
+        "title": "Observation",
         "type": "object"
       },
       "PhysicalPermissionConfirmation": {
@@ -208,6 +869,151 @@
         "title": "PhysicalPermissionResponse",
         "type": "object"
       },
+      "Plan": {
+        "additionalProperties": false,
+        "properties": {
+          "asset": {
+            "$ref": "#/components/schemas/Asset"
+          },
+          "created_at": {
+            "maximum": 4133980800.0,
+            "minimum": 0.0,
+            "title": "Created At",
+            "type": "number"
+          },
+          "duration_seconds": {
+            "default": 6.0,
+            "maximum": 6.0,
+            "minimum": 6.0,
+            "title": "Duration Seconds",
+            "type": "number"
+          },
+          "mission_id": {
+            "format": "uuid",
+            "title": "Mission Id",
+            "type": "string"
+          },
+          "motion_duration_seconds": {
+            "default": 2.0,
+            "maximum": 2.0,
+            "minimum": 2.0,
+            "title": "Motion Duration Seconds",
+            "type": "number"
+          },
+          "motion_starts_at_seconds": {
+            "default": 1.0,
+            "maximum": 1.0,
+            "minimum": 1.0,
+            "title": "Motion Starts At Seconds",
+            "type": "number"
+          },
+          "observation_method": {
+            "const": "deterministic_scenario/v1",
+            "default": "deterministic_scenario/v1",
+            "title": "Observation Method",
+            "type": "string"
+          },
+          "physical_actuation": {
+            "const": false,
+            "default": false,
+            "title": "Physical Actuation",
+            "type": "boolean"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/RobotProfile"
+          },
+          "scenario": {
+            "enum": [
+              "normal",
+              "threshold",
+              "discrepancy",
+              "interrupted",
+              "missing",
+              "stale",
+              "units"
+            ],
+            "title": "Scenario",
+            "type": "string"
+          },
+          "scenario_version": {
+            "const": "1.0.0",
+            "default": "1.0.0",
+            "title": "Scenario Version",
+            "type": "string"
+          },
+          "seed": {
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "skills_sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Skills Sha256",
+            "type": "string"
+          },
+          "start_radians": {
+            "maximum": 1000000.0,
+            "minimum": -1000000.0,
+            "title": "Start Radians",
+            "type": "number"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/Step"
+            },
+            "maxItems": 5,
+            "minItems": 5,
+            "title": "Steps",
+            "type": "array"
+          },
+          "target_radians": {
+            "default": 0.1,
+            "maximum": 0.1,
+            "minimum": 0.1,
+            "title": "Target Radians",
+            "type": "number"
+          },
+          "task": {
+            "const": "inspect_pump",
+            "default": "inspect_pump",
+            "title": "Task",
+            "type": "string"
+          },
+          "timeout_seconds": {
+            "default": 9.0,
+            "maximum": 9.0,
+            "minimum": 9.0,
+            "title": "Timeout Seconds",
+            "type": "number"
+          },
+          "title": {
+            "const": "Inspect Pump P-101 and report abnormal readings",
+            "title": "Title",
+            "type": "string"
+          },
+          "version": {
+            "const": "1.0.0",
+            "default": "1.0.0",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mission_id",
+          "title",
+          "created_at",
+          "scenario",
+          "seed",
+          "asset",
+          "profile",
+          "skills_sha256",
+          "start_radians",
+          "steps"
+        ],
+        "title": "Plan",
+        "type": "object"
+      },
       "Proposal": {
         "additionalProperties": false,
         "properties": {
@@ -221,6 +1027,16 @@
             "minimum": 1.0,
             "title": "Duration Seconds",
             "type": "number"
+          },
+          "inspection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Record"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "issued_at": {
             "title": "Issued At",
@@ -240,6 +1056,155 @@
           "duration_seconds"
         ],
         "title": "Proposal",
+        "type": "object"
+      },
+      "Record": {
+        "additionalProperties": false,
+        "properties": {
+          "elapsed_seconds": {
+            "default": 0.0,
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Elapsed Seconds",
+            "type": "number"
+          },
+          "events": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Event"
+            },
+            "maxItems": 16,
+            "title": "Events",
+            "type": "array"
+          },
+          "findings": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Finding"
+            },
+            "maxItems": 9,
+            "title": "Findings",
+            "type": "array"
+          },
+          "observations": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Observation"
+            },
+            "maxItems": 3,
+            "title": "Observations",
+            "type": "array"
+          },
+          "outcome": {
+            "default": "awaiting_approval",
+            "enum": [
+              "awaiting_approval",
+              "running",
+              "completed_normal",
+              "completed_findings",
+              "interrupted",
+              "failed"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/Plan"
+          },
+          "plan_sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Plan Sha256",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "onesa-robot-inspection/v1",
+            "default": "onesa-robot-inspection/v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "maximum": 4133980800.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "telemetry": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Observation"
+            },
+            "maxItems": 3,
+            "title": "Telemetry",
+            "type": "array"
+          }
+        },
+        "required": [
+          "plan",
+          "plan_sha256"
+        ],
+        "title": "Record",
+        "type": "object"
+      },
+      "RobotProfile": {
+        "additionalProperties": false,
+        "properties": {
+          "adapter": {
+            "enum": [
+              "synthetic_joint/v1",
+              "display_only/v1"
+            ],
+            "title": "Adapter",
+            "type": "string"
+          },
+          "capabilities": {
+            "items": {
+              "maxLength": 160,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "id": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "physical_connection": {
+            "const": "not_connected",
+            "default": "not_connected",
+            "title": "Physical Connection",
+            "type": "string"
+          },
+          "version": {
+            "const": "1.0.0",
+            "default": "1.0.0",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "adapter",
+          "capabilities"
+        ],
+        "title": "RobotProfile",
         "type": "object"
       },
       "SessionResponse": {
@@ -267,6 +1232,89 @@
           "name"
         ],
         "title": "SessionResponse",
+        "type": "object"
+      },
+      "Skill": {
+        "additionalProperties": false,
+        "properties": {
+          "completion_condition": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Completion Condition",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "inputs": {
+            "items": {
+              "maxLength": 160,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 4,
+            "title": "Inputs",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "operating_limits": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Operating Limits",
+            "type": "string"
+          },
+          "preconditions": {
+            "items": {
+              "maxLength": 160,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 4,
+            "title": "Preconditions",
+            "type": "array"
+          },
+          "required_capabilities": {
+            "items": {
+              "maxLength": 160,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 4,
+            "title": "Required Capabilities",
+            "type": "array"
+          },
+          "timeout_seconds": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 10.0,
+            "title": "Timeout Seconds",
+            "type": "number"
+          },
+          "version": {
+            "const": "1.0.0",
+            "default": "1.0.0",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "required_capabilities",
+          "inputs",
+          "preconditions",
+          "operating_limits",
+          "timeout_seconds",
+          "completion_condition"
+        ],
+        "title": "Skill",
         "type": "object"
       },
       "StatusResponse": {
@@ -333,6 +1381,35 @@
           "deployment_environment"
         ],
         "title": "StatusResponse",
+        "type": "object"
+      },
+      "Step": {
+        "additionalProperties": false,
+        "properties": {
+          "completes_at_seconds": {
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Completes At Seconds",
+            "type": "number"
+          },
+          "skill_id": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Skill Id",
+            "type": "string"
+          },
+          "skill_version": {
+            "const": "1.0.0",
+            "default": "1.0.0",
+            "title": "Skill Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id",
+          "completes_at_seconds"
+        ],
+        "title": "Step",
         "type": "object"
       },
       "TaskList": {
@@ -788,6 +1865,242 @@
           }
         },
         "summary": "Heartbeat"
+      }
+    },
+    "/api/v1/missions": {
+      "get": {
+        "operationId": "missions_api_v1_missions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Missions"
+      },
+      "post": {
+        "operationId": "plan_mission_api_v1_missions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MissionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Plan Mission"
+      }
+    },
+    "/api/v1/missions/catalog": {
+      "get": {
+        "operationId": "mission_catalog_api_v1_missions_catalog_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionCatalog"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Mission Catalog"
+      }
+    },
+    "/api/v1/missions/context": {
+      "post": {
+        "operationId": "import_mission_context_api_v1_missions_context_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Mission Context"
+      }
+    },
+    "/api/v1/missions/{task_id}": {
+      "get": {
+        "operationId": "read_mission_api_v1_missions__task_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Mission"
+      }
+    },
+    "/api/v1/missions/{task_id}/approve": {
+      "post": {
+        "operationId": "approve_mission_api_v1_missions__task_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MissionConfirmation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve Mission"
+      }
+    },
+    "/api/v1/missions/{task_id}/export": {
+      "get": {
+        "operationId": "export_mission_api_v1_missions__task_id__export_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MissionDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Mission"
       }
     },
     "/api/v1/ready": {

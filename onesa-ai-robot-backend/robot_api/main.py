@@ -2,6 +2,7 @@
 
 import asyncio
 import contextlib
+import json
 import logging
 import secrets
 import sqlite3
@@ -9,13 +10,15 @@ import time
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
+from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from robot_api import inspection
 from robot_api.edge import EdgeMonitor, Telemetry
 from robot_api.safety import Proposal, SafetyGate, SafetyViolation
 from robot_api.security import PasswordVerifier, VerificationBusy, token_hash
@@ -55,6 +58,7 @@ class Settings(BaseSettings):
     session_seconds: int = Field(default=900, ge=60, le=3600)
     heartbeat_seconds: float = Field(default=3, ge=1, le=10)
     administrator_name: str = Field(default="", max_length=64)
+    context_import_enabled: bool = False
 
     @model_validator(mode="after")
     def safe_runtime(self):
@@ -133,6 +137,35 @@ class Login(BaseModel):
 class Confirmation(BaseModel):
     model_config = ConfigDict(extra="forbid")
     password: str = Field(min_length=1, max_length=256)
+
+
+class MissionConfirmation(Confirmation):
+    expected_plan_sha256: str = Field(strict=True, pattern=r"^[a-f0-9]{64}$")
+
+
+class MissionDetail(BaseModel):
+    id: str
+    state: Literal["proposed", "running", "completed", "cancelled"]
+    record: inspection.Record
+    report: dict[str, Any]
+
+
+class CatalogScenario(BaseModel):
+    id: inspection.Scenario
+    label: str
+    source: Literal["synthetic scenario/v1"]
+
+
+class MissionCatalog(BaseModel):
+    version: Literal["1.0.0"]
+    mode: Literal["simulation"]
+    physical_actuation: Literal[False]
+    assets: list[inspection.Asset]
+    robots: list[inspection.RobotProfile]
+    skills: list[inspection.Skill]
+    scenarios: list[CatalogScenario]
+    asset_context_import: Literal["enabled", "disabled_by_configuration"]
+    model_inference: Literal["not_configured"]
 
 
 class SessionResponse(BaseModel):
@@ -221,6 +254,7 @@ class State:
         self.physical_permission_expires = 0.0
         self.physical_permission_revision = 0
         self.mutation_lock = asyncio.Lock()
+        self.inspection_contexts: dict[str, tuple[str, float, inspection.Asset]] = {}
         if not self.journal:
             settings.database_path.parent.mkdir(parents=True, exist_ok=True)
         # Transactions, routes and watchdog run on one application event-loop thread.
@@ -243,6 +277,7 @@ class State:
         # Process restart never resumes a command or retains execution authority.
         self.db.execute("DELETE FROM sessions")
         self.db.execute("UPDATE safety SET stopped=1 WHERE id=1")
+        self.interrupt_inspections("process_restart")
         self.db.execute(
             "UPDATE tasks SET state='cancelled',reason='process_restart' "
             "WHERE state IN ('proposed','running')"
@@ -493,7 +528,100 @@ class State:
             "physical_actuation": False,
         }
 
+    def save_inspection(
+        self, identifier: str, proposal: Proposal, record: inspection.Record
+    ) -> Proposal:
+        updated = proposal.model_copy(update={"inspection": inspection.bounded(record)})
+        raw = updated.model_dump_json()
+        if len(raw.encode()) > 16384:
+            raise SafetyViolation("Inspection exceeds task journal capacity")
+        self.db.execute("UPDATE tasks SET proposal=? WHERE id=?", (raw, identifier))
+        self.dirty(identifier)
+        return updated
+
+    def interrupt_inspection(self, row: sqlite3.Row, reason: str) -> None:
+        # Legacy joint records keep their original JSON and cancellation behavior.
+        # Only this versioned optional inspection extension needs interpretation.
+        try:
+            payload = json.loads(row["proposal"])
+        except ValueError:
+            return
+        if not isinstance(payload, dict) or payload.get("inspection") is None:
+            return
+        proposal = Proposal.model_validate_json(row["proposal"])
+        record = proposal.inspection
+        if record is None:
+            return
+        active = getattr(self, "active", None)
+        elapsed = record.elapsed_seconds
+        if active is not None and active["id"] == row["id"]:
+            # Prefer the last in-memory observation; a journal failure must not
+            # erase already collected evidence or pretend an execution completed.
+            proposal = active["proposal"]
+            record = proposal.inspection
+            if record is None:
+                raise SafetyViolation("Active inspection lost its approved plan")
+            elapsed = max(0.0, time.monotonic() - active["started"])
+        updated = inspection.interrupt(record, reason, time.time(), elapsed)
+        if updated != record:
+            self.save_inspection(row["id"], proposal, updated)
+
+    def interrupt_inspections(self, reason: str) -> None:
+        for row in self.db.execute("SELECT * FROM tasks WHERE state IN ('running','proposed')"):
+            self.interrupt_inspection(row, reason)
+
+    def tick_inspection(self, active: dict) -> None:
+        proposal: Proposal = active["proposal"]
+        record = proposal.inspection
+        if record is None:
+            raise SafetyViolation("Missing inspection record")
+        elapsed = max(0.0, time.monotonic() - active["started"])
+        try:
+            inspection.validate(
+                record,
+                proposal.command_id,
+                active["start"],
+                proposal.target_radians,
+                proposal.duration_seconds,
+            )
+            self.position, _, _ = self.gate.sample(
+                active["start"],
+                proposal.target_radians,
+                record.plan.motion_duration_seconds,
+                elapsed - record.plan.motion_starts_at_seconds,
+            )
+            updated, failure = inspection.advance(record, elapsed, time.time())
+        except SafetyViolation:
+            self.cancel("safety_gate", stop=True)
+            return
+        except ValueError:
+            self.cancel("inspection_integrity", stop=True)
+            return
+        # Compute motion in memory. Persist only completed steps and terminal
+        # transitions, never animation frames or every telemetry sample.
+        changed = updated.events != record.events or updated.outcome != record.outcome
+        active["proposal"] = proposal.model_copy(update={"inspection": updated})
+        if failure:
+            self.cancel(failure, stop=True)
+            return
+        if changed:
+            active["proposal"] = self.save_inspection(active["id"], proposal, updated)
+            complete = updated.outcome in ("completed_normal", "completed_findings")
+            self.db.execute(
+                "UPDATE tasks SET state=?,reason=?,position=? WHERE id=?",
+                (
+                    "completed" if complete else "running",
+                    updated.outcome,
+                    self.position,
+                    active["id"],
+                ),
+            )
+            self.db.commit()
+            if complete:
+                self.active = None
+
     def cancel(self, reason: str, stop: bool = False) -> None:
+        self.interrupt_inspections(reason)
         self.active = None
         for row in self.db.execute("SELECT id FROM tasks WHERE state IN ('running','proposed')"):
             self.dirty(row[0])
@@ -531,6 +659,9 @@ class State:
             self.cancel("operator_connection_lost", stop=True)
             return
         proposal = active["proposal"]
+        if proposal.inspection is not None:
+            self.tick_inspection(active)
+            return
         try:
             self.position, _, _ = self.gate.sample(
                 active["start"],
@@ -666,11 +797,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             ):
                 return Response(status_code=403)
             body = b""
+            body_limit = 262144 if request.url.path == "/api/v1/missions/context" else 16384
             try:
                 # A total deadline also bounds a client that keeps trickling bytes.
                 async with asyncio.timeout(REQUEST_BODY_SECONDS):
                     async for chunk in request.stream():
-                        if len(body) + len(chunk) > 16384:
+                        if len(body) + len(chunk) > body_limit:
                             return Response(status_code=413, headers={"Cache-Control": "no-store"})
                         body += chunk
             except TimeoutError:
@@ -907,6 +1039,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.post("/api/v1/auth/logout", response_model=ActionResponse)
     async def logout(request: Request, response: Response, operator: Operator):
         sim = state(request)
+        sim.inspection_contexts = {
+            key: value
+            for key, value in sim.inspection_contexts.items()
+            if value[0] != operator["token"]
+        }
         if sim.physical_permission_owner == operator["token"]:
             sim.block_physical_permission()
         if sim.active and sim.active["session"] == operator["token"]:
@@ -954,8 +1091,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
         return {"tasks": [dict(row) for row in rows]}
 
-    @app.post("/api/v1/tasks", status_code=201, response_model=TaskResponse)
-    async def propose(value: Proposal, request: Request, operator: Operator):
+    async def create_task(value: Proposal, request: Request, operator: Session):
         sim = state(request, require_watchdog=True)
         if sim.journal_failed:
             raise HTTPException(503, "Remote simulation journal requires recovery")
@@ -981,8 +1117,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(409, "Command ID already used") from None
         return {"id": str(value.command_id), "state": "proposed"}
 
-    @app.post("/api/v1/tasks/{task_id}/approve", response_model=TaskResponse)
-    async def approve(task_id: str, value: Confirmation, request: Request, operator: Operator):
+    @app.post("/api/v1/tasks", status_code=201, response_model=TaskResponse)
+    async def propose(value: Proposal, request: Request, operator: Operator):
+        if value.inspection is not None:
+            raise HTTPException(422, "Use the bounded mission planner to create an inspection")
+        return await create_task(value, request, operator)
+
+    async def approve_task(
+        task_id: str,
+        value: Confirmation,
+        request: Request,
+        operator: Session,
+        expected_plan_sha256: str | None = None,
+    ):
         sim = state(request, require_watchdog=True)
         await confirm(sim, request, value.password)
         # Confirmation yields to the watchdog/logout; recheck authority afterwards.
@@ -998,10 +1145,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if row["state"] != "proposed":
             raise HTTPException(409, "Task cannot be replayed")
         proposal = Proposal.model_validate_json(row["proposal"])
+        record = proposal.inspection
+        if record is not None:
+            if expected_plan_sha256 is None or not secrets.compare_digest(
+                expected_plan_sha256, record.plan_sha256
+            ):
+                raise HTTPException(409, "Review and approve this exact mission plan")
+            if record.outcome != "awaiting_approval":
+                raise HTTPException(409, "Inspection cannot be replayed or approved again")
+        elif expected_plan_sha256 is not None:
+            raise HTTPException(404, "Inspection mission not found")
         try:
             sim.gate.validate(proposal, sim.position)
         except SafetyViolation as exc:
             raise HTTPException(422, str(exc)) from None
+        if record is not None:
+            proposal = sim.save_inspection(
+                task_id, proposal, inspection.approve(record, time.time(), "configured_operator")
+            )
         sim.db.execute(
             "UPDATE tasks SET state='running',reason='operator_approved' WHERE id=?", (task_id,)
         )
@@ -1025,6 +1186,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             sim.cancel("approval_expired", stop=True)
             await sim.flush_journal()
             raise HTTPException(409, "Proposal expired during storage acknowledgement") from None
+        if proposal.inspection is not None:
+            record = proposal.inspection
+            record = record.model_copy(
+                update={
+                    "started_at": time.time(),
+                    "events": (
+                        *record.events,
+                        inspection.Event(
+                            at=time.time(),
+                            elapsed_seconds=0.0,
+                            kind="execution_started",
+                            detail="Durable approval acknowledged; software execution started",
+                        ),
+                    ),
+                }
+            )
+            proposal = sim.save_inspection(task_id, proposal, record)
+            sim.db.commit()
         sim.active = {
             "id": task_id,
             "session": operator["token"],
@@ -1034,6 +1213,176 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "heartbeat": time.monotonic(),
         }
         return {"id": task_id, "state": "running"}
+
+    @app.post("/api/v1/tasks/{task_id}/approve", response_model=TaskResponse)
+    async def approve(task_id: str, value: Confirmation, request: Request, operator: Operator):
+        return await approve_task(task_id, value, request, operator)
+
+    def mission_detail(task_id: str, request: Request, operator: Session) -> dict:
+        sim = state(request)
+        row = sim.db.execute(
+            "SELECT * FROM tasks WHERE id=? AND owner=?", (task_id, operator["name"])
+        ).fetchone()
+        if row is None:
+            raise HTTPException(404, "Inspection mission not found")
+        try:
+            proposal = Proposal.model_validate_json(row["proposal"])
+            if sim.active and sim.active["id"] == task_id:
+                proposal = sim.active["proposal"]
+            record = proposal.inspection
+            if record is None:
+                raise HTTPException(404, "Inspection mission not found")
+            if inspection.digest(record.plan) != record.plan_sha256:
+                raise ValueError("Inspection plan checksum mismatch")
+            return {
+                "id": task_id,
+                "state": row["state"],
+                "record": record,
+                "report": inspection.report(record),
+            }
+        except ValueError:
+            raise HTTPException(503, "Stored inspection evidence could not be verified") from None
+
+    @app.get("/api/v1/missions/catalog", response_model=MissionCatalog)
+    async def mission_catalog(operator: Operator):
+        return {
+            "version": inspection.VERSION,
+            "mode": "simulation",
+            "physical_actuation": False,
+            "assets": [inspection.PUMP.model_dump(mode="json")],
+            "robots": [profile.model_dump(mode="json") for profile in inspection.PROFILES],
+            "skills": [skill.model_dump(mode="json") for skill in inspection.SKILLS],
+            "scenarios": [
+                {"id": key, "label": label, "source": "synthetic scenario/v1"}
+                for key, label in (
+                    ("normal", "Normal readings"),
+                    ("threshold", "Threshold violation"),
+                    ("discrepancy", "Observation / telemetry discrepancy"),
+                    ("interrupted", "Interrupted inspection"),
+                    ("missing", "Missing observation"),
+                    ("stale", "Stale telemetry"),
+                    ("units", "Incompatible observation units"),
+                )
+            ],
+            "asset_context_import": "enabled"
+            if config.context_import_enabled
+            else "disabled_by_configuration",
+            "model_inference": "not_configured",
+        }
+
+    @app.post("/api/v1/missions/context")
+    async def import_mission_context(
+        value: inspection.ContextRequest, request: Request, operator: Operator
+    ):
+        sim = state(request)
+        if not config.context_import_enabled:
+            raise HTTPException(
+                409, "Context import is disabled; the standalone synthetic demo remains available"
+            )
+        clock = time.time()
+        sim.inspection_contexts = {
+            key: item for key, item in sim.inspection_contexts.items() if item[1] > clock
+        }
+        if (
+            sum(item[0] == operator["token"] for item in sim.inspection_contexts.values()) >= 4
+            or len(sim.inspection_contexts) >= 16
+        ):
+            raise HTTPException(429, "Context review capacity reached; wait for expiry or sign out")
+        try:
+            asset = inspection.import_context(value, clock)
+        except ValueError as error:
+            raise HTTPException(422, str(error)) from None
+        identifier = str(uuid4())
+        sim.inspection_contexts[identifier] = (operator["token"], clock + 600, asset)
+        return {
+            "id": identifier,
+            "expires_at": clock + 600,
+            "asset": asset,
+            "authority": "untrusted_export_operator_review_required",
+        }
+
+    @app.get("/api/v1/missions")
+    async def missions(request: Request, operator: Operator):
+        sim = state(request)
+        await sim.flush_journal()
+        # Preserve the existing bounded recent-history window, including legacy
+        # tasks. Exact owned mission IDs remain readable/exportable separately.
+        rows = sim.db.execute(
+            "SELECT id,proposal,state,created FROM tasks WHERE owner=? "
+            "ORDER BY created DESC LIMIT 50",
+            (operator["name"],),
+        ).fetchall()
+        result = []
+        for row in rows:
+            try:
+                payload = json.loads(row["proposal"])
+            except ValueError:
+                continue  # Preserve historical legacy payloads without interpreting them.
+            if isinstance(payload, dict) and payload.get("inspection") is not None:
+                detail = mission_detail(row["id"], request, operator)
+                record = detail["record"]
+                result.append(
+                    {
+                        "id": row["id"],
+                        "state": row["state"],
+                        "created": row["created"],
+                        "asset": record.plan.asset.name,
+                        "scenario": record.plan.scenario,
+                        "outcome": record.outcome,
+                        "finding_count": len(record.findings),
+                    }
+                )
+        return {"missions": result, "history_window": "most_recent_50_tasks"}
+
+    @app.post("/api/v1/missions", status_code=201, response_model=MissionDetail)
+    async def plan_mission(value: inspection.MissionRequest, request: Request, operator: Operator):
+        sim = state(request, require_watchdog=True)
+        asset = inspection.PUMP
+        if value.context_id is not None:
+            cached = sim.inspection_contexts.get(str(value.context_id))
+            if (
+                not config.context_import_enabled
+                or cached is None
+                or cached[0] != operator["token"]
+                or cached[1] <= time.time()
+            ):
+                raise HTTPException(
+                    409, "Context is unavailable or expired; import and review it again"
+                )
+            asset = cached[2]
+        try:
+            record = inspection.make_record(value, sim.position, time.time(), asset)
+        except ValueError as error:
+            raise HTTPException(422, str(error)) from None
+        proposal = Proposal(
+            command_id=value.command_id,
+            issued_at=record.plan.created_at,
+            target_radians=record.plan.target_radians,
+            duration_seconds=record.plan.duration_seconds,
+            inspection=record,
+        )
+        await create_task(proposal, request, operator)
+        return mission_detail(str(value.command_id), request, operator)
+
+    @app.get("/api/v1/missions/{task_id}", response_model=MissionDetail)
+    async def read_mission(task_id: UUID, request: Request, operator: Operator):
+        return mission_detail(str(task_id), request, operator)
+
+    @app.post("/api/v1/missions/{task_id}/approve", response_model=MissionDetail)
+    async def approve_mission(
+        task_id: UUID, value: MissionConfirmation, request: Request, operator: Operator
+    ):
+        await approve_task(str(task_id), value, request, operator, value.expected_plan_sha256)
+        return mission_detail(str(task_id), request, operator)
+
+    @app.get("/api/v1/missions/{task_id}/export", response_model=MissionDetail)
+    async def export_mission(
+        task_id: UUID, request: Request, response: Response, operator: Operator
+    ):
+        response.headers["Content-Disposition"] = (
+            f'attachment; filename="inspection-{task_id}.json"'
+        )
+        return mission_detail(str(task_id), request, operator)
 
     @app.post("/api/v1/heartbeat", response_model=ActionResponse)
     async def heartbeat(request: Request, operator: Operator):
@@ -1053,6 +1402,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if row["state"] == "running" or (sim.active and sim.active["id"] == task_id):
             sim.cancel("operator_cancel", stop=True)
         else:
+            if row["state"] == "proposed":
+                sim.interrupt_inspection(row, "operator_cancel")
             sim.db.execute(
                 "UPDATE tasks SET state='cancelled',reason='operator_cancel' "
                 "WHERE id=? AND state='proposed'",

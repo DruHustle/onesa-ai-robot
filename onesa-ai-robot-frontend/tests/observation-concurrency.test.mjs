@@ -9,8 +9,8 @@ const tasks={tasks:[{id:'synthetic-unit-task',state:'completed',reason:'operator
 function deferred(){let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});return {promise,resolve,reject};}
 
 async function fixture(observationDelayMs=0){
- const source=(await readFile(new URL('../public/app.js',import.meta.url),'utf8')).replace("import {RobotClient} from './client.js';",'');
- const nodes=new Map(),windows=new Map(),pending={heartbeat:[],status:[],tasks:[]},calls={heartbeat:0,status:0,tasks:0,cancelPending:0};let restoredSession=null;
+ const source=(await readFile(new URL('../public/app.js',import.meta.url),'utf8')).replace(/^import .*$/gm,'');
+ const nodes=new Map(),windows=new Map(),documents=new Map(),pending={heartbeat:[],status:[],tasks:[]},calls={heartbeat:0,status:0,tasks:0,cancelPending:0};let restoredSession=null;
  const node=id=>{if(!nodes.has(id))nodes.set(id,{id,hidden:false,value:'synthetic-only',textContent:'',children:[],focus(){},addEventListener(){},replaceChildren(...children){this.children=children;},append(child){this.children.push(child);}});return nodes.get(id);};
  function request(operation,value){const result=deferred();pending[operation].push(result);calls[operation]++;if(observationDelayMs&&operation!=='heartbeat')setTimeout(()=>result.resolve(value),observationDelayMs);return result.promise;}
  class RobotClient{
@@ -21,10 +21,10 @@ async function fixture(observationDelayMs=0){
   tasks(){return request('tasks',tasks);}
   cancelPending(){calls.cancelPending++;this.pending.abort();this.pending=new AbortController();}
  }
- const context={RobotClient,document:{getElementById:node,querySelectorAll:()=>[],createElement:()=>({textContent:'',append(){}})},window:{addEventListener(event,handler){windows.set(event,handler);}},setInterval(){return 1;},clearInterval(){},setTimeout,AbortController,AbortSignal,Date,performance};
+ const context={RobotClient,createInspection:()=>({reset(){},authenticate(){},stale(){},refresh(){},hasPending(){return false;}}),document:{hidden:false,addEventListener(event,handler){documents.set(event,handler);},getElementById:node,querySelectorAll:()=>[],createElement:()=>({textContent:'',append(){}})},window:{addEventListener(event,handler){windows.set(event,handler);}},setInterval(){return 1;},clearInterval(){},setTimeout,AbortController,AbortSignal,Date,performance};
  node('history');vm.createContext(context);vm.runInContext(source,context);await tick();
  vm.runInContext("csrf='synthetic-session';client.csrf=csrf;byId('operator').hidden=false;byId('login-form').hidden=true;",context);
- return {calls,pending,nodes,windows,context,restoreSession(session){restoredSession=session;},refresh:()=>vm.runInContext('refresh()',context)};
+ return {calls,pending,nodes,windows,documents,context,restoreSession(session){restoredSession=session;},refresh:()=>vm.runInContext('refresh()',context)};
 }
 
 test('an acknowledged heartbeat starts both observations without waiting for either read',async()=>{
@@ -88,3 +88,7 @@ test('operator guidance follows verified stop/running/proposal state and does no
  }
  assert.equal(f.calls.heartbeat,0);assert.equal(f.calls.status,0);assert.equal(f.calls.tasks,0);
 });
+
+ test('hidden documents cancel observation ownership and make no further polls',async()=>{const f=await fixture();f.context.document.hidden=true;f.documents.get('visibilitychange')();await f.refresh();assert.equal(f.calls.cancelPending,1);assert.equal(f.calls.heartbeat,0);assert.equal(f.calls.status,0);assert.equal(f.calls.tasks,0);});
+
+test('returning to a hidden page with expired authority clears authenticated presentation',async()=>{const f=await fixture();f.context.document.hidden=true;f.documents.get('visibilitychange')();f.context.document.hidden=false;f.documents.get('visibilitychange')();await tick();assert.equal(f.nodes.get('operator').hidden,true);assert.equal(f.nodes.get('login-form').hidden,false);assert.equal(f.calls.heartbeat,0);});

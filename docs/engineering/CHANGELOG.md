@@ -30,3 +30,37 @@ A hosted WebKit run caught an old-page task request continuing after reload. The
   deployments at the scaffold root and frontend root. No provider release invoked.
 
 Staging device identity is copied only from the verified provider into a 0600 candidate-bound runner file, reused for the synthetic challenge, and removed after acceptance; no identity or credential is exposed in artifacts.
+
+
+## Pump inspection source — unreleased
+
+- Add deterministic P-101 mission planning, versioned skills/profiles, exact-plan
+  approval, event-bounded evidence, reports, export and read-only replay.
+- Add optional session-scoped read-only robotics/v1 file review; preserve source
+  identity, revisions, units, timestamps and declared quality. Import defaults off.
+- Reshape the protected console and public product journey around industrial tasks,
+  retain joint diagnostics and separate physical-operation permission, and document
+  the evidence-backed deferred FluxVLA evaluation. No production acceptance is
+  implied by this source record; the root changelog records verified go-live only.
+
+## Owner-run Robot extension and history refinement — unreleased
+
+- Extend the existing externally commissioned bridge with reviewed-source installation,
+  independently scoped API/frontend operations, bounded hosted probes and expiring
+  confirmation of the existing operator/device credentials. Caller JSON and Actions
+  artifacts remain incapable of authorizing an owner-run release.
+- Preserve durable provider intents and original timeout receipts. Read-only inspection
+  reconciles an interrupted request without submitting it again. No old-source restart,
+  automatic rollback, journal repair, new account or physical actuation is introduced.
+- Preserve the existing Robot serverless region explicitly in the frontend configuration.
+- Show six recent inspection records with expandable older records. Unchanged history
+  refreshes preserve the existing DOM, keyboard focus and disclosure state.
+- Source implementation and local verification do not establish trusted installation,
+  fresh hosted qualification, authorization or production acceptance.
+
+
+The unreleased owner extension explicitly supplies the verified `ROBOT_API_URL`
+for each prebuilt deployment; Git metadata alone cannot select a branch-scoped
+server variable. Canonical origins are checked before credential use. The history
+browser scenario restores its own completed simulator to stopped before later legacy
+journeys. Existing assertions, three-engine coverage and deadlines are unchanged.

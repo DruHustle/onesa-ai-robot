@@ -15,6 +15,7 @@ test('simulation controls wait for a verified snapshot and stop remains availabl
  });
  try{
   await page.goto('/console');await expect(page.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
+  await page.locator('#joint-tools > summary').click();
   const reset=page.getByRole('button',{name:'Reset simulation stop',exact:true});const propose=page.getByRole('button',{name:'Create proposal',exact:true});
   await expect(reset).toBeDisabled({timeout:1000});await expect(propose).toBeDisabled();
   await expect(page.getByRole('button',{name:'Stop simulation',exact:true})).toBeEnabled();await expect(page.getByRole('button',{name:'Sign out',exact:true})).toBeEnabled();
