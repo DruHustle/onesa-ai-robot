@@ -1,5 +1,13 @@
 # Independent software builds and tests
 
+Container health uses the Alpine base image's existing BusyBox `wget` without
+starting Python for every request. Proxies are disabled; the readiness route,
+15-second interval and deadlines are retained. Run
+`python3 scripts/healthcheck_smoke.py <image>` after building: the actual image probe
+must handle a custom loopback port, HTTP 503/404, hostile proxy settings, refusal and
+timeout in an isolated network-free container. Application, journal and safety
+qualification remain separate requirements.
+
 CI and hosted artifact-build workflows pin Node 24.22.1 explicitly; a cached
 `24` major selector can otherwise select an older vulnerable patch. Runtime images
 and provider-managed runtimes require their own source-bound verification.

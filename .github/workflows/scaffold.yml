@@ -204,6 +204,9 @@ jobs:
     - name: Actual backend startup and shutdown
       if: matrix.application == 'backend'
       run: python3 scripts/test-container-startup.py onesa-robot-runtime:ci
+    - name: Health client success, failure, proxy isolation and timeout
+      if: matrix.application == 'backend'
+      run: python3 scripts/healthcheck_smoke.py onesa-robot-runtime:ci
     - name: Runtime security gate
       run: 'mkdir -p data/security
 
