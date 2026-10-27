@@ -1,5 +1,11 @@
 # Independent software builds and tests
 
+Runtime scans fetch the vulnerability database from Aqua's official GHCR origin,
+avoiding an observed pull-through mirror 404. The scanner digest, full vulnerability
+and secret scans, complete-report requirement and rejection of high/critical or
+secret findings remain unchanged. A database-download failure still fails CI.
+See [Trivy database locations](https://trivy.dev/docs/latest/configuration/db/).
+
 Frontend CI uses the supported Ubuntu 24.04 hosted image explicitly. Chromium,
 Firefox, WebKit and their system dependencies remain mandatory; the moving latest
 OS label is not part of the browser qualification contract. See the official
