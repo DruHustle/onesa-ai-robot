@@ -139,7 +139,13 @@ jobs:
     - run: python scripts/check-contracts.py
     - name: Verify sanitized browser diagnostic controls
       run: python3 -m unittest discover -s scripts/ci -p test_browser_diagnostics.py
-    - run: npx playwright install --with-deps chromium firefox webkit
+    - name: Prepare bounded signed Ubuntu browser dependencies
+      run: |
+        python3 -m unittest discover -s scripts/ci -p test_browser_dependencies.py
+        sudo -n --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT,RUNNER_OS,GITHUB_REPOSITORY python3 scripts/ci/browser_dependencies.py
+    - name: Install application browsers and system dependencies
+      timeout-minutes: 10
+      run: npx playwright install --with-deps chromium firefox webkit
       working-directory: onesa-ai-robot-frontend
     - name: Synthetic cross-browser operator acceptance
       env:

@@ -1,5 +1,13 @@
 # Independent software builds and tests
 
+The disposable frontend job bounds APT requests and removes the observed Azure
+mirror from the runner's existing failover list, retaining its existing signed
+Ubuntu archive, suite, components and keys. It never runs on the workstation,
+owner VM or an unrelated repository; conflicting sources fail closed. The helper
+and synthetic custody/source tests derive from reviewed AI Platform source
+`2eacf0aff2bfbf8b3e8713a4cc3610c37c2207dd`, with the repository guard changed to
+Robot. All three engines remain mandatory; installer failure remains unqualified.
+
 Runtime scans fetch the vulnerability database from Aqua's official GHCR origin,
 avoiding an observed pull-through mirror 404. The scanner digest, full vulnerability
 and secret scans, complete-report requirement and rejection of high/critical or
