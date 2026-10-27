@@ -27,6 +27,10 @@ from contextlib import contextmanager
 from pathlib import Path
 from uuid import UUID
 
+# Sibling observers must share this module's refusal type when invoked as a CLI.
+if __name__ == "__main__":
+    sys.modules["oracle_robot"] = sys.modules[__name__]
+
 ROOT = Path("/var/lib/onesa/release-verification/robot")
 PLAN = Path("/etc/onesa/oracle-robot-release.json")
 COMPOSE = Path("/opt/onesa/backends/robot.yaml")
@@ -1070,6 +1074,7 @@ def probe_source_files(files):
         "onesa-ai-robot-frontend/package-lock.json",
         "scripts/release/smoke.py",
         "scripts/release/cloud.py",
+        "scripts/release/service_runtime.py",
         "scripts/release/evidence.py",
         "scripts/release/edge_fixture.py",
     }
@@ -1885,6 +1890,7 @@ def main():
         ValueError,
         TypeError,
         OSError,
+        ImportError,
         subprocess.SubprocessError,
     ) as error:
         code = record_failure(sys.argv[1], request, error)
@@ -1896,7 +1902,14 @@ if __name__ == "__main__":
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     try:
         main()
-    except (Refused, KeyError, ValueError, OSError, subprocess.SubprocessError):
+    except (
+        Refused,
+        KeyError,
+        ValueError,
+        OSError,
+        ImportError,
+        subprocess.SubprocessError,
+    ):
         raise SystemExit(
             "Robot owner operation refused; inspect private pinned evidence without repeating provider requests."
         ) from None
