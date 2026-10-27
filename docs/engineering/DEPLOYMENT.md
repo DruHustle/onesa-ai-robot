@@ -20,3 +20,12 @@ commissioned, pinned external verifier and owner-controlled signing custody.
 Repository code or an unsigned JSON file supplies no release authority.
 The protected guide contains installation, qualification and recovery instructions;
 source implementation alone does not establish commissioning or deployment.
+
+The Robot-specific extension adds an immutable installer, API and frontend runners,
+existing-operator credential confirmation, and synthetic hosted probes to that same
+bridge. Its source is `scripts/release/oracle_install.py`, `oracle_robot.py`,
+`oracle_robot_frontend.py` and `oracle_robot_probe.py`. It does not create a service
+or grant authority to repository jobs. Three-engine tooling is disposable and remains
+independent of the application images. Installation, commissioning, qualification
+and verified production acceptance must each be recorded separately in the protected
+guide; the presence of these modules does not establish any of those outcomes.

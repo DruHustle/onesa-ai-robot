@@ -137,3 +137,34 @@ test("Stop stays available during an inspection approval response", async ({
     release();
   }
 });
+
+test("older run disclosure and keyboard focus survive an unchanged history refresh", async ({page}) => {
+  await signIn(page);
+  await plan(page,"normal");
+  await expect(page.locator("#mission-outcome")).toHaveText("Completed · normal readings",{timeout:15000});
+  const current=await page.request.get("/api/v1/missions");
+  expect(current.status()).toBe(200);
+  const owned=(await current.json()).missions[0];
+  // Read-only display fixture: only the first real owned record is opened.
+  // Additional labels exercise history layout without creating journal rows.
+  const fixture={missions:[owned,...Array.from({length:9},(_,i)=>({...owned,id:`00000000-0000-4000-8000-${String(i).padStart(12,"0")}`}))],history_window:"most_recent_50_tasks"};
+  let reads=0;
+  await page.route("**/api/v1/missions",async route=>{
+    if(route.request().method()!=="GET")return route.continue();
+    reads++;await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify(fixture)});
+  });
+  const history=page.locator("#inspection-history");
+  await expect(history.getByText("Show 4 older runs",{exact:true})).toBeVisible({timeout:20000});
+  await history.locator("summary").click();
+  const first=history.locator("button").first();
+  await first.focus();
+  const before=reads;
+  await expect.poll(()=>reads,{timeout:20000}).toBeGreaterThan(before);
+  await expect(first).toBeFocused();
+  await expect(history.locator("details")).toHaveAttribute("open","");
+  await expect(history.locator(":scope > li")).toHaveCount(7);
+  // Restore this completed synthetic scenario's stopped state for later legacy
+  // journeys. Logout revokes its session but is not a simulator reset request.
+  await page.locator("#stop").click();
+  await expect(page.locator("#stop-state")).toContainText("Stopped");
+});

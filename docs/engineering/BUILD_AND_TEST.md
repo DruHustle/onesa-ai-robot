@@ -71,7 +71,7 @@ root isolation, live preference changes with drafts/simulation and accessibility
 screenshots; never set it to public assets or include private test credentials.
 The shared foundation digest is verified by the frontend build.
 
-The source browser matrix is 144 cases: 48 each in Chromium, Firefox and WebKit,
+The source browser matrix is 147 cases: 49 each in Chromium, Firefox and WebKit,
 with no skipped/flaky cases or automatic retries. The pending-form interaction
 fixture uses test-owned HTTP responses and no backend mutation; it requires Stop
 and Sign out to remain usable while an unrelated form response is pending. Existing
@@ -246,3 +246,36 @@ exact-plan authority, source conditions, unit/freshness findings, one active tas
 session-isolated imports, bounded caches/writes, real fenced journal acknowledgements
 and an actual owned-process crash/restart with disposable data. Browser/source test
 results are distinct from hosted qualification and production acceptance.
+
+## Robot owner-run adapter checks
+
+`python -m unittest discover -s scripts/release -p 'test_oracle*.py'` exercises
+synthetic signing stores, installer source verification, image/scan descriptors,
+source binding, expiring operator custody, cross-process locking and interrupted
+provider requests. These fixtures never establish hosted acceptance or owner authority.
+The release tool image in `infra/oracle/qualification.Dockerfile` uses the locked
+Chromium, Firefox and WebKit engines; all three must actually launch and pass their
+hosted checks. A completed image build or one passing engine cannot qualify it.
+
+The separate offline runtime-image recovery probe creates only disposable synthetic
+inspection data, completes a report and opens a fresh application instance. It
+checks exact report preservation, revoked sessions, stopped/idle state and the existing
+seven-field task schema. It runs without network or cloud credentials. A successful
+probe does not authorize an old-source restart or a production database restore.
+
+
+The Robot owner tool extends the existing Oracle bridge. Its stdlib release tests
+run in the backend verification job; `node --test
+scripts/release/oracle_vercel_transport_guard.test.cjs` runs without credentials in
+the frontend job. The pinned Vercel 65.2.0 client/CLI protocol fixture additionally
+runs offline inside the independently scanned tool image, using synthetic credentials
+and a loopback provider only. It exercises cold/warm upload negotiation, project-root
+resolution, immutable read-only credential custody and one-create request enforcement.
+That fixture supplies no production authority. Keep its original failed observations
+alongside a corrected result in the protected evidence index.
+
+The pinned CLI protocol fixture asserts each actual outgoing `ROBOT_API_URL` value.
+The history/disclosure case must restore its own completed scenario's stopped state;
+later reset/legacy cases must not inherit an unrelated ready state. Run the history
+case followed by a legacy simulation case to verify that isolation without increasing
+deadlines or removing checks.

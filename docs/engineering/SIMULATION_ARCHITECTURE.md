@@ -249,3 +249,9 @@ No external URL is fetched and no maintenance write is implemented.
 See [FluxVLA evaluation](FLUXVLA_EVALUATION.md) for the pinned third-party review
 and precise deferred model-evaluation path. No new service, GPU or paid resource
 is required by the deterministic workflow.
+
+Inspection history renders six recent records directly and groups older entries in
+an expandable list. It keeps the current DOM when the owned mission list has not
+changed, preserving focus and disclosure state during background refreshes. Reports,
+exports and replay still read the same bounded journal records; collapsing older
+entries deletes no history and issues no operational request.
