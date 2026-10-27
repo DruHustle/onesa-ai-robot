@@ -38,7 +38,11 @@ class API:
             path.startswith("/api/v1/") and "?" not in path and ".." not in path,
             "PROBE_API_PATH",
         )
-        headers = {"Origin": self.public, "Content-Type": "application/json"}
+        headers = {
+            "Origin": self.public,
+            "Content-Type": "application/json",
+            "User-Agent": "OnesaOracleRobotOwner/1",
+        }
         if csrf and self.csrf:
             headers["X-CSRF-Token"] = self.csrf
         if self.bypass:

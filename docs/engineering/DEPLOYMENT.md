@@ -33,3 +33,6 @@ or grant authority to repository jobs. Three-engine tooling is disposable and re
 independent of the application images. Installation, commissioning, qualification
 and verified production acceptance must each be recorded separately in the protected
 guide; the presence of these modules does not establish any of those outcomes.
+
+Owner HTTP observations identify the Onesa release client explicitly. This does
+not impersonate a browser or crawler or change the ingress protection policy.
