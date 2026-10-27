@@ -421,9 +421,11 @@ export function createInspection(client, { run, notice }) {
       : value?.active_task
         ? "Running · supervised simulation"
         : "Ready · simulation only";
-    $("mission-submit").disabled = !ready || !catalog;
+    $("mission-submit").disabled =
+      !ready || !catalog || $("mission-form").getAttribute("aria-busy") === "true";
     $("mission-approve-submit").disabled =
       !ready ||
+      $("mission-approval").getAttribute("aria-busy") === "true" ||
       !detail ||
       Date.now() / 1000 - detail.record.plan.created_at > 15;
     if (!authenticated || reading) return;

@@ -88,6 +88,11 @@ module tests prove independent Stop/cancel/logout and duplicate originating-form
 suppression. Submission scope comes from the synchronous event currentTarget;
 focused controls do not determine which independent action may run.
 
+Inspection refresh also preserves the shared form's `aria-busy` lock. The pending
+approval regression waits for another status response before requiring the approval
+button to remain disabled, one approval request and an independently available Stop.
+This reproduces the WebKit failure without changing safety deadlines or adding retries.
+
 Browser cleanup checks for the test context's host-scoped operator cookie before
 requesting protected session endpoints. Anonymous public and intercepted fixtures
 make no cleanup API calls. An existing session requires bounded session read,
