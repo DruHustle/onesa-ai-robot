@@ -20,6 +20,52 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import oracle_robot as r
 
+LEGACY_CHECKS = (
+    "backend_readiness",
+    "frontend_availability",
+    "authentication",
+    "authorization",
+    "simulation",
+    "safety_denial",
+    "cancellation",
+    "connection_loss",
+    "stale_command",
+    "replay_rejection",
+    "audit_history",
+    "storage_isolation",
+    "edge_telemetry",
+    "administrator_operation_permission",
+)
+
+# Run only the reviewed suite already present in the pinned qualification image.
+# Scoped credentials travel over Docker stdin, never argv or container metadata.
+LEGACY_PROGRAM = """
+import json, os, re, sys
+sys.path.insert(0, '/opt/onesa-ai-robot/scripts/release')
+from smoke import run
+def require(value):
+    if not value:
+        raise ValueError('LEGACY_IMAGE_INPUT_REFUSED')
+raw = sys.stdin.buffer.read(16385)
+require(len(raw) <= 16384)
+request = json.loads(raw)
+require(set(request) == {'origin', 'environment'})
+require(re.fullmatch(r'https://onesa-ai-robot-git-staging-[a-z0-9-]+\\.vercel\\.app', request['origin']))
+values = request['environment']
+require(set(values) == {
+    'ROBOT_TEST_OPERATOR', 'ROBOT_TEST_PASSWORD', 'ROBOT_TEST_SCOPE',
+    'ROBOT_PUBLIC_ORIGIN', 'ROBOT_STORAGE_MODE', 'ROBOT_EDGE_DEVICE_ID',
+    'ROBOT_EDGE_TOKEN', 'VERCEL_AUTOMATION_BYPASS_SECRET'
+})
+require(all(isinstance(v, str) for v in values.values()))
+require(values['ROBOT_TEST_SCOPE'] == 'approved-synthetic-staging')
+require(values['ROBOT_PUBLIC_ORIGIN'] == request['origin'])
+require(values['ROBOT_STORAGE_MODE'] == 'turso')
+require(values['ROBOT_EDGE_DEVICE_ID'].startswith('synthetic-'))
+os.environ.update(values)
+print(json.dumps(run(request['origin'], 'Staging'), allow_nan=False))
+"""
+
 
 class API:
     def __init__(self, origin, public_origin, credentials, bypass=None):
@@ -288,11 +334,9 @@ def browser(request):
 
 
 def staging_legacy(request):
-    # Existing simulator and device checks remain mandatory. The independently
-    # configured synthetic device bearer is confined to staging in this process.
-    from smoke import CHECKS, run
-
-    env = request["environment"]
+    # Keep the complete legacy suite in its commissioned image, not the host's
+    # deliberately minimal installed Python module set.
+    env = validate_request(request)
     r.require(env == "staging", "NO_LEGACY_MUTATIONS_IN_PRODUCTION")
     credential = request["credentials"]
     values = r.runtime_values(r.ENV["staging"])
@@ -311,19 +355,49 @@ def staging_legacy(request):
         "ROBOT_EDGE_TOKEN": credential["edge_token"],
         "VERCEL_AUTOMATION_BYPASS_SECRET": request["provider"]["bypass"],
     }
-    previous = {k: os.environ.get(k) for k in chosen}
-    try:
-        os.environ.update(chosen)
-        value = run(request["origin"], "Staging")
-    finally:
-        for key, old in previous.items():
-            if old is None:
-                os.environ.pop(key, None)
-            else:
-                os.environ[key] = old
+    raw = r.canonical({"origin": request["origin"], "environment": chosen})
+    r.require(len(raw) <= 16384, "LEGACY_PRIVATE_INPUT_BOUND")
+    result = subprocess.run(
+        [
+            "/usr/bin/docker",
+            "run",
+            "--rm",
+            "-i",
+            "--pull",
+            "never",
+            "--read-only",
+            "--tmpfs",
+            "/tmp:rw,mode=700,size=64m",
+            "--memory",
+            "256m",
+            "--cpus",
+            request["cpu_limit"],
+            "--cap-drop",
+            "ALL",
+            "--security-opt",
+            "no-new-privileges:true",
+            "--entrypoint",
+            "python3",
+            request["probe_image"],
+            "-c",
+            LEGACY_PROGRAM,
+        ],
+        input=raw,
+        capture_output=True,
+        timeout=1200,
+        check=False,
+        env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"},
+    )
+    r.require(result.returncode == 0, "LEGACY_IMAGE_EXECUTION_FAILED")
+    r.require(len(result.stdout) <= 65536, "LEGACY_RESULT_BOUND")
+    value = json.loads(result.stdout)
+    r.write(Path(request["output"]) / "legacy-smoke.json", value)
     r.require(
         value["status"] == "PASS"
-        and all(value["checks"].get(k) == "PASS" for k in CHECKS),
+        and value["scope"] == "software-simulation-only"
+        and value["physical_hardware_approved"] is False
+        and set(value["checks"]) == set(LEGACY_CHECKS)
+        and all(value["checks"][k] == "PASS" for k in LEGACY_CHECKS),
         "EXISTING_SIMULATOR_ACCEPTANCE_FAILED",
     )
     return value
