@@ -1288,7 +1288,11 @@ def authenticated_state(binding, env, plan):
     # Use the direct existing API listener with the exact configured Origin. HTTPS
     # cookies remain on the public canonical host; no cookie-domain rewrite occurs.
     def call(path, body=None, csrf=None):
-        headers = {"Origin": origin, "Content-Type": "application/json"}
+        headers = {
+            "Origin": origin,
+            "Content-Type": "application/json",
+            "User-Agent": "OnesaOracleRobotOwner/1",
+        }
         if csrf:
             headers["X-CSRF-Token"] = csrf
         request = urllib.request.Request(
