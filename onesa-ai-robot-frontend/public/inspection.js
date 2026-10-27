@@ -36,6 +36,7 @@ export function createInspection(client, { run, notice }) {
     context = null,
     reading = false,
     lastHistory = 0,
+    historySignature = "",
     selected = "",
     playing = false,
     frame = 0,
@@ -54,6 +55,7 @@ export function createInspection(client, { run, notice }) {
     selected = "";
     reading = false;
     lastHistory = 0;
+    historySignature = "";
     pause();
     $("mission-detail").hidden = true;
     $("mission-empty").hidden = false;
@@ -369,38 +371,46 @@ export function createInspection(client, { run, notice }) {
     const list = await client.missions();
     if (current !== epoch || !authenticated) return;
     lastHistory = performance.now();
-    $("inspection-history").replaceChildren(
-      ...(list.missions.length
-        ? list.missions.map((item) => {
-            const li = document.createElement("li"),
-              button = node(
-                "button",
-                `${item.asset} · ${title(item.scenario)} · ${outcome[item.outcome]}`,
-                "secondary",
-              );
-            button.type = "button";
-            button.addEventListener("click", () =>
-              run(async () => {
-                await open(item.id);
-                $("mission-detail").scrollIntoView({ block: "start" });
-              }, "Recorded inspection opened."),
-            );
-            li.append(
-              button,
-              node(
-                "span",
-                `${instant(item.created)} · ${item.finding_count} findings · ${item.id.slice(0, 8)}`,
-              ),
-            );
-            return li;
-          })
-        : [
-            node(
-              "li",
-              "No inspection runs yet. Create your first supervised run above.",
-            ),
-          ]),
-    );
+    const signature = JSON.stringify(list.missions);
+    if (signature === historySignature) return;
+    historySignature = signature;
+    const root = $("inspection-history"),
+      expanded = root.querySelector("details")?.open || false,
+      focused = root.contains(document.activeElement)
+        ? document.activeElement.dataset.mission
+        : null;
+    const items = list.missions.map((item) => {
+      const li = document.createElement("li"),
+        button = node(
+          "button",
+          `${item.asset} · ${title(item.scenario)} · ${outcome[item.outcome]}`,
+          "secondary",
+        );
+      button.type = "button";
+      button.dataset.mission = item.id;
+      button.addEventListener("click", () =>
+        run(async () => {
+          await open(item.id);
+          $("mission-detail").scrollIntoView({ block: "start" });
+        }, "Recorded inspection opened."),
+      );
+      li.append(
+        button,
+        node("span", `${instant(item.created)} · ${item.finding_count} findings · ${item.id.slice(0, 8)}`),
+      );
+      return li;
+    });
+    if (items.length > 6) {
+      const older = document.createElement("li"),
+        disclosure = document.createElement("details"),
+        list = document.createElement("ol");
+      disclosure.open = expanded;
+      list.append(...items.slice(6));
+      disclosure.append(node("summary", `Show ${items.length - 6} older runs`), list);
+      older.append(disclosure);
+      root.replaceChildren(...items.slice(0, 6), older);
+    } else root.replaceChildren(...(items.length ? items : [node("li", "No inspection runs yet. Create your first supervised run above.")]));
+    if (focused) root.querySelector(`[data-mission="${CSS.escape(focused)}"]`)?.focus({ preventScroll: true });
     if (!selected && list.missions.length) await open(list.missions[0].id);
   }
   async function refresh(value) {

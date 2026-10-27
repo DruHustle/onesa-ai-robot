@@ -1,0 +1,344 @@
+"""Commissioned Robot hosted observations, never authorization or provider deployment.
+
+Only exact canonical origins and the separately hash-confirmed existing operator
+credential are accepted. Staging runs the reviewed full simulator acceptance and
+browser suite. Production inspection remains read-only apart from its own login
+and logout; it never resets, approves, stops or replays an operational command.
+"""
+
+import http.cookiejar
+import json
+import os
+import re
+import subprocess
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import oracle_robot as r
+
+
+class API:
+    def __init__(self, origin, public_origin, credentials, bypass=None):
+        self.origin = origin
+        self.public = public_origin
+        self.credentials = credentials
+        self.bypass = bypass
+        self.csrf = ""
+        self.jar = http.cookiejar.CookieJar()
+        self.opener = urllib.request.build_opener(
+            r.NoRedirect(), urllib.request.HTTPCookieProcessor(self.jar)
+        )
+
+    def call(self, path, body=None, *, expected=200, csrf=True):
+        r.require(
+            path.startswith("/api/v1/") and "?" not in path and ".." not in path,
+            "PROBE_API_PATH",
+        )
+        headers = {"Origin": self.public, "Content-Type": "application/json"}
+        if csrf and self.csrf:
+            headers["X-CSRF-Token"] = self.csrf
+        if self.bypass:
+            headers["x-vercel-protection-bypass"] = self.bypass
+        request = urllib.request.Request(
+            self.origin + path,
+            data=None if body is None else r.canonical(body),
+            headers=headers,
+        )
+        try:
+            response = self.opener.open(request, timeout=30)
+        except urllib.error.HTTPError as error:
+            response = error
+        with response:
+            r.require(
+                response.status == expected,
+                "HOSTED_HTTP_STATUS_" + str(response.status),
+            )
+            raw = response.read(1024 * 1024 + 1)
+            r.require(len(raw) <= 1024 * 1024, "PROBE_API_RESPONSE_BOUND")
+            return json.loads(raw) if raw else None
+
+    def login(self):
+        value = self.call(
+            "/api/v1/auth/login",
+            {
+                "name": self.credentials["operator"],
+                "password": self.credentials["password"],
+            },
+        )
+        self.csrf = value["csrf"]
+        r.require(
+            any(
+                c.name == "robot_session"
+                and c.secure
+                and c.has_nonstandard_attr("HttpOnly")
+                for c in self.jar
+            ),
+            "SECURE_HTTPONLY_SESSION_REQUIRED",
+        )
+
+    def logout(self):
+        if self.csrf:
+            self.call("/api/v1/auth/logout", {})
+            self.csrf = ""
+            self.call("/api/v1/auth/me", expected=401)
+
+
+def validate_request(request):
+    b = request["binding"]
+    env = request["environment"]
+    r.require(
+        b["repository"] == "DruHustle/onesa-ai-robot"
+        and b["component"] in ["api", "frontend"]
+        and env in ["staging", "production"],
+        "HOSTED_PROBE_COMPONENT_SCOPE",
+    )
+    r.require(
+        request["physical_hardware_authorized"] is False
+        and request["read_only"] == (env == "production"),
+        "HOSTED_PROBE_PROCESSING_SCOPE",
+    )
+    expected = (
+        "https://robot-api" + ("-staging" if env == "staging" else "") + ".onesa.eu"
+    )
+    r.require(request["api_origin"] == expected, "HOSTED_API_TARGET_SCOPE")
+    host = urllib.parse.urlsplit(request["origin"])
+    r.require(
+        host.scheme == "https"
+        and host.path == ""
+        and host.query == ""
+        and host.fragment == ""
+        and host.username is None
+        and host.password is None
+        and host.port is None,
+        "CANONICAL_PROBE_ORIGIN",
+    )
+    r.require(
+        request["origin"] == "https://robot.onesa.eu"
+        if env == "production"
+        else bool(
+            re.fullmatch(
+                r"onesa-ai-robot-git-staging-[a-z0-9-]+\.vercel\.app",
+                host.hostname or "",
+            )
+        ),
+        "HOSTED_FRONTEND_TARGET_SCOPE",
+    )
+    provider = request["provider"]
+    r.require(
+        provider["environment"] == env
+        and provider["origin"] == request["origin"]
+        and provider["provider_token_included"] is False
+        and provider["binding"] == b
+        and provider["provider"]["source"] == request["expected_frontend_source"],
+        "ACTUAL_HOSTED_PROVIDER_REQUIRED",
+    )
+    r.require(
+        re.fullmatch("sha256:[a-f0-9]{64}", request["probe_image"])
+        and request["cpu_limit"] in ["1", "2"],
+        "PINNED_BOUNDED_PROBE_IMAGE",
+    )
+    return env
+
+
+def readonly_api(request):
+    api = API(request["api_origin"], request["origin"], request["credentials"])
+    ready = api.call("/api/v1/ready")
+    r.require(
+        ready["status"] == "ready"
+        and ready["mode"] == "simulation"
+        and ready["physical_actuation"] is False
+        and ready["storage_mode"] == "turso"
+        and ready["deployment_environment"] == request["environment"],
+        "ACTUAL_HOSTED_READINESS",
+    )
+    for path in [
+        "/api/v1/status",
+        "/api/v1/tasks",
+        "/api/v1/missions",
+        "/api/v1/missions/catalog",
+        "/api/v1/admin/physical-operation",
+    ]:
+        api.call(path, expected=401)
+    api.login()
+    try:
+        state = api.call("/api/v1/status")
+        r.require(
+            state["mode"] == "simulation"
+            and state["physical_actuation"] is False
+            and state["stopped"] is True
+            and state["active_task"] is None,
+            "PROBE_REQUIRES_EXISTING_STOPPED_IDLE_RUNTIME",
+        )
+        catalog = api.call("/api/v1/missions/catalog")
+        r.require(
+            catalog["physical_actuation"] is False
+            and catalog["mode"] == "simulation"
+            and len(catalog["skills"]) == 5
+            and len(catalog["scenarios"]) == 7,
+            "NEW_INSPECTION_CATALOG_REQUIRED",
+        )
+        missions = api.call("/api/v1/missions")
+        tasks = api.call("/api/v1/tasks")
+        permission = api.call("/api/v1/admin/physical-operation")
+        r.require(
+            permission["permission"] == "blocked"
+            and permission["physical_actuation"] is False,
+            "PHYSICAL_PERMISSION_MUST_REMAIN_BLOCKED",
+        )
+        return {
+            "readiness": "PASS",
+            "authentication": "PASS",
+            "anonymous_denials": 5,
+            "catalog": "PASS",
+            "mission_history_read": "PASS",
+            "task_history_read": "PASS",
+            "physical_permission": "BLOCKED",
+            "production_operational_mutations": 0,
+            "mission_count": len(missions.get("missions", [])),
+            "task_count": len(tasks["tasks"]),
+        }
+    finally:
+        api.logout()
+
+
+def browser(request):
+    """The immutable probe image contains commissioned tooling, not candidate code."""
+    output = Path(request["output"])
+    private = output / "browser-request.json"
+    r.write(
+        private,
+        {
+            k: request[k]
+            for k in [
+                "binding",
+                "environment",
+                "origin",
+                "credentials",
+                "provider",
+                "read_only",
+            ]
+        },
+    )
+    command = [
+        "/usr/bin/docker",
+        "run",
+        "--rm",
+        "--read-only",
+        "--tmpfs",
+        "/tmp:rw,size=512m",
+        "--tmpfs",
+        "/root:rw,mode=700,size=64m",
+        "--memory",
+        "1400m",
+        "--cpus",
+        request["cpu_limit"],
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges:true",
+        "-v",
+        str(private) + ":/private/request.json:ro",
+        "-v",
+        str(output) + ":/private/output:rw",
+        "--entrypoint",
+        "node",
+        request["probe_image"],
+        "/opt/onesa-ai-robot/scripts/release/oracle_robot_browser.mjs",
+        "/private/request.json",
+    ]
+    try:
+        with (
+            (output / "browser.stdout").open("xb") as stdout,
+            (output / "browser.stderr").open("xb") as stderr,
+        ):
+            os.chmod(stdout.name, 0o600)
+            os.chmod(stderr.name, 0o600)
+            result = subprocess.run(
+                command,
+                stdout=stdout,
+                stderr=stderr,
+                timeout=1500,
+                check=False,
+                env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8"},
+            )
+    finally:
+        # Also remove scoped credentials if the child fails or exceeds its bound.
+        private.unlink(missing_ok=True)
+    r.require(result.returncode == 0, "HOSTED_BROWSER_FAILED_INSPECT_PRIVATE_EVIDENCE")
+    value = r.read(output / "browser-receipt.json")
+    r.require(
+        value["status"] == "PASS"
+        and value["engines"] == ["chromium", "firefox", "webkit"]
+        and value["binding"] == request["binding"]
+        and value["environment"] == request["environment"]
+        and value["replay_operational_requests"] == 0
+        and value["javascript_errors"] == 0
+        and value["accessibility_violations"] == 0,
+        "GENUINE_HOSTED_BROWSER_RECEIPT",
+    )
+    return value
+
+
+def staging_legacy(request):
+    # Existing simulator and device checks remain mandatory. The independently
+    # configured synthetic device bearer is confined to staging in this process.
+    from smoke import CHECKS, run
+
+    env = request["environment"]
+    r.require(env == "staging", "NO_LEGACY_MUTATIONS_IN_PRODUCTION")
+    credential = request["credentials"]
+    values = r.runtime_values(r.ENV["staging"])
+    r.require(
+        credential.get("edge_token")
+        and values.get("ROBOT_EDGE_DEVICE_ID", "").startswith("synthetic-"),
+        "EXISTING_STAGING_EDGE_CREDENTIAL_REQUIRED",
+    )
+    chosen = {
+        "ROBOT_TEST_OPERATOR": credential["operator"],
+        "ROBOT_TEST_PASSWORD": credential["password"],
+        "ROBOT_TEST_SCOPE": "approved-synthetic-staging",
+        "ROBOT_PUBLIC_ORIGIN": request["origin"],
+        "ROBOT_STORAGE_MODE": "turso",
+        "ROBOT_EDGE_DEVICE_ID": values["ROBOT_EDGE_DEVICE_ID"],
+        "ROBOT_EDGE_TOKEN": credential["edge_token"],
+        "VERCEL_AUTOMATION_BYPASS_SECRET": request["provider"]["bypass"],
+    }
+    previous = {k: os.environ.get(k) for k in chosen}
+    try:
+        os.environ.update(chosen)
+        value = run(request["origin"], "Staging")
+    finally:
+        for key, old in previous.items():
+            if old is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = old
+    r.require(
+        value["status"] == "PASS"
+        and all(value["checks"].get(k) == "PASS" for k in CHECKS),
+        "EXISTING_SIMULATOR_ACCEPTANCE_FAILED",
+    )
+    return value
+
+
+def execute(request):
+    env = validate_request(request)
+    results = {"read_only_api": readonly_api(request)}
+    if env == "staging":
+        results["existing_simulator_and_edge"] = staging_legacy(request)
+    results["browser"] = browser(request)
+    return {
+        "status": "PASS",
+        "binding": request["binding"],
+        "environment": env,
+        "operation_id": request["operation_id"],
+        "observed_at": r.now().isoformat(),
+        "results": results,
+        "physical_hardware_authorized": False,
+        "production_operational_mutations": 0,
+        "source_build_image_identity_observed": True,
+    }
