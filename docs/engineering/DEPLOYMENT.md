@@ -2,6 +2,10 @@
 
 <!-- onesa-protected-source: robot-deployment -->
 
+Runtime preservation snapshots wait a bounded time for temporary Docker clients
+to finish. Every persistent and unknown workload remains in the snapshot; actual
+identity changes, missing services and incomplete observations still block release.
+
 Detailed operational instructions are maintained in protected Engineering Docs.
 This public source is a reference page, not a deployment or recovery runbook.
 

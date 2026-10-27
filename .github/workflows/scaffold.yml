@@ -95,7 +95,7 @@ jobs:
     needs:
     - changes
     if: ${{ (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (needs.changes.result == 'success' && needs.changes.outputs.frontend == 'true') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - name: Verify GitHub-hosted execution and actual visibility
       env:
@@ -215,7 +215,7 @@ jobs:
         docker save onesa-robot-runtime:ci -o data/security/runtime.tar
 
         docker run --rm --user "$(id -u):$(id -g)" -e TRIVY_CACHE_DIR=/tmp/trivy-cache -v "$PWD/data/security:/reports" aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa
-        image --scanners vuln,secret --format json --output /reports/runtime.json --input /reports/runtime.tar
+        image --db-repository ghcr.io/aquasecurity/trivy-db:2 --scanners vuln,secret --format json --output /reports/runtime.json --input /reports/runtime.tar
 
         python3 scripts/image_gate.py data/security/runtime.json
 
