@@ -1,5 +1,13 @@
 # Onesa AI Robot
 
+The current source adds a supervised **Pump P-101 inspection**: versioned bounded
+planning and skills, exact-plan password approval, deterministic scenarios,
+traceable reports, owned JSON exports and command-free replay. Optional read-only
+AI asset-context file import stays disabled by default. Use the
+[local inspection demonstration](docs/engineering/ENGINEERING_ONBOARDING.md#demonstrate-an-industrial-inspection-locally).
+This source capability has separate CI/hosted release gates; the accepted production
+component identities below remain authoritative until new acceptance is recorded.
+
 Node application startup has a narrowly scoped CA trust policy, with isolated
 regressions in `node --test scripts/test_tls_trust.mjs`. Use Node 24.12+ in the 24
 series. Source implementation is separate from the accepted component releases

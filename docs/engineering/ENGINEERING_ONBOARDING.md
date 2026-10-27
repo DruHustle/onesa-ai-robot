@@ -77,3 +77,22 @@ integration, edge installation and physical safety authorization.
 
 Use `info@onesa.eu` or enabled private vulnerability reporting for safe private reports.
 Do not attach credentials, real telemetry, personal data or unrestricted raw logs.
+
+## Demonstrate an industrial inspection locally
+
+Use the existing frontend/backend secure local startup and a disposable journal
+with a synthetic operator account. Open `/console`, sign in and password-confirm
+Reset simulation stop. Select Pump P-101, the simulated inspector and a scenario;
+Generate inspection plan, review the five steps and provenance, then approve with
+your operator password within15seconds. Keep the page connected for the six-second
+run. Review findings and source timestamps, export JSON and scrub the read-only
+replay. Threshold/discrepancy findings mean a completed inspection; interrupted
+and timed-out runs explicitly require a new run after reset. Missing/stale/unit
+scenarios exercise unknown evidence. The display-only profile is unsupported.
+
+The synthetic workflow needs neither AI Platform nor model/GPU credentials.
+Optional AI file import remains off unless explicitly configured for approved
+synthetic development data. The [architecture](SIMULATION_ARCHITECTURE.md)
+documents its boundaries. No physical movement or real factory processing is part
+of this demonstration. Source/build/test evidence alone does not establish a
+hosted release; use the protected procedure for exact-source deployment.
