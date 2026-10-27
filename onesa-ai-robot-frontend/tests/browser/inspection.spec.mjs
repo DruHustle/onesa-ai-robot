@@ -163,4 +163,8 @@ test("older run disclosure and keyboard focus survive an unchanged history refre
   await expect(first).toBeFocused();
   await expect(history.locator("details")).toHaveAttribute("open","");
   await expect(history.locator(":scope > li")).toHaveCount(7);
+  // Restore this completed synthetic scenario's stopped state for later legacy
+  // journeys. Logout revokes its session but is not a simulator reset request.
+  await page.locator("#stop").click();
+  await expect(page.locator("#stop-state")).toContainText("Stopped");
 });

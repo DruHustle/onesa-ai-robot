@@ -57,3 +57,10 @@ Staging device identity is copied only from the verified provider into a 0600 ca
   refreshes preserve the existing DOM, keyboard focus and disclosure state.
 - Source implementation and local verification do not establish trusted installation,
   fresh hosted qualification, authorization or production acceptance.
+
+
+The unreleased owner extension explicitly supplies the verified `ROBOT_API_URL`
+for each prebuilt deployment; Git metadata alone cannot select a branch-scoped
+server variable. Canonical origins are checked before credential use. The history
+browser scenario restores its own completed simulator to stopped before later legacy
+journeys. Existing assertions, three-engine coverage and deadlines are unchanged.

@@ -831,6 +831,14 @@ def validate_plan(binding):
         and plan["bindings"].get(binding["component"]) == binding,
         "OWNER_PLAN_BINDING",
     )
+    require(
+        plan["api_origins"]
+        == {
+            "staging": "https://robot-api-staging.onesa.eu",
+            "production": "https://robot-api.onesa.eu",
+        },
+        "CANONICAL_ROBOT_API_ORIGINS_REQUIRED",
+    )
     verify_toolchain(plan, binding)
     folder = component_folder(binding)
     require(

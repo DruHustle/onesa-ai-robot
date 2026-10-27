@@ -77,6 +77,12 @@ class ProviderConfigurationTests(unittest.TestCase):
         ):
             return f.protection(self.plan)
 
+    def test_foreign_api_origin_fails_before_provider_or_credential_use(self):
+        with patch.object(f, "provider") as provider:
+            with self.assertRaisesRegex(r.Refused, "CANONICAL_ROBOT_API_ORIGINS"):
+                f.protection({"api_origins": {"staging": "https://foreign.invalid"}})
+            provider.assert_not_called()
+
     def test_only_two_explicit_nonsecret_routing_variables_are_read(self):
         self.assertEqual(self.call(), self.project)
         self.assertEqual(len(self.calls), 3)
@@ -116,6 +122,7 @@ class ProviderIntentTests(unittest.TestCase):
                 "project_id": "prj_fixture",
                 "serverless_function_region": "iad1",
                 "builds": {"production": {"archive_sha256": "b" * 64}},
+                "api_origins": {"production": "https://robot-api.onesa.eu"},
                 "cli_image": "sha256:" + "c" * 64,
             }
             operation = str(uuid4())

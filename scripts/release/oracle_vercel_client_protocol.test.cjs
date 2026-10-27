@@ -58,7 +58,7 @@ async function fullCliFixture(mode){
   const url=new URL(req.url,'http://fixture'),chunks=[];for await(const chunk of req)chunks.push(chunk);const bytes=Buffer.concat(chunks);
   if(req.method==='POST'&&url.pathname.startsWith('/v2/files')){const sha=crypto.createHash('sha1').update(bytes).digest('hex');assert.equal(sha,req.headers['x-now-digest']);uploaded.add(sha);uploads++;return send(res,{});}
   if(req.method==='POST'&&/\/v[0-9]+\/deployments$/.test(url.pathname)){
-   posts++;const body=JSON.parse(bytes);regions=body.regions;assert.equal(body.meta.githubCommitSha,'a'.repeat(40));assert.equal(body.meta.onesaOracleOperation,operation);
+   posts++;const body=JSON.parse(bytes);regions=body.regions;assert.equal(body.env.ROBOT_API_URL,environment==='production'?'https://robot-api.onesa.eu':'https://robot-api-staging.onesa.eu');assert.equal(body.meta.githubCommitSha,'a'.repeat(40));assert.equal(body.meta.onesaOracleOperation,operation);
    assert.ok(environment==='production'?body.target==='production':[undefined,'preview'].includes(body.target));
    const missing=body.files.filter(f=>f.sha&&!uploaded.has(f.sha)).map(f=>f.sha);
    if(mode==='cold'&&missing.length)return send(res,{error:{code:'missing_files',missing}},400);
@@ -75,7 +75,7 @@ async function fullCliFixture(mode){
  try{
   const origin='http://127.0.0.1:'+server.address().port,preload=path.join(directory,'preload.cjs');fs.writeFileSync(preload,'require("/tests/oracle_vercel_transport_guard.cjs").install('+JSON.stringify(transport)+','+JSON.stringify(origin)+');',{mode:0o600});
   const bootstrap=fs.readFileSync(path.join(__dirname,'oracle_robot_frontend.py'),'utf8').match(/CLI_BOOTSTRAP = r"""([\s\S]*?)"""/)[1];
-  const args=['-e',bootstrap,'--','--require',preload,cli,'deploy','--prebuilt','--yes','--no-wait','--json','--global-config','/tmp/onesa-vercel-cli','--project',project.projectId,'--api',origin,'--meta','githubCommitSha='+'a'.repeat(40),'--meta','onesaOracleOperation='+operation,...(environment==='production'?['--prod']:[])];
+  const args=['-e',bootstrap,'--','--require',preload,cli,'deploy','--prebuilt','--yes','--no-wait','--json','--global-config','/tmp/onesa-vercel-cli','--project',project.projectId,'--env','ROBOT_API_URL='+ (environment==='production'?'https://robot-api.onesa.eu':'https://robot-api-staging.onesa.eu'),'--api',origin,'--meta','githubCommitSha='+'a'.repeat(40),'--meta','onesaOracleOperation='+operation,...(environment==='production'?['--prod']:[])];
   const result=await new Promise(resolve=>{
    const child=spawn(process.execPath,args,{cwd:workspace,env:{PATH:process.env.PATH,HOME:'/tmp'},stdio:['ignore','pipe','pipe']});let stdout='',stderr='';child.stdout.on('data',b=>stdout+=b);child.stderr.on('data',b=>stderr+=b);
    const timer=setTimeout(()=>child.kill('SIGTERM'),25000);child.once('error',e=>{clearTimeout(timer);resolve({code:null,stderr:e.message,stdout});});child.once('exit',code=>{clearTimeout(timer);resolve({code,stdout,stderr});});

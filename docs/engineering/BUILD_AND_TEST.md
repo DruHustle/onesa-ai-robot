@@ -273,3 +273,9 @@ and a loopback provider only. It exercises cold/warm upload negotiation, project
 resolution, immutable read-only credential custody and one-create request enforcement.
 That fixture supplies no production authority. Keep its original failed observations
 alongside a corrected result in the protected evidence index.
+
+The pinned CLI protocol fixture asserts each actual outgoing `ROBOT_API_URL` value.
+The history/disclosure case must restore its own completed scenario's stopped state;
+later reset/legacy cases must not inherit an unrelated ready state. Run the history
+case followed by a legacy simulation case to verify that isolation without increasing
+deadlines or removing checks.

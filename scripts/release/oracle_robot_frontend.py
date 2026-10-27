@@ -27,6 +27,10 @@ ROOT = Path("/var/lib/onesa/release-verification/robot/frontend")
 PROVIDER = Path("/etc/onesa/oracle-robot-vercel-observer.json")
 CLI_AUTH = Path("/etc/onesa/oracle-vercel-cli")
 APP_ROOT = "onesa-ai-robot-frontend"
+API_ORIGINS = {
+    "staging": "https://robot-api-staging.onesa.eu",
+    "production": "https://robot-api.onesa.eu",
+}
 
 # The pinned CLI atomically updates preferences and its cache during startup.
 # Keep owner custody read-only; all CLI writes belong to this container's tmpfs.
@@ -86,6 +90,9 @@ def provider(path, *, data=None):
 
 
 def protection(plan):
+    r.require(
+        plan["api_origins"] == API_ORIGINS, "CANONICAL_ROBOT_API_ORIGINS_REQUIRED"
+    )
     cfg = r.read(PROVIDER)
     project = provider("/v9/projects/" + cfg["project_id"])
     fields = {
@@ -454,6 +461,8 @@ def create(binding, env, operation, folder, plan):
         "/tmp/onesa-vercel-cli",
         "--project",
         plan["project_id"],
+        "--env",
+        "ROBOT_API_URL=" + plan["api_origins"][env],
         "--meta",
         "githubCommitRef=" + ("main" if env == "production" else "staging"),
         "--meta",
