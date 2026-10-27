@@ -17,5 +17,5 @@ LABEL org.opencontainers.image.revision=$SOURCE_COMMIT org.onesa.source-archive-
 RUN rm -rf /usr/local/lib/python3.11/ensurepip /usr/local/lib/python3.11/site-packages/pip* /usr/local/lib/python3.11/site-packages/setuptools* /usr/local/lib/python3.11/site-packages/wheel* /usr/local/bin/pip*
 USER onesa
 EXPOSE 8431
-HEALTHCHECK --interval=15s --timeout=5s --start-period=10s CMD python -c "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:'+os.environ.get('PORT','8431')+'/api/v1/ready',timeout=3)"
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s CMD wget -q -Y off -T 3 -O /dev/null "http://127.0.0.1:${PORT:-8431}/api/v1/ready"
 CMD ["sh", "/app/start.sh"]

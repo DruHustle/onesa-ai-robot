@@ -95,7 +95,7 @@ jobs:
     needs:
     - changes
     if: ${{ (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (needs.changes.result == 'success' && needs.changes.outputs.frontend == 'true') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - name: Verify GitHub-hosted execution and actual visibility
       env:
@@ -139,7 +139,13 @@ jobs:
     - run: python scripts/check-contracts.py
     - name: Verify sanitized browser diagnostic controls
       run: python3 -m unittest discover -s scripts/ci -p test_browser_diagnostics.py
-    - run: npx playwright install --with-deps chromium firefox webkit
+    - name: Prepare bounded signed Ubuntu browser dependencies
+      run: |
+        python3 -m unittest discover -s scripts/ci -p test_browser_dependencies.py
+        sudo -n --preserve-env=GITHUB_ACTIONS,RUNNER_ENVIRONMENT,RUNNER_OS,GITHUB_REPOSITORY python3 scripts/ci/browser_dependencies.py
+    - name: Install application browsers and system dependencies
+      timeout-minutes: 10
+      run: npx playwright install --with-deps chromium firefox webkit
       working-directory: onesa-ai-robot-frontend
     - name: Synthetic cross-browser operator acceptance
       env:
@@ -204,6 +210,9 @@ jobs:
     - name: Actual backend startup and shutdown
       if: matrix.application == 'backend'
       run: python3 scripts/test-container-startup.py onesa-robot-runtime:ci
+    - name: Health client success, failure, proxy isolation and timeout
+      if: matrix.application == 'backend'
+      run: python3 scripts/healthcheck_smoke.py onesa-robot-runtime:ci
     - name: Runtime security gate
       run: 'mkdir -p data/security
 
@@ -212,7 +221,7 @@ jobs:
         docker save onesa-robot-runtime:ci -o data/security/runtime.tar
 
         docker run --rm --user "$(id -u):$(id -g)" -e TRIVY_CACHE_DIR=/tmp/trivy-cache -v "$PWD/data/security:/reports" aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa
-        image --scanners vuln,secret --format json --output /reports/runtime.json --input /reports/runtime.tar
+        image --db-repository ghcr.io/aquasecurity/trivy-db:2 --scanners vuln,secret --format json --output /reports/runtime.json --input /reports/runtime.tar
 
         python3 scripts/image_gate.py data/security/runtime.json
 

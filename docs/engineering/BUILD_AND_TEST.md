@@ -1,5 +1,46 @@
 # Independent software builds and tests
 
+Oracle CI selection keeps an existing push authoritative, including failed,
+pending, skipped or cancelled evidence. Only an absent push permits the existing
+owner-dispatched full workflow; both owner identities, a complete run listing,
+first attempt and every mandatory job/security step remain required. Signed
+references preserve the actual CI event. Synthetic mixed-event regressions must
+reject a newer successful manual run presented over a failing push.
+
+The disposable frontend job bounds APT requests and removes the observed Azure
+mirror from the runner's existing failover list, retaining its existing signed
+Ubuntu archive, suite, components and keys. It never runs on the workstation,
+owner VM or an unrelated repository; conflicting sources fail closed. The helper
+and synthetic custody/source tests derive from reviewed AI Platform source
+`2eacf0aff2bfbf8b3e8713a4cc3610c37c2207dd`, with the repository guard changed to
+Robot. All three engines remain mandatory; installer failure remains unqualified.
+
+Runtime scans fetch the vulnerability database from Aqua's official GHCR origin,
+avoiding an observed pull-through mirror 404. The scanner digest, full vulnerability
+and secret scans, complete-report requirement and rejection of high/critical or
+secret findings remain unchanged. A database-download failure still fails CI.
+See [Trivy database locations](https://trivy.dev/docs/latest/configuration/db/).
+
+Frontend CI uses the supported Ubuntu 24.04 hosted image explicitly. Chromium,
+Firefox, WebKit and their system dependencies remain mandatory; the moving latest
+OS label is not part of the browser qualification contract. See the official
+[Playwright requirements](https://playwright.dev/docs/intro#system-requirements) and
+[hosted image inventory](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md).
+
+The offline release suite includes `test_oracle_inventory.py`: completed temporary
+monitoring clients and list/inspect races do not become preservation baselines.
+Long-lived temporary workloads, unchanged-inventory command failures, incomplete
+metadata and real independent runtime changes still fail closed. These fixtures
+make only mocked Docker reads and do not establish hosted qualification.
+
+Container health uses the Alpine base image's existing BusyBox `wget` without
+starting Python for every request. Proxies are disabled; the readiness route,
+15-second interval and deadlines are retained. Run
+`python3 scripts/healthcheck_smoke.py <image>` after building: the actual image probe
+must handle a custom loopback port, HTTP 503/404, hostile proxy settings, refusal and
+timeout in an isolated network-free container. Application, journal and safety
+qualification remain separate requirements.
+
 CI and hosted artifact-build workflows pin Node 24.22.1 explicitly; a cached
 `24` major selector can otherwise select an older vulnerable patch. Runtime images
 and provider-managed runtimes require their own source-bound verification.
@@ -79,6 +120,11 @@ operator, authorization, appearance and accessibility cases remain required. Off
 module tests prove independent Stop/cancel/logout and duplicate originating-form
 suppression. Submission scope comes from the synchronous event currentTarget;
 focused controls do not determine which independent action may run.
+
+Inspection refresh also preserves the shared form's `aria-busy` lock. The pending
+approval regression waits for another status response before requiring the approval
+button to remain disabled, one approval request and an independently available Stop.
+This reproduces the WebKit failure without changing safety deadlines or adding retries.
 
 Browser cleanup checks for the test context's host-scoped operator cookie before
 requesting protected session endpoints. Anonymous public and intercepted fixtures

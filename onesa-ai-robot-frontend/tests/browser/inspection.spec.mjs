@@ -118,8 +118,10 @@ test("Stop stays available during an inspection approval response", async ({
   await page.locator("#mission-submit").click();
   await expect(page.locator("#mission-approval")).toBeVisible();
   let release;
+  let approvals = 0;
   const held = new Promise((resolve) => (release = resolve));
   await page.route("**/missions/*/approve", async (route) => {
+    approvals++;
     await held;
     await route.fulfill({
       status: 409,
@@ -131,6 +133,12 @@ test("Stop stays available during an inspection approval response", async ({
     await page.locator("#mission-password").fill(password);
     await page.locator("#mission-approve-submit").click();
     await expect(page.locator("#mission-approve-submit")).toBeDisabled();
+    // A fresh observation must preserve the pending form lock. Stop is independent.
+    await page.waitForResponse((response) =>
+      new URL(response.url()).pathname === "/api/v1/status" && response.ok(),
+    );
+    await expect(page.locator("#mission-approve-submit")).toBeDisabled();
+    expect(approvals).toBe(1);
     await page.locator("#stop").click();
     await expect(page.locator("#mission-readiness")).toContainText("Stopped");
   } finally {

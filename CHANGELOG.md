@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Source correction: preserve pending inspection form locks during background
+  refresh. Approval remains disabled until its response settles while Stop stays
+  independently available; the browser regression covers another status response.
+
+- Source candidate: replace the Python HTTP health client with existing BusyBox wget
+  while retaining the readiness route, 15-second interval and timeout. Final-image
+  checks cover success, failure, proxy isolation and timeout. Watchdog, Stop, leases,
+  journal behavior and runtime limits remain unchanged; rollout is separate.
+
 - Replace detailed public operational runbooks with protected-reference pages after
   preserving exact original source/hash provenance in restricted custody. Historical
   Git copies remain public; this is active-source classification, not history removal.
