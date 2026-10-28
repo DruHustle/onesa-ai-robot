@@ -1,5 +1,16 @@
 # Engineering changelog
 
+## 2026-10-28 — Repository renamed to onesa-robot
+
+Update canonical GitHub references, workflow owner/repository guards and local
+repository-name policy lookup to `DruHustle/onesa-robot`. Keep the existing
+component directory names, image/artifact identities, hosting resources and
+commissioned runtime paths so this naming change requires no deployment or data
+migration. Historical release records retain the names used when they were issued.
+This source update does not qualify a new hosted release or migrate external
+owner-installed trust records; those must be requalified against the new identity
+before the next deployment.
+
 ## 2026-10-13 — Remove the unused cloud filesystem-path setting
 
 Use the actual existing native Python staging service in the Free-only reference. Turso keeps sessions process-local and stores task history remotely, so no cloud filesystem path or disk declaration is needed. Remove the erroneous libsql value from the unused staging path key, preserve credentials/history and require the path only for filesystem storage modes.

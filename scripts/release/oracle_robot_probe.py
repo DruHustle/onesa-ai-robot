@@ -141,7 +141,7 @@ def validate_request(request):
     b = request["binding"]
     env = request["environment"]
     r.require(
-        b["repository"] == "DruHustle/onesa-ai-robot"
+        b["repository"] == "DruHustle/onesa-robot"
         and b["component"] in ["api", "frontend"]
         and env in ["staging", "production"],
         "HOSTED_PROBE_COMPONENT_SCOPE",

@@ -8,7 +8,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   inspect:
-    if: (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.event_name == 'workflow_dispatch' && github.event.repository.private == false && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle')
+    if: (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.event_name == 'workflow_dispatch' && github.event.repository.private == false && github.repository == 'DruHustle/onesa-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -17,7 +17,7 @@ jobs:
     - name: Verify current repository visibility before credential access
       env:
         GH_TOKEN: ${{ github.token }}
-      run: test "$(gh api repos/DruHustle/onesa-ai-robot --jq '.private')" = false
+      run: test "$(gh api repos/DruHustle/onesa-robot --jq '.private')" = false
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         persist-credentials: false

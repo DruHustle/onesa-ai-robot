@@ -52,7 +52,7 @@ class InspectionTests(unittest.TestCase):
             patch.dict(
                 os.environ,
                 {
-                    "GITHUB_REPOSITORY": "DruHustle/onesa-ai-robot",
+                    "GITHUB_REPOSITORY": "DruHustle/onesa-robot",
                     "VERCEL_PROJECT_ID": "fixture",
                     "VERCEL_ORG_ID": "fixture",
                 },

@@ -17,7 +17,9 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-PRODUCT = ROOT.name
+PRODUCT = "onesa-robot" if ROOT.name == "onesa-ai-robot" else ROOT.name
+# Component paths and hosted image/artifact identities predate the repository rename.
+APPLICATION_PREFIX = "onesa-ai-robot" if PRODUCT == "onesa-robot" else PRODUCT
 OWNER = "DruHustle"
 REPOSITORY = OWNER + "/" + PRODUCT
 GATES = (
@@ -54,7 +56,7 @@ POLICIES = {
         ],
         "staging_branch": "staging",
     },
-    "onesa-ai-robot": {
+    "onesa-robot": {
         "ci": "scaffold.yml",
         "jobs": [
             "backend",
@@ -380,7 +382,10 @@ def artifacts_for_ci(github, references):
         if reference["workflow"] != POLICY["ci"]:
             continue
         run = github.run(reference["run_id"])
-        for application in [PRODUCT + "-backend", PRODUCT + "-frontend"]:
+        for application in [
+            APPLICATION_PREFIX + "-backend",
+            APPLICATION_PREFIX + "-frontend",
+        ]:
             manifest, origin = github.artifact(run, "runtime-" + application)
             require(
                 manifest["repository"] == REPOSITORY
@@ -508,7 +513,7 @@ def generate(github, sha, run, staging_run=None, require_frontend_build=True):
         except Rejected as error:
             record["CODE_VERIFIED"] = code = "BLOCKED"
             record["missing_evidence"].append(str(error))
-    if PRODUCT == "onesa-ai-robot":
+    if PRODUCT == "onesa-robot":
         record.update(
             {
                 "scope": "software-and-simulation-only",
@@ -529,7 +534,7 @@ def generate(github, sha, run, staging_run=None, require_frontend_build=True):
         trusted_staging_run(github, stage_run, sha)
         stage, origin = github.artifact(stage_run, "staging-verification")
         verify_stage(stage, sha, record["valid_for_source_sha256"], builds)
-        if PRODUCT == "onesa-ai-robot" and stage.get("component_plan"):
+        if PRODUCT == "onesa-robot" and stage.get("component_plan"):
             from components import verify
 
             record["component_plan"] = verify(github, sha, stage["component_plan"])
@@ -567,7 +572,7 @@ def verify_stage(stage, sha, fingerprint, builds, now=None):
         "user_data_isolation",
         "storage_integrations",
     }
-    if PRODUCT == "onesa-ai-robot":
+    if PRODUCT == "onesa-robot":
         required = {
             "deployed_commit",
             "backend_readiness",
@@ -593,7 +598,7 @@ def verify_stage(stage, sha, fingerprint, builds, now=None):
         stage.get("render_deployment_id") and stage.get("vercel_deployment_id"),
         "Staging deployment identifiers missing",
     )
-    if PRODUCT == "onesa-ai-robot" and stage.get("component_plan"):
+    if PRODUCT == "onesa-robot" and stage.get("component_plan"):
         selected = stage["component_plan"]
         require(
             selected.get("mode") == "frontend-only"
@@ -649,7 +654,7 @@ def technical_gate(github, evidence, sha):
         evidence["CODE_VERIFIED"] == "PASS" and evidence["STAGING_VERIFIED"] == "PASS",
         "Technical or staging qualification missing",
     )
-    if PRODUCT == "onesa-ai-robot":
+    if PRODUCT == "onesa-robot":
         require(
             evidence.get("scope") == "software-and-simulation-only"
             and evidence.get("SIMULATION_VERIFIED") == "PASS"
@@ -955,7 +960,7 @@ def main():
             record["CODE_VERIFIED"] == "PASS",
             "Exact staging CI/build/security must pass",
         )
-        if args.mode == "stage-preflight" and PRODUCT == "onesa-ai-robot":
+        if args.mode == "stage-preflight" and PRODUCT == "onesa-robot":
             mode = os.environ.get("ROBOT_RELEASE_MODE", "full")
             require(mode in {"full", "frontend-only"}, "Unknown Robot release mode")
             if mode == "frontend-only":

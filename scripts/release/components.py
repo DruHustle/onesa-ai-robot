@@ -126,7 +126,7 @@ def baseline(github, authorization_run, *, now=None):
         "qualification": qualified_origin,
         "staging": stage_origin,
         "tested_build": next(
-            b for b in builds if b["application"] == e.PRODUCT + "-backend"
+            b for b in builds if b["application"] == e.APPLICATION_PREFIX + "-backend"
         ),
     }
 

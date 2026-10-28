@@ -8,7 +8,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-PRODUCT = ROOT.name
+PRODUCT = "onesa-robot" if ROOT.name == "onesa-ai-robot" else ROOT.name
 FIELDS = (
     "backend",
     "frontend",
@@ -47,7 +47,7 @@ def classify(product, changed, full=False):
             if shared or critical or configuration:
                 result = {key: True for key in FIELDS}
                 continue
-            if product == "onesa-ai-robot":
+            if product == "onesa-robot":
                 if name.startswith("docs/") and not name.startswith("docs/api/"):
                     result["documentation"] = True
                 elif name.startswith("onesa-ai-robot-frontend/"):
