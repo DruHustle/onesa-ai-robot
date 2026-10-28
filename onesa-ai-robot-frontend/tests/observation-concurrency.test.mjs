@@ -10,7 +10,7 @@ function deferred(){let resolve,reject;const promise=new Promise((yes,no)=>{reso
 
 async function fixture(observationDelayMs=0){
  const source=(await readFile(new URL('../public/app.js',import.meta.url),'utf8')).replace(/^import .*$/gm,'');
- const nodes=new Map(),windows=new Map(),documents=new Map(),pending={heartbeat:[],status:[],tasks:[]},calls={heartbeat:0,status:0,tasks:0,cancelPending:0};let restoredSession=null;
+ const observed=[],nodes=new Map(),windows=new Map(),documents=new Map(),pending={heartbeat:[],status:[],tasks:[]},calls={heartbeat:0,status:0,tasks:0,cancelPending:0};let restoredSession=null;
  const node=id=>{if(!nodes.has(id))nodes.set(id,{id,hidden:false,value:'synthetic-only',textContent:'',children:[],focus(){},addEventListener(){},replaceChildren(...children){this.children=children;},append(child){this.children.push(child);}});return nodes.get(id);};
  function request(operation,value){const result=deferred();pending[operation].push(result);calls[operation]++;if(observationDelayMs&&operation!=='heartbeat')setTimeout(()=>result.resolve(value),observationDelayMs);return result.promise;}
  class RobotClient{
@@ -21,10 +21,10 @@ async function fixture(observationDelayMs=0){
   tasks(){return request('tasks',tasks);}
   cancelPending(){calls.cancelPending++;this.pending.abort();this.pending=new AbortController();}
  }
- const context={RobotClient,createInspection:()=>({reset(){},authenticate(){},stale(){},refresh(){},hasPending(){return false;}}),document:{hidden:false,addEventListener(event,handler){documents.set(event,handler);},getElementById:node,querySelectorAll:()=>[],createElement:()=>({textContent:'',append(){}})},window:{addEventListener(event,handler){windows.set(event,handler);}},setInterval(){return 1;},clearInterval(){},setTimeout,AbortController,AbortSignal,Date,performance};
+ const context={RobotClient,createInspection:()=>({reset(){},authenticate(){},stale(){},refresh(value){observed.push(value);},hasPending(){return false;}}),document:{hidden:false,addEventListener(event,handler){documents.set(event,handler);},getElementById:node,querySelectorAll:()=>[],createElement:()=>({textContent:'',append(){}})},window:{addEventListener(event,handler){windows.set(event,handler);}},setInterval(){return 1;},clearInterval(){},setTimeout,AbortController,AbortSignal,Date,performance};
  node('history');vm.createContext(context);vm.runInContext(source,context);await tick();
  vm.runInContext("csrf='synthetic-session';client.csrf=csrf;byId('operator').hidden=false;byId('login-form').hidden=true;",context);
- return {calls,pending,nodes,windows,documents,context,restoreSession(session){restoredSession=session;},refresh:()=>vm.runInContext('refresh()',context)};
+ return {calls,pending,nodes,windows,documents,context,observed,action(action){context.controlledAction=action;return vm.runInContext("run(controlledAction,'Synthetic action completed.')",context);},restoreSession(session){restoredSession=session;},refresh:()=>vm.runInContext('refresh()',context)};
 }
 
 test('an acknowledged heartbeat starts both observations without waiting for either read',async()=>{
@@ -92,3 +92,42 @@ test('operator guidance follows verified stop/running/proposal state and does no
  test('hidden documents cancel observation ownership and make no further polls',async()=>{const f=await fixture();f.context.document.hidden=true;f.documents.get('visibilitychange')();await f.refresh();assert.equal(f.calls.cancelPending,1);assert.equal(f.calls.heartbeat,0);assert.equal(f.calls.status,0);assert.equal(f.calls.tasks,0);});
 
 test('returning to a hidden page with expired authority clears authenticated presentation',async()=>{const f=await fixture();f.context.document.hidden=true;f.documents.get('visibilitychange')();f.context.document.hidden=false;f.documents.get('visibilitychange')();await tick();assert.equal(f.nodes.get('operator').hidden,true);assert.equal(f.nodes.get('login-form').hidden,false);assert.equal(f.calls.heartbeat,0);});
+
+async function settleControlledReads(f) {
+ for (let turn=0;turn<3;turn++) {
+  for (const item of f.pending.heartbeat) item.resolve({});
+  for (const item of f.pending.status) item.resolve(status);
+  for (const item of f.pending.tasks) item.resolve(tasks);
+  await tick();
+ }
+}
+
+test('a completed action waits for a fresh snapshot instead of accepting an older in-flight poll',async()=>{
+ const f=await fixture(),old=f.refresh();
+ f.pending.heartbeat[0].resolve({});await tick();
+ let completed=false;
+ const action=f.action(async()=>{}).then(()=>{completed=true;});
+ try {
+  await tick();assert.equal(completed,false,'The action must wait for its post-action observation');
+  f.pending.status[0].resolve({...status,stopped:true});f.pending.tasks[0].resolve(tasks);
+  await old;await tick();
+  assert.equal(f.observed.length,0,'A pre-action observation must not restore command readiness');
+  assert.equal(f.calls.heartbeat,2);
+  f.pending.heartbeat[1].resolve({});await tick();
+  f.pending.status[1].resolve(status);f.pending.tasks[1].resolve(tasks);await action;
+  assert.equal(completed,true);assert.deepEqual(f.observed.map(value=>value.stopped),[false]);
+  assert.equal(f.calls.status,2);assert.equal(f.calls.tasks,2);
+ } finally {await settleControlledReads(f);await Promise.allSettled([old,action]);}
+});
+
+test('a current-session authorization failure still signs out during a post-action handoff',async()=>{
+ const f=await fixture(),old=f.refresh();
+ f.pending.heartbeat[0].resolve({});await tick();
+ const action=f.action(async()=>{});await tick();
+ try {
+  f.pending.status[0].reject(Object.assign(new Error('Synthetic expired authority'),{status:401}));
+  f.pending.tasks[0].resolve(tasks);await old;await action;
+  assert.equal(f.nodes.get('operator').hidden,true);assert.equal(f.nodes.get('login-form').hidden,false);
+  assert.equal(f.calls.heartbeat,1,'Expired authority must not start another authenticated batch');
+ } finally {await settleControlledReads(f);await Promise.allSettled([old,action]);}
+});
