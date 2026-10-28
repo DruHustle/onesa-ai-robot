@@ -138,8 +138,9 @@ root isolation, live preference changes with drafts/simulation and accessibility
 screenshots; never set it to public assets or include private test credentials.
 The shared foundation digest is verified by the frontend build.
 
-The source browser matrix is 150 cases: 50 each in Chromium, Firefox and WebKit,
-with no skipped/flaky cases or automatic retries. The pending-form interaction
+Enumerate the current browser matrix with `npm run test:e2e -- --list` in the
+frontend. Chromium, Firefox and WebKit remain required, with no skipped/flaky
+cases or automatic retries. The pending-form interaction
 fixture uses test-owned HTTP responses and no backend mutation; it requires Stop
 and Sign out to remain usable while an unrelated form response is pending. Existing
 operator, authorization, appearance and accessibility cases remain required. Offline
