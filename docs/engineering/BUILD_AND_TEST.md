@@ -128,6 +128,13 @@ and no mutation. Robot header text resolves the existing system tokens directly,
 avoiding the reproduced WebKit stale inherited foreground after a media change.
 No shared foundation pin, appearance override, credential or release gate changes.
 
+The build backend and development lock pin setuptools 84.1.0 for
+[GHSA-xmj3-9gf7-h52w](https://github.com/advisories/GHSA-xmj3-9gf7-h52w), and the
+development lock pins filelock 4.2.1 for its six reported advisories. Official PyPI
+wheel/source hashes and MIT provenance were verified for both updates. The isolated
+wheel build, full backend tests and both dependency-lock audits must pass before
+promotion. Runtime dependency pins are unchanged.
+
 Inspection refresh also preserves the shared form's `aria-busy` lock. The pending
 approval regression waits for another status response before requiring the approval
 button to remain disabled, one approval request and an independently available Stop.
