@@ -413,12 +413,12 @@ export function createInspection(client, { run, notice }) {
     if (focused) root.querySelector(`[data-mission="${CSS.escape(focused)}"]`)?.focus({ preventScroll: true });
     if (!selected && list.missions.length) await open(list.missions[0].id);
   }
-  async function refresh(value) {
-    status = value;
-    const ready = value && !value.stopped && !value.active_task;
-    $("mission-readiness").textContent = value?.stopped
+  function updateReadiness() {
+    const value = status;
+    const ready = authenticated && value && !value.stopped && !value.active_task;
+    if (value) $("mission-readiness").textContent = value.stopped
       ? "Stopped · reset required"
-      : value?.active_task
+      : value.active_task
         ? "Running · supervised simulation"
         : "Ready · simulation only";
     $("mission-submit").disabled =
@@ -428,6 +428,10 @@ export function createInspection(client, { run, notice }) {
       $("mission-approval").getAttribute("aria-busy") === "true" ||
       !detail ||
       Date.now() / 1000 - detail.record.plan.created_at > 15;
+  }
+  async function refresh(value) {
+    status = value;
+    updateReadiness();
     if (!authenticated || reading) return;
     reading = true;
     $("mission-error").textContent = "";
@@ -435,6 +439,7 @@ export function createInspection(client, { run, notice }) {
     try {
       if (!catalog) await loadCatalog(current);
       if (!authenticated || current !== epoch) return;
+      updateReadiness();
       if (performance.now() - lastHistory > 5000 || !lastHistory)
         await history(current);
       if (selected && detail && !terminal(detail.record)) {
@@ -449,8 +454,8 @@ export function createInspection(client, { run, notice }) {
         }
         render();
       }
-      if (!detail || !terminal(detail.record))
-        scene(value.position_radians, null);
+      if (status && (!detail || !terminal(detail.record)))
+        scene(status.position_radians, null);
     } catch (error) {
       if (current === epoch) {
         if (error.status === 401) reset();
@@ -596,6 +601,7 @@ export function createInspection(client, { run, notice }) {
       authenticated = true;
     },
     stale() {
+      status = null;
       pause();
       $("mission-submit").disabled = true;
       $("mission-approve-submit").disabled = true;

@@ -354,3 +354,13 @@ The history/disclosure case must restore its own completed scenario's stopped st
 later reset/legacy cases must not inherit an unrelated ready state. Run the history
 case followed by a legacy simulation case to verify that isolation without increasing
 deadlines or removing checks.
+
+## Post-action observation and catalog readiness
+
+`tests/observation-concurrency.test.mjs` verifies that a successful action waits for
+a snapshot started after the action, without overlapping observation batches or
+ignoring current-session authorization failures. The catalog timing browser cases
+hold later polls and verify that completed metadata enables only the latest valid
+observation. Late metadata cannot restore controls after Stop or a failed read.
+These controlled fixtures are local regression evidence; genuine hosted workflow
+qualification remains required.
