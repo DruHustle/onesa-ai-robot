@@ -376,3 +376,9 @@ hold later polls and verify that completed metadata enables only the latest vali
 observation. Late metadata cannot restore controls after Stop or a failed read.
 These controlled fixtures are local regression evidence; genuine hosted workflow
 qualification remains required.
+
+## Sign-in restoration and unavailable JavaScript
+
+`tests/browser/sign-in-restoration.spec.mjs` delays the initial anonymous session response until a submitted sign-in is waiting for simulator readiness. The pending restoration must not erase or replace that explicit submission. It also blocks the application module and checks that native form behavior cannot place a password in a navigation URL. The controlled restoration case fails on the prior source in Chromium, Firefox and WebKit.
+
+The sign-in handler captures the submission immediately and binds it to its own session generation. The disabled native submit control becomes available only after its handler is installed; the form uses POST even without JavaScript. Owner browser diagnostics retain only bounded same-origin route/method/status counts, never credentials, response bodies, cookies or query values. These regression checks do not establish the cause of a historical hosted failure or qualify a release; exact-source hosted verification remains required.
