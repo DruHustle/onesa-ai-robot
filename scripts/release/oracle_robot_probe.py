@@ -63,7 +63,7 @@ require(values['ROBOT_PUBLIC_ORIGIN'] == request['origin'])
 require(values['ROBOT_STORAGE_MODE'] == 'turso')
 require(values['ROBOT_EDGE_DEVICE_ID'].startswith('synthetic-'))
 os.environ.update(values)
-print(json.dumps(run(request['origin'], 'Staging'), allow_nan=False))
+print(json.dumps(run(request['origin'], 'Staging', oracle_staging_api='https://robot-api-staging.onesa.eu'), allow_nan=False))
 """
 
 
