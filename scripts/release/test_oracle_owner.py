@@ -3,6 +3,7 @@
 import base64
 import json
 import os
+import re
 import sqlite3
 import subprocess
 import tempfile
@@ -15,7 +16,6 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import oracle_owner as o
-import yaml
 
 SCHEMA = """CREATE TABLE records(sequence INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,kind TEXT NOT NULL,scope TEXT NOT NULL,envelope TEXT NOT NULL,parent TEXT REFERENCES records(id),created TEXT NOT NULL,revoked INTEGER NOT NULL DEFAULT 0); CREATE TABLE contexts(id TEXT PRIMARY KEY REFERENCES records(id),state TEXT NOT NULL); CREATE TABLE deployments(id TEXT PRIMARY KEY REFERENCES records(id),authorization TEXT NOT NULL UNIQUE REFERENCES records(id),qualification TEXT NOT NULL UNIQUE REFERENCES records(id),state TEXT NOT NULL);"""
 
@@ -604,16 +604,10 @@ class GitHubEvidenceTests(unittest.TestCase):
                 "runtime-onesa-ai-robot-frontend",
             },
         )
-        workflow = yaml.safe_load(
-            (
-                Path(__file__).resolve().parents[2] / ".github/workflows/scaffold.yml"
-            ).read_text()
-        )
-        uploaded = [
-            step["with"]["name"]
-            for step in workflow["jobs"]["containers"]["steps"]
-            if step.get("uses", "").startswith("actions/upload-artifact@")
-        ]
+        workflow = (
+            Path(__file__).resolve().parents[2] / ".github/workflows/scaffold.yml"
+        ).read_text()
+        uploaded = re.findall(r"(?m)^\s+name: (runtime-[^\r\n]+)$", workflow)
         self.assertEqual(len(uploaded), 1)
         self.assertEqual(
             {
