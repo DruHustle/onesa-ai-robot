@@ -83,6 +83,7 @@ class InstallTests(unittest.TestCase):
             "onesa-ai-robot-frontend/package-lock.json",
             "scripts/release/smoke.py",
             "scripts/release/cloud.py",
+            "scripts/release/service_runtime.py",
             "scripts/release/evidence.py",
             "scripts/release/edge_fixture.py",
         ]:

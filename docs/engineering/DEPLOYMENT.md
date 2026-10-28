@@ -36,3 +36,10 @@ guide; the presence of these modules does not establish any of those outcomes.
 
 Owner HTTP observations identify the Onesa release client explicitly. This does
 not impersonate a browser or crawler or change the ingress protection policy.
+
+The commissioned staging observer runs the existing simulator suite inside its
+pinned qualification image, including transitive module pins. All fourteen legacy
+checks remain mandatory; production never invokes this mutating suite. Missing
+modules produce bounded private failure metadata without disclosing exception text.
+The Oracle adapter selects only the exact staging edge API; existing Render target
+validation remains the default. Owner-run receipts never masquerade as Actions.
