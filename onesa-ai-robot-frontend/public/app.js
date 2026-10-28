@@ -107,7 +107,21 @@ async function run(action, success, form=null,expectedGeneration=null) {
   catch(error){if(suspended||expectedGeneration!==null&&expectedGeneration!==generation)return;if(error.status===401) signedOut();notice(form?.id==='login-form'&&([502,503,504].includes(error.status)||['AbortError','TimeoutError','TypeError'].includes(error.name))?unavailableSignIn:error.message);}
   finally{if(form){busyForms.delete(form);form.removeAttribute('aria-busy');controls.forEach(control=>control.disabled=observationForms.some(([id])=>id===form.id)&&!observationReady);}}
 }
-byId('login-form').addEventListener('submit',event=>{event.preventDefault();run(async()=>{await waitForSimulator();const session=await client.login({name:byId('name').value,password:byId('password').value});byId('password').value='';generation++;csrf=session.csrf;client.csrf=csrf;setAdministrator(session);byId('login-form').hidden=true;byId('operator').hidden=false;sessionPresentation(true);inspector.authenticate();timer=setInterval(()=>refresh(false),500);},'Signed in.',event.currentTarget);});
+byId('login-form').addEventListener('submit',event=>{
+  event.preventDefault();
+  if(suspended||busyForms.has(event.currentTarget))return;
+  // Capture this deliberate submission before readiness or restoration settles.
+  // Its generation supersedes the anonymous bootstrap read, not another account.
+  const credentials={name:byId('name').value,password:byId('password').value},current=++generation;
+  byId('password').value='';
+  run(async()=>{
+    await waitForSimulator();
+    if(suspended||current!==generation)return;
+    const session=await client.login(credentials);
+    if(suspended||current!==generation)return;
+    csrf=session.csrf;client.csrf=csrf;setAdministrator(session);byId('login-form').hidden=true;byId('operator').hidden=false;sessionPresentation(true);inspector.authenticate();timer=setInterval(()=>refresh(false),500);
+  },'Signed in.',event.currentTarget,current);
+});
 byId('physical-permission-form').addEventListener('submit',event=>{event.preventDefault();const password=byId('physical-permission-password').value,revision=permissionRevision,current=generation;byId('physical-permission-password').value='';run(async()=>{if(!administrator||revision===null)throw new Error('Refresh and review the current administrator permission before allowing operation.');const value=await client.allowPhysical({password,expected_revision:revision});if(current===generation&&administrator&&!suspended)renderPhysicalPermission(value);},'Permission request completed. The current confirmed state is shown in Robot administration; no movement started.',event.currentTarget,current);});
 byId('block-physical-permission').addEventListener('click',()=>{const current=generation;run(async()=>{const value=await client.blockPhysical();if(current===generation&&administrator&&!suspended)renderPhysicalPermission(value);},'Administrator permission blocked.',null,current);});
 byId('reset-form').addEventListener('submit',event=>{event.preventDefault();const password=byId('reset-password').value;byId('reset-password').value='';run(()=>client.reset({password}),'Simulation stop reset.',event.currentTarget);});
@@ -124,6 +138,7 @@ window.addEventListener('beforeunload',suspendRequests);
 window.addEventListener('pagehide',suspendRequests);
 window.addEventListener('pageshow',event=>{if(event.persisted){suspended=false;restoreSession();}});
 setObservationReady(false);
+byId('login-submit').disabled=false;
 restoreSession();
 
 document.addEventListener('visibilitychange',()=>{if(document.hidden)suspendRequests();else if(suspended){suspended=false;restoreSession();}});
