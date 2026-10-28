@@ -86,7 +86,11 @@ class Simulator:
         )
 
     def call(self, route, body=None, expected=200, csrf=True, timeout=45):
-        headers = {"Origin": self.url, "Content-Type": "application/json"}
+        headers = {
+            "Origin": self.url,
+            "Content-Type": "application/json",
+            "User-Agent": "OnesaRobotQualification/1",
+        }
         if self.csrf and csrf:
             headers["X-CSRF-Token"] = self.csrf
         bypass = os.environ.get("VERCEL_AUTOMATION_BYPASS_SECRET")
@@ -129,13 +133,32 @@ def wait_readiness(api):
             time.sleep(min(2, remaining))
 
 
-def run(url, environment):
+def edge_backend(environment, oracle_staging_api=None):
+    """Oracle is an explicit staging-only adapter; existing Render scope remains."""
+    if oracle_staging_api is not None:
+        require(
+            environment == "Staging"
+            and oracle_staging_api == "https://robot-api-staging.onesa.eu",
+            "Oracle edge qualification requires the exact staging API",
+        )
+        return oracle_staging_api
+    return origin(os.environ["ROBOT_API_URL"], ".onrender.com")
+
+
+def run(url, environment, *, oracle_staging_api=None):
     record = {
         "scope": "software-simulation-only",
         "status": "BLOCKED",
         "checks": {name: "BLOCKED" for name in CHECKS},
         "physical_hardware_approved": False,
     }
+    # Refuse an Oracle production/foreign target before any login or simulator
+    # operation. This opt-in is target selection, never release authorization.
+    oracle_backend = (
+        edge_backend(environment, oracle_staging_api)
+        if oracle_staging_api is not None
+        else None
+    )
     password = os.environ.get("ROBOT_TEST_PASSWORD", "")
     name = os.environ.get("ROBOT_TEST_OPERATOR", "")
     if (
@@ -238,7 +261,7 @@ def run(url, environment):
             len(edge_token) >= 64 and edge_device.startswith("synthetic-"),
             "Synthetic edge identity required",
         )
-        backend = origin(os.environ["ROBOT_API_URL"], ".onrender.com")
+        backend = oracle_backend or edge_backend(environment)
         opener = urllib.request.build_opener(NoRedirect())
 
         def edge_call(route, body=None):
@@ -247,6 +270,7 @@ def run(url, environment):
                 headers={
                     "Authorization": "Bearer " + edge_token,
                     "Content-Type": "application/json",
+                    "User-Agent": "OnesaRobotQualification/1",
                 },
                 data=json.dumps(body).encode() if body is not None else None,
             )

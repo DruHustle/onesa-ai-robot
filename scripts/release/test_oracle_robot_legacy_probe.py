@@ -203,7 +203,11 @@ class LegacyImageTests(unittest.TestCase):
             self.assertEqual(
                 os.environ["ROBOT_TEST_SCOPE"], "approved-synthetic-staging"
             )
-            run.assert_called_once_with(self.request["origin"], "Staging")
+            run.assert_called_once_with(
+                self.request["origin"],
+                "Staging",
+                oracle_staging_api="https://robot-api-staging.onesa.eu",
+            )
         self.assertEqual(json.loads(output.getvalue()), self.result)
 
     def test_actual_image_program_refuses_production_and_real_device_before_suite(self):
