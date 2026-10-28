@@ -17,7 +17,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-PRODUCT = ROOT.name
+PRODUCT = "onesa-robot" if ROOT.name == "onesa-ai-robot" else ROOT.name
 # Component paths and hosted image/artifact identities predate the repository rename.
 APPLICATION_PREFIX = "onesa-ai-robot" if PRODUCT == "onesa-robot" else PRODUCT
 OWNER = "DruHustle"

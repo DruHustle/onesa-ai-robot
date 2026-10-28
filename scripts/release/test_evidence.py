@@ -2,6 +2,7 @@
 
 import copy
 import hashlib
+import importlib.util
 import io
 import json
 import tempfile
@@ -179,6 +180,22 @@ def fixtures():
     origin["record_sha256"] = e.digest(evidence)
     approval["evidence_sha256"] = e.digest(evidence)
     return evidence, origin, approval
+
+
+class RepositoryNamingTests(unittest.TestCase):
+    def test_current_and_commissioned_checkout_names_use_canonical_repository(self):
+        source = Path(e.__file__).read_bytes()
+        with tempfile.TemporaryDirectory() as directory:
+            for name in ("onesa-robot", "onesa-ai-robot"):
+                path = Path(directory) / name / "scripts" / "release" / "evidence.py"
+                path.parent.mkdir(parents=True)
+                path.write_bytes(source)
+                spec = importlib.util.spec_from_file_location("naming_evidence", path)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                self.assertEqual(module.REPOSITORY, "DruHustle/onesa-robot")
+                self.assertEqual(module.POLICY["ci"], "scaffold.yml")
+                self.assertEqual(module.APPLICATION_PREFIX, "onesa-ai-robot")
 
 
 class GateTests(unittest.TestCase):
