@@ -1,5 +1,10 @@
 # Independent software builds and tests
 
+Release-unit fixtures pin a disposable commissioning registry and keep its keys,
+policy and database inside their temporary directory. Root test execution uses a
+private home-directory parent and never reads the host's production trust registry.
+Production trust checks and release authority are unchanged.
+
 Oracle CI selection keeps an existing push authoritative, including failed,
 pending, skipped or cancelled evidence. Only an absent push permits the existing
 owner-dispatched full workflow; both owner identities, a complete run listing,
@@ -80,6 +85,12 @@ model endpoints, actual sensor/actuator behavior, emergency-stop hardware and re
 edge-network latency remain NOT TESTED or BLOCKED until their targets exist.
 Automated accessibility checks do not certify complete WCAG 2.2 AA compliance.
 
+The owned inspection process-restart test ignores inherited HTTP/SOCKS proxy
+configuration for its loopback readiness and authenticated requests. It exercises
+that boundary with deliberately unusable proxy settings and cleans up its direct
+child if startup fails. Its synthetic credentials never require an external proxy;
+normal application/provider TLS and proxy policy are unchanged.
+
 ## Bounded sign-in acceptance
 
 After submitting Sign in, browser scenarios use `waitForOperatorSignIn`: the same
@@ -127,8 +138,9 @@ root isolation, live preference changes with drafts/simulation and accessibility
 screenshots; never set it to public assets or include private test credentials.
 The shared foundation digest is verified by the frontend build.
 
-The source browser matrix is 150 cases: 50 each in Chromium, Firefox and WebKit,
-with no skipped/flaky cases or automatic retries. The pending-form interaction
+Enumerate the current browser matrix with `npm run test:e2e -- --list` in the
+frontend. Chromium, Firefox and WebKit remain required, with no skipped/flaky
+cases or automatic retries. The pending-form interaction
 fixture uses test-owned HTTP responses and no backend mutation; it requires Stop
 and Sign out to remain usable while an unrelated form response is pending. Existing
 operator, authorization, appearance and accessibility cases remain required. Offline
