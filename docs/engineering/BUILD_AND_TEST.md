@@ -7,6 +7,12 @@ first attempt and every mandatory job/security step remain required. Signed
 references preserve the actual CI event. Synthetic mixed-event regressions must
 reject a newer successful manual run presented over a failing push.
 
+The canonical repository is `DruHustle/onesa-robot`; its existing frontend and
+backend CI artifacts retain the `runtime-onesa-ai-robot-` component prefix. The
+owner verifier checks these explicit artifact names against the actual workflow
+while requiring the canonical repository on both the run and head repository.
+Neither a renamed artifact nor an old repository identity can substitute for it.
+
 The disposable frontend job bounds APT requests and removes the observed Azure
 mirror from the runner's existing failover list, retaining its existing signed
 Ubuntu archive, suite, components and keys. It never runs on the workstation,
