@@ -1,5 +1,13 @@
 # Development changelog
 
+## 2026-10-28 — Isolate local process and release-unit fixtures
+
+The inspection restart regression makes all owned loopback requests without
+inherited proxies, exercises an unusable SOCKS configuration and reaps its direct
+child on startup failure. Release-unit tests use a disposable commissioning registry
+instead of reading the host's production trust registry when run as root. These
+test changes do not alter production simulation, hardware or release authority.
+
 ## 2026-10-12 — Redacted failed deployment diagnosis
 
 Read bounded Render log metadata and emit fixed startup/Turso/TLS/permissions/port error categories, plus non-secret deployment IDs and commits. Never expose log bodies, credentials or operator hashes. This diagnosis does not repair or redeploy production.

@@ -1,5 +1,10 @@
 # Independent software builds and tests
 
+Release-unit fixtures pin a disposable commissioning registry and keep its keys,
+policy and database inside their temporary directory. Root test execution uses a
+private home-directory parent and never reads the host's production trust registry.
+Production trust checks and release authority are unchanged.
+
 Oracle CI selection keeps an existing push authoritative, including failed,
 pending, skipped or cancelled evidence. Only an absent push permits the existing
 owner-dispatched full workflow; both owner identities, a complete run listing,
@@ -79,6 +84,12 @@ Scope: software simulation only. ROS 2 installed edge integration,
 model endpoints, actual sensor/actuator behavior, emergency-stop hardware and real
 edge-network latency remain NOT TESTED or BLOCKED until their targets exist.
 Automated accessibility checks do not certify complete WCAG 2.2 AA compliance.
+
+The owned inspection process-restart test ignores inherited HTTP/SOCKS proxy
+configuration for its loopback readiness and authenticated requests. It exercises
+that boundary with deliberately unusable proxy settings and cleans up its direct
+child if startup fails. Its synthetic credentials never require an external proxy;
+normal application/provider TLS and proxy policy are unchanged.
 
 ## Bounded sign-in acceptance
 
