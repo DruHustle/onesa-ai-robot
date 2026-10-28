@@ -49,13 +49,13 @@ class PipelineTests(unittest.TestCase):
             self.assertIn("credential-assignment", hygiene.secrets(fixture, name))
 
     def test_release_sources_always_run_every_critical_check(self):
-        for product in ("onesa-company-portal", "onesa-ai-platform", "onesa-ai-robot"):
+        for product in ("onesa-company-portal", "onesa-ai-platform", "onesa-robot"):
             selection = paths.classify(product, ["docs/readme.md"], full=True)
             self.assertTrue(all(selection[key] for key in paths.FIELDS))
             self.assertEqual(selection["applications"], ["frontend", "backend"])
 
     def test_unknown_and_shared_security_contract_paths_fail_safe(self):
-        for product in ("onesa-company-portal", "onesa-ai-platform", "onesa-ai-robot"):
+        for product in ("onesa-company-portal", "onesa-ai-platform", "onesa-robot"):
             for name in (
                 "scripts/release/evidence.py",
                 ".github/workflows/ci.yml",

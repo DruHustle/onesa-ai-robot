@@ -273,7 +273,7 @@ def preflight(environment):
     link = data.get("link", {})
     require(
         link.get("org") == "DruHustle"
-        and link.get("repo") == "onesa-ai-robot"
+        and link.get("repo") == "onesa-robot"
         and data.get("rootDirectory") == "onesa-ai-robot-frontend",
         "Vercel root/repository mismatch",
     )

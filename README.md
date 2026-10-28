@@ -1,4 +1,10 @@
-# Onesa AI Robot
+# Onesa Robot
+
+Canonical repository: [DruHustle/onesa-robot](https://github.com/DruHustle/onesa-robot).
+The repository was renamed from `onesa-ai-robot`. Existing component directories
+(`onesa-ai-robot-frontend` and `onesa-ai-robot-backend`), hosting resource names,
+runtime installation paths and historical release evidence retain their identifiers
+so this repository rename does not require a service or data migration.
 
 The current source adds a supervised **Pump P-101 inspection**: versioned bounded
 planning and skills, exact-plan password approval, deterministic scenarios,

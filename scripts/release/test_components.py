@@ -99,7 +99,8 @@ class ComponentTests(unittest.TestCase):
         self.assertEqual(result["baseline"]["authorization"]["run_id"], 40)
         self.assertEqual(result["baseline"]["qualification"]["run_id"], 30)
         self.assertEqual(
-            result["baseline"]["tested_build"]["application"], e.PRODUCT + "-backend"
+            result["baseline"]["tested_build"]["application"],
+            e.APPLICATION_PREFIX + "-backend",
         )
         self.assertFalse(result["physical_hardware_authorized"])
         self.assertEqual(c.verify(self.github, NEW, result), result)

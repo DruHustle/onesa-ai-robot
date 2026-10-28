@@ -96,7 +96,7 @@ def frontend_binding(repair=False, *, configuration_dev=False):
     link = data.get("link", {})
     verified = (
         link.get("org") == "DruHustle"
-        and link.get("repo") == "onesa-ai-robot"
+        and link.get("repo") == "onesa-robot"
         and data.get("rootDirectory") == "onesa-ai-robot-frontend"
     )
     if not verified:

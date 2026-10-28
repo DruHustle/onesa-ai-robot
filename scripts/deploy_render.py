@@ -21,7 +21,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
-REPOSITORY = "DruHustle/onesa-ai-robot"
+REPOSITORY = "DruHustle/onesa-robot"
 TARGETS = {
     "Staging": ("srv-db5k9ft9fdbs73d622cg", "staging"),
     "Production": ("srv-db5k88flk1mc73aa9110", "main"),

@@ -75,7 +75,7 @@ def validate(bundle, manifest_pin, github, *, uid=0):
         "Installation manifest schema",
     )
     require(
-        m["schema_version"] == 1 and m["repository"] == "DruHustle/onesa-ai-robot",
+        m["schema_version"] == 1 and m["repository"] == "DruHustle/onesa-robot",
         "Installation repository refused",
     )
     require(
@@ -124,7 +124,7 @@ def validate(bundle, manifest_pin, github, *, uid=0):
     )
     require(
         set(policy["components"])
-        == {"DruHustle/onesa-ai-robot:api", "DruHustle/onesa-ai-robot:frontend"},
+        == {"DruHustle/onesa-robot:api", "DruHustle/onesa-robot:frontend"},
         "Only the reviewed Robot API and frontend profiles are eligible",
     )
     # This source archive is data. Reconstruct its Git tree before using any

@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 POLICY = {
     "onesa-company-portal": ("portal", 18301, 18300, 8300),
     "onesa-ai-platform": ("ai", 18001, 18000, 8000),
-    "onesa-ai-robot": ("robot", 18432, 18431, 8431),
+    "onesa-robot": ("robot", 18432, 18431, 8431),
 }
 
 

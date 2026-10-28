@@ -51,7 +51,7 @@ POLICIES = {
             "image-security (onesa-ai-platform-frontend)",
         ],
     ),
-    "onesa-ai-robot": (
+    "onesa-robot": (
         "scaffold.yml",
         [
             "backend",
