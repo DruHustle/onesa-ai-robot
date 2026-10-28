@@ -112,7 +112,7 @@ root isolation, live preference changes with drafts/simulation and accessibility
 screenshots; never set it to public assets or include private test credentials.
 The shared foundation digest is verified by the frontend build.
 
-The source browser matrix is 147 cases: 49 each in Chromium, Firefox and WebKit,
+The source browser matrix is 150 cases: 50 each in Chromium, Firefox and WebKit,
 with no skipped/flaky cases or automatic retries. The pending-form interaction
 fixture uses test-owned HTTP responses and no backend mutation; it requires Stop
 and Sign out to remain usable while an unrelated form response is pending. Existing
@@ -120,6 +120,13 @@ operator, authorization, appearance and accessibility cases remain required. Off
 module tests prove independent Stop/cancel/logout and duplicate originating-form
 suppression. Submission scope comes from the synchronous event currentTarget;
 focused controls do not determine which independent action may run.
+
+The header appearance regression switches system preference in all three browsers
+at 320/390/1440 pixels. It checks the wordmark/navigation foreground and canvas,
+measured accessibility, retained sign-in entries and focus, no JavaScript errors
+and no mutation. Robot header text resolves the existing system tokens directly,
+avoiding the reproduced WebKit stale inherited foreground after a media change.
+No shared foundation pin, appearance override, credential or release gate changes.
 
 Inspection refresh also preserves the shared form's `aria-busy` lock. The pending
 approval regression waits for another status response before requiring the approval
