@@ -61,7 +61,7 @@ class InstallTests(unittest.TestCase):
         self.root.chmod(0o700)
         self.manifest = {
             "schema_version": 1,
-            "repository": "DruHustle/onesa-ai-robot",
+            "repository": "DruHustle/onesa-robot",
             "candidate_commit": "a" * 40,
             "source_tree": "",
             "files": {},
@@ -143,7 +143,7 @@ class InstallTests(unittest.TestCase):
             ("api", "oracle_robot.py"),
             ("frontend", "oracle_robot_frontend.py"),
         ]:
-            self.policy["components"]["DruHustle/onesa-ai-robot:" + component] = {
+            self.policy["components"]["DruHustle/onesa-robot:" + component] = {
                 "qualification_attempt_limit": 1,
                 "runners": {
                     phase: {
@@ -203,7 +203,7 @@ class InstallTests(unittest.TestCase):
             setattr(self.github, field, original)
 
     def test_incomplete_policy_and_extra_component_refused(self):
-        self.policy["components"]["DruHustle/onesa-ai-robot:api"]["required_checks"][
+        self.policy["components"]["DruHustle/onesa-robot:api"]["required_checks"][
             "staging"
         ].remove("persistence")
         self.seal()
@@ -229,7 +229,7 @@ class InstallTests(unittest.TestCase):
                 ("frontend", "oracle_robot_frontend.py"),
             ]:
                 for r in self.policy["components"][
-                    "DruHustle/onesa-ai-robot:" + component
+                    "DruHustle/onesa-robot:" + component
                 ]["runners"].values():
                     r["path"] = str(
                         installer.INSTALL_PARENT

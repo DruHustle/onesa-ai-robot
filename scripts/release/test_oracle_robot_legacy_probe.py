@@ -22,7 +22,7 @@ class LegacyImageTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.output = Path(self.temp.name)
-        binding = {"repository": "DruHustle/onesa-ai-robot", "component": "api"}
+        binding = {"repository": "DruHustle/onesa-robot", "component": "api"}
         origin = "https://onesa-ai-robot-git-staging-synthetic.vercel.app"
         self.request = {
             "binding": binding,

@@ -115,7 +115,7 @@ class ProviderIntentTests(unittest.TestCase):
             folder = Path(directory)
             (folder / "operations").mkdir()
             binding = {
-                "repository": "DruHustle/onesa-ai-robot",
+                "repository": "DruHustle/onesa-robot",
                 "candidate_commit": "a" * 40,
             }
             plan = {
@@ -169,7 +169,7 @@ class ProviderIntentTests(unittest.TestCase):
             op = folder / "operations" / operation
             op.mkdir(parents=True)
             binding = {
-                "repository": "DruHustle/onesa-ai-robot",
+                "repository": "DruHustle/onesa-robot",
                 "component": "frontend",
                 "candidate_commit": "a" * 40,
             }

@@ -65,7 +65,7 @@ def main():
         subprocess.check_output(["docker", "image", "inspect", image], text=True)
     )[0]["Config"]
     health = config["Healthcheck"]
-    expected = "/api/v1/ready" if ROOT.name == "onesa-ai-robot" else "/core-ready"
+    expected = "/api/v1/ready" if ROOT.name == "onesa-robot" else "/core-ready"
     probes = [("default", health["Test"], expected, health["Timeout"] / 1e9)]
     compose = json.loads((ROOT / "compose.oracle-backend.yaml").read_text())
     stage = compose["services"]["staging"].get("healthcheck")

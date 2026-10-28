@@ -652,7 +652,7 @@ CHECKS = {
 
 def verify_toolchain(plan, binding):
     require(
-        binding["repository"] == "DruHustle/onesa-ai-robot"
+        binding["repository"] == "DruHustle/onesa-robot"
         and binding["component"] in ["api", "frontend"]
         and binding["target_environment"] == "production",
         "ROBOT_COMPONENT_SCOPE",
@@ -841,7 +841,7 @@ def frontend_configuration(binding, env):
 def frontend_configuration_value(plan, env):
     return {
         "schema_version": 1,
-        "repository": "DruHustle/onesa-ai-robot",
+        "repository": "DruHustle/onesa-robot",
         "component": "frontend",
         "environment": env,
         "project_id": plan["project_id"],

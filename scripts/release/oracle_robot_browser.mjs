@@ -91,7 +91,7 @@ write('browser-receipt.json',receipt);return receipt;
 
 if(process.argv[1] && import.meta.url===new URL('file:'+process.argv[1]).href){
 const request=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
-assert.equal(request.binding.repository,'DruHustle/onesa-ai-robot');
+assert.equal(request.binding.repository,'DruHustle/onesa-robot');
 assert.equal(request.read_only,request.environment==='production');
 assert.match(request.origin,request.environment==='production'?/^https:\/\/robot\.onesa\.eu$/:/^https:\/\/onesa-ai-robot-git-staging-[a-z0-9-]+\.vercel\.app$/);
 await checkUI(request,'/private/output');

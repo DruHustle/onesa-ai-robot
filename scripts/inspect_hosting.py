@@ -102,7 +102,7 @@ def render(service_id):
         "service_id": service_id,
         "api_http": status,
         "repository_matches": service.get("repo", "").removesuffix(".git")
-        == "https://github.com/DruHustle/onesa-ai-robot",
+        == "https://github.com/DruHustle/onesa-robot",
         "branch_main": service.get("branch") == "main",
         "backend_root_matches": service.get("rootDir") == "onesa-ai-robot-backend",
         "native_auto_deploy_disabled": service.get("autoDeployTrigger") == "off"
@@ -152,7 +152,7 @@ def vercel():
     verified = (
         status == 200
         and project.get("link", {}).get("org") == "DruHustle"
-        and project.get("link", {}).get("repo") == "onesa-ai-robot"
+        and project.get("link", {}).get("repo") == "onesa-robot"
         and project.get("rootDirectory") == "onesa-ai-robot-frontend"
     )
     previews = []
@@ -190,7 +190,7 @@ def vercel():
         "ready_staging_previews": previews,
         "api_http": status,
         "project_identifiers_configured": True,
-        "repository_matches": project.get("link", {}).get("repo") == "onesa-ai-robot",
+        "repository_matches": project.get("link", {}).get("repo") == "onesa-robot",
         "frontend_root_matches": project.get("rootDirectory")
         == "onesa-ai-robot-frontend",
         "preview_protection_present": bool(project.get("ssoProtection")),
@@ -206,7 +206,7 @@ def vercel():
 
 
 def main():
-    if os.environ.get("GITHUB_REPOSITORY") != "DruHustle/onesa-ai-robot":
+    if os.environ.get("GITHUB_REPOSITORY") != "DruHustle/onesa-robot":
         raise SystemExit("Owner repository required")
     print(
         json.dumps(

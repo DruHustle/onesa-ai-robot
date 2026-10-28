@@ -199,7 +199,7 @@ def require_runner():
         and os.environ.get("GITHUB_ACTIONS") == "true"
         and os.environ.get("RUNNER_ENVIRONMENT") == "github-hosted"
         and os.environ.get("RUNNER_OS") == "Linux"
-        and os.environ.get("GITHUB_REPOSITORY") == "DruHustle/onesa-ai-robot"
+        and os.environ.get("GITHUB_REPOSITORY") == "DruHustle/onesa-robot"
     ):
         raise ValueError("Only the disposable GitHub-hosted Linux CI runner is allowed")
 

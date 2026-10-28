@@ -38,7 +38,7 @@ permissions:
   actions: read
 jobs:
   hosting-inspection:
-    if: (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/dev' && inputs.target == 'inspect-hosting')
+    if: (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/dev' && inputs.target == 'inspect-hosting')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -49,7 +49,7 @@ jobs:
     - name: Verify hosted execution and current visibility
       env:
         GH_TOKEN: ${{ github.token }}
-      run: test "$RUNNER_ENVIRONMENT" = github-hosted && test "$(gh api repos/DruHustle/onesa-ai-robot --jq '.private')" = false
+      run: test "$RUNNER_ENVIRONMENT" = github-hosted && test "$(gh api repos/DruHustle/onesa-robot --jq '.private')" = false
     - name: Read production and staging settings without changing resources
       env:
         RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
@@ -58,7 +58,7 @@ jobs:
         VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       run: python3 scripts/inspect_hosting.py
   staging:
-    if: github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/staging' && inputs.target == 'staging'
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && github.ref == 'refs/heads/staging' && inputs.target == 'staging'
     uses: ./.github/workflows/release-staging.yml
     with:
       release_mode: ${{ inputs.release_mode || 'full' }}
@@ -73,7 +73,7 @@ jobs:
       STAGING_VERCEL_PROJECT_ID: ${{ secrets.STAGING_VERCEL_PROJECT_ID }}
       STAGING_VERCEL_TOKEN: ${{ secrets.STAGING_VERCEL_TOKEN }}
   staging-configuration:
-    if: (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (vars.STAGING_SECRET_SCOPE != 'environment' && (github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && ((inputs.target == 'inspect-staging' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging')) || (inputs.target == 'repair-staging' && github.ref == 'refs/heads/staging') || (inputs.target == 'repair-staging-preview' && github.ref == 'refs/heads/dev'))))
+    if: (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (vars.STAGING_SECRET_SCOPE != 'environment' && (github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && ((inputs.target == 'inspect-staging' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging')) || (inputs.target == 'repair-staging' && github.ref == 'refs/heads/staging') || (inputs.target == 'repair-staging-preview' && github.ref == 'refs/heads/dev'))))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps: &staging_configuration_steps
@@ -83,7 +83,7 @@ jobs:
     - name: Verify hosted execution and current visibility
       env:
         GH_TOKEN: ${{ github.token }}
-      run: test "$RUNNER_ENVIRONMENT" = github-hosted && test "$(gh api repos/DruHustle/onesa-ai-robot --jq '.private')" = false
+      run: test "$RUNNER_ENVIRONMENT" = github-hosted && test "$(gh api repos/DruHustle/onesa-robot --jq '.private')" = false
     - name: Require complete current-source checks before configuration changes
       if: inputs.target == 'repair-staging' || inputs.target == 'repair-staging-preview'
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
@@ -118,7 +118,7 @@ jobs:
         STAGING_OPERATION: ${{ inputs.target }}
       run: python3 scripts/release/staging_configuration.py
   staging-configuration-environment:
-    if: (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (vars.STAGING_SECRET_SCOPE == 'environment' && (github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && ((inputs.target == 'inspect-staging' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging')) || (inputs.target == 'repair-staging' && github.ref == 'refs/heads/staging') || (inputs.target == 'repair-staging-preview' && github.ref == 'refs/heads/dev'))))
+    if: (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (vars.STAGING_SECRET_SCOPE == 'environment' && (github.event.repository.private == false && github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && ((inputs.target == 'inspect-staging' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging')) || (inputs.target == 'repair-staging' && github.ref == 'refs/heads/staging') || (inputs.target == 'repair-staging-preview' && github.ref == 'refs/heads/dev'))))
     environment: Staging
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -170,7 +170,7 @@ jobs:
         retention-days: 7
     timeout-minutes: 30
   staging-environment-availability:
-    if: (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging') && inputs.target == 'inspect-environment-secrets')
+    if: (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging') && inputs.target == 'inspect-environment-secrets')
     environment: Staging
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -197,7 +197,7 @@ jobs:
         if(!all) process.exitCode=1;
         NODE
   staging-repository-availability:
-    if: (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-ai-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging') && inputs.target == 'inspect-repository-secrets')
+    if: (github.event.repository.private == false || vars.ONESA_PRIVATE_HOSTED_VALIDATION_ENABLED == 'true') && (github.event_name == 'workflow_dispatch' && github.repository == 'DruHustle/onesa-robot' && github.actor == 'DruHustle' && github.triggering_actor == 'DruHustle' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/staging') && inputs.target == 'inspect-repository-secrets')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

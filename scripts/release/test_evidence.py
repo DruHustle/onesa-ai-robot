@@ -52,7 +52,9 @@ def fixtures():
                 "record_sha256": "e" * 64,
             },
         }
-        for index, name in enumerate([e.PRODUCT + "-backend", e.PRODUCT + "-frontend"])
+        for index, name in enumerate(
+            [e.APPLICATION_PREFIX + "-backend", e.APPLICATION_PREFIX + "-frontend"]
+        )
     ]
     checks = {
         name: "PASS"
@@ -237,7 +239,7 @@ class GateTests(unittest.TestCase):
                         stage, SHA, FINGERPRINT, self.evidence["builds"], now=NOW
                     )
         for name in original["checks"]:
-            if e.PRODUCT == "onesa-ai-robot" and name in {
+            if e.PRODUCT == "onesa-robot" and name in {
                 "database_connectivity",
                 "critical_workflows",
                 "user_data_isolation",
@@ -332,7 +334,7 @@ class GateTests(unittest.TestCase):
         self.assertEqual(status, "BLOCKED")
 
     def test_source_hash_is_legacy_algorithm(self):
-        if e.PRODUCT == "onesa-ai-robot":
+        if e.PRODUCT == "onesa-robot":
             self.skipTest("Not applicable to robot software-only evidence")
         spec = e.importlib.util.spec_from_file_location(
             "original", e.ROOT / "scripts/release/qualify.py"
@@ -384,7 +386,7 @@ class GateTests(unittest.TestCase):
             e.promote(API(), SHA, 40)
 
     def test_hosted_staging_unavailable_rejects(self):
-        if e.PRODUCT == "onesa-ai-robot":
+        if e.PRODUCT == "onesa-robot":
             self.skipTest("Not applicable to robot software-only evidence")
         import hosted
 
@@ -475,12 +477,12 @@ class GateTests(unittest.TestCase):
         self.assertEqual(record["STAGING_VERIFIED"], "BLOCKED")
         self.assertEqual(record["OPERATIONS_VERIFIED"], "BLOCKED")
         self.assertEqual(record["CONTENT_LEGAL_APPROVED"], "BLOCKED")
-        if e.PRODUCT == "onesa-ai-robot":
+        if e.PRODUCT == "onesa-robot":
             self.assertEqual(record["ROS2_VERIFIED"], "NOT TESTED")
             self.assertEqual(record["PHYSICAL_HARDWARE_READY"], "BLOCKED")
 
     def test_missing_synthetic_credentials_remain_blocked(self):
-        if e.PRODUCT == "onesa-ai-robot":
+        if e.PRODUCT == "onesa-robot":
             self.skipTest("Not applicable to robot software-only evidence")
         import hosted_suite
 
@@ -490,7 +492,7 @@ class GateTests(unittest.TestCase):
         self.assertNotIn("PASS", record["checks"].values())
 
     def test_synthetic_suite_failure_cannot_pass(self):
-        if e.PRODUCT == "onesa-ai-robot":
+        if e.PRODUCT == "onesa-robot":
             self.skipTest("Not applicable to robot software-only evidence")
         import hosted_suite
 
@@ -529,7 +531,7 @@ class GateTests(unittest.TestCase):
         self.assertEqual(record["checks"]["storage_integrations"], "BLOCKED")
 
     def test_foreign_fixture_project_rejected_before_login(self):
-        if e.PRODUCT == "onesa-ai-robot":
+        if e.PRODUCT == "onesa-robot":
             self.skipTest("Not applicable to robot software-only evidence")
         import hosted_suite
 
@@ -553,7 +555,7 @@ class GateTests(unittest.TestCase):
             hosted_suite.run_suite("https://synthetic.vercel.app")
 
     def test_production_metrics_require_observed_signals_and_no_server_errors(self):
-        if e.PRODUCT == "onesa-ai-robot":
+        if e.PRODUCT == "onesa-robot":
             self.skipTest("Robot uses its simulator acceptance suite")
         import hosted
 
@@ -606,7 +608,7 @@ class GateTests(unittest.TestCase):
         self.assertEqual(observed["monitoring_signals"], "BLOCKED")
 
     def test_missing_production_fixture_never_passes_smoke(self):
-        if e.PRODUCT == "onesa-ai-robot":
+        if e.PRODUCT == "onesa-robot":
             self.skipTest("Robot uses its simulator acceptance suite")
         import hosted_suite
 

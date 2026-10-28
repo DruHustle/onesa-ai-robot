@@ -144,7 +144,7 @@ for (const privateRepo of [true, false]) {
 
     def test_git_previews_do_not_enable_native_production_deployment(self):
         config = json.loads(
-            (ROOT / (ROOT.name + "-frontend") / "vercel.json").read_text()
+            (ROOT / "onesa-ai-robot-frontend" / "vercel.json").read_text()
         )
         self.assertEqual(
             config["git"]["deploymentEnabled"],
@@ -180,7 +180,7 @@ for (const privateRepo of [true, false]) {
         ci = {
             "onesa-company-portal": "verify.yml",
             "onesa-ai-platform": "ci.yml",
-            "onesa-ai-robot": "scaffold.yml",
+            "onesa-robot": "scaffold.yml",
         }[ROOT.name]
         for name in (ci, "repository-hygiene.yml"):
             text = (ROOT / ".github/workflows" / name).read_text()
@@ -260,7 +260,7 @@ class HostedOnlyRunnerRemovalTests(unittest.TestCase):
         ci = {
             "onesa-company-portal": "verify.yml",
             "onesa-ai-platform": "ci.yml",
-            "onesa-ai-robot": "scaffold.yml",
+            "onesa-robot": "scaffold.yml",
         }[ROOT.name]
         text = (ROOT / ".github/workflows" / ci).read_text()
         job = text.split("  changes:\n", 1)[1]
