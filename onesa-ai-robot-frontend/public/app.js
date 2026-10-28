@@ -3,7 +3,7 @@ import {RobotClient} from './client.js';
 const client = new RobotClient();
 const byId = id => document.getElementById(id);
 let fastPoll=false,lastIdlePoll=0;
-let csrf = '', proposalId = '', timer, polling = null, generation=0, suspended=false, observationReady=false;
+let csrf = '', proposalId = '', timer, polling = null, generation=0, observationRevision=0, suspended=false, observationReady=false;
 const busyForms=new WeakSet();
 const observationForms=[['reset-form','reset-submit'],['proposal-form','proposal-submit'],['approval-form','approve-submit'],['mission-form','mission-submit'],['mission-approval','mission-approve-submit']];
 function setObservationReady(ready){observationReady=ready;for(const [formId,buttonId]of observationForms)byId(buttonId).disabled=!ready||busyForms.has(byId(formId));}
@@ -38,15 +38,24 @@ async function readPhysicalPermission(){
 function setAdministrator(session){administrator=session.role==='administrator';permissionRevision=null;permissionRead=null;lastPermissionRead=0;byId('administrator').hidden=!administrator;if(administrator)void readPhysicalPermission();}
 async function refresh(force=true) {
   if(document.hidden||!force&&!fastPoll&&performance.now()-lastIdlePoll<3000)return;
+  if(suspended || !csrf) return;
+  if(polling){
+    if(!force)return;
+    const previous=polling;await previous.settled;
+    if(suspended || document.hidden || !csrf)return;
+    if(previous.generation===generation && previous.revision===observationRevision)return;
+    return refresh(true);
+  }
   lastIdlePoll=performance.now();
-  if(suspended || polling || !csrf) return;
-  const owner={};polling=owner;const current=generation,observations=[];
+  const owner={generation,revision:observationRevision};
+  owner.settled=new Promise(resolve=>{owner.finish=resolve;});
+  polling=owner;const current=generation,revision=observationRevision,observations=[];
   try {
     await client.heartbeat();
-    if(suspended || current!==generation) return;
+    if(suspended || current!==generation || revision!==observationRevision) return;
     observations.push(client.status());observations.push(client.tasks());
     const [status,{tasks}]=await Promise.all(observations);
-    if(suspended || current!==generation) return;
+    if(suspended || current!==generation || revision!==observationRevision) return;
     if(proposalId){const proposed=tasks.find(task=>task.id===proposalId);if(proposed&&proposed.state!=='proposed'){proposalId='';byId('approval-form').hidden=true;byId('approve-password').value='';}}
     fastPoll=Boolean(status.active_task)||Boolean(proposalId)||inspector.hasPending();
     byId('next-step').textContent=status.stopped?operatorNextStep(status,proposalId):status.active_task?'Simulation running. Monitor the inspection below or use Stop simulation.':proposalId?operatorNextStep(status,proposalId):inspector.guidance?.(status)||'Ready. Choose an inspection scenario, review its plan, then approve.';
@@ -64,8 +73,8 @@ async function refresh(force=true) {
     setObservationReady(true);
     void inspector.refresh(status);
     if(administrator&&performance.now()-lastPermissionRead>5000)void readPhysicalPermission();
-  } catch(error) {if(current!==generation) return;setObservationReady(false);byId('reset-form').hidden=false;inspector.stale();byId('stop-state').textContent='Unavailable — current observation could not be verified';byId('connection').textContent='Disconnected — telemetry is stale; the gateway watchdog stops running simulation tasks.';byId('position').textContent='Stale · latest response unavailable';byId('next-step').textContent=operatorNextStep(null,'');if(error.status===401) signedOut();notice(error.message);}
-  finally {await Promise.allSettled(observations);if(polling===owner)polling=null;}
+  } catch(error) {if(current!==generation) return;if(error.status===401){signedOut();notice(error.message);return;}if(revision!==observationRevision)return;setObservationReady(false);byId('reset-form').hidden=false;inspector.stale();byId('stop-state').textContent='Unavailable — current observation could not be verified';byId('connection').textContent='Disconnected — telemetry is stale; the gateway watchdog stops running simulation tasks.';byId('position').textContent='Stale · latest response unavailable';byId('next-step').textContent=operatorNextStep(null,'');notice(error.message);}
+  finally {await Promise.allSettled(observations);if(polling===owner)polling=null;owner.finish();}
 }
 const unavailableSignIn='Simulator is unavailable. Your sign-in entries are retained. Wait a moment, then select Sign in again.';
 async function waitForSimulator() {
@@ -94,7 +103,7 @@ async function run(action, success, form=null,expectedGeneration=null) {
   if(form&&observationForms.some(([id])=>id===form.id)&&!observationReady){notice('Wait for a current simulator observation before changing simulation state.');return;}
   const controls=form?[...form.querySelectorAll('button[type="submit"]')]:[];
   if(form){busyForms.add(form);form.setAttribute('aria-busy','true');controls.forEach(control=>control.disabled=true);}
-  try {await action();if(suspended||expectedGeneration!==null&&expectedGeneration!==generation)return;notice(success);await refresh();}
+  try {await action();if(suspended||expectedGeneration!==null&&expectedGeneration!==generation)return;observationRevision++;setObservationReady(false);inspector.stale();notice(success);await refresh();}
   catch(error){if(suspended||expectedGeneration!==null&&expectedGeneration!==generation)return;if(error.status===401) signedOut();notice(form?.id==='login-form'&&([502,503,504].includes(error.status)||['AbortError','TimeoutError','TypeError'].includes(error.name))?unavailableSignIn:error.message);}
   finally{if(form){busyForms.delete(form);form.removeAttribute('aria-busy');controls.forEach(control=>control.disabled=observationForms.some(([id])=>id===form.id)&&!observationReady);}}
 }
