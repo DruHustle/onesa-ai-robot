@@ -95,6 +95,15 @@ extra request and require HTTP 200 with CSRF or `signed_out` as appropriate.
 Offline tests retain failure behavior for missing fields, 401/403/503 and timeout;
 cleanup diagnostics expose only HTTP status, never bodies or credentials.
 
+The owner browser probe also observes the single Stop, password-confirmed Reset
+and logout request within that same transport budget before its unchanged UI
+assertions. It requires the exact same-origin POST, HTTP 200, the prescribed
+response state and disabled physical actuation. Per-scenario Stop/Reset receipts
+record actual acknowledgement duration without credentials. The three-engine
+`owner-acknowledgement.spec.mjs` regression covers a six-second Stop response and
+refuses failed HTTP, wrong state, physical activation, missing fields and unknown
+operations. The observer submits no retry and grants no release authority.
+
 `tests/browser/sign-in-readiness.spec.mjs` intercepts every API request with synthetic
 responses. It holds readiness unavailable beyond five seconds, verifies that no
 credentials are sent, then permits readiness and requires one login, cleared password

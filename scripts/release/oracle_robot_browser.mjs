@@ -4,6 +4,24 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { chromium, firefox, webkit, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+// Observe the single existing UI request. Journal acknowledgement can use the
+// client's ten-second transport budget before a dependent UI assertion begins.
+export async function observeSimulationAcknowledgement(page,path,action){
+ const statuses={'/api/v1/stop':'stopped','/api/v1/reset':'reset','/api/v1/auth/logout':'signed_out'};
+ assert.ok(Object.hasOwn(statuses,path),'Unsupported simulation acknowledgement');
+ const origin=new URL(page.url()).origin,started=performance.now();
+ const pending=page.waitForResponse(response=>{
+  const url=new URL(response.url());
+  return url.origin===origin&&url.pathname===path&&!url.search&&!url.hash&&response.request().method()==='POST';
+ },{timeout:10000});
+ const [response]=await Promise.all([pending,action()]);
+ assert.equal(response.status(),200,'Simulation acknowledgement HTTP status');
+ const body=await response.json();
+ assert.deepEqual(Object.keys(body).sort(),['physical_actuation','status']);
+ assert.equal(body.status,statuses[path],'Simulation acknowledgement result');
+ assert.equal(body.physical_actuation,false,'Physical actuation must remain disabled');
+ return {path,http_status:200,status:body.status,physical_actuation:false,elapsed_ms:Math.round(performance.now()-started)};
+}
 export async function checkUI(request,directory,engines={chromium,firefox,webkit}){
 let errors=0,replayRequests=0,violations=0;
 const results=[];
@@ -39,10 +57,12 @@ for(const [engine,type] of Object.entries(engines)){
   for(const scenario of scenarios){
    // Preflight has already refused unknown active work. Stop/reset here belong
    // only to this bounded staging fixture's own session and completed runs.
-   await page.locator('#stop').click();
+   const stop=await observeSimulationAcknowledgement(page,'/api/v1/stop',()=>page.locator('#stop').click());
+   write(engine+'-'+scenario+'-stop-acknowledgement.json',stop);
    await expect(page.locator('#reset-form')).toBeVisible();
    await page.locator('#reset-password').fill(request.credentials.password);
-   await page.locator('#reset-submit').click();
+   const reset=await observeSimulationAcknowledgement(page,'/api/v1/reset',()=>page.locator('#reset-submit').click());
+   write(engine+'-'+scenario+'-reset-acknowledgement.json',reset);
    await expect(page.locator('#mission-submit')).toBeEnabled();
    await page.locator('#mission-scenario').selectOption(scenario);
    await page.locator('#mission-submit').click();
@@ -77,7 +97,7 @@ for(const [engine,type] of Object.entries(engines)){
    assert.equal(audit.violations.length,0);
   }
   await page.screenshot({path:directory+'/'+engine+'-operator.png',fullPage:true});
-  await page.locator('#logout').click();
+  await observeSimulationAcknowledgement(page,'/api/v1/auth/logout',()=>page.locator('#logout').click());
   await expect(page.locator('#login-form')).toBeVisible();
   if(request.environment==='staging'||request.binding.component==='frontend')await expect(page.locator('#mission-readings')).toBeEmpty();
   assert.equal((await page.request.get(request.origin+'/api/v1/missions')).status(),401);
