@@ -65,6 +65,13 @@ POLICIES = {
     ),
 }
 PHASES = ("staging", "operations", "deploy", "production")
+# Repository identity and independently named application artifacts are separate.
+# A repository rename cannot relabel genuine previously produced CI artifacts.
+RUNTIME_ARTIFACT_REPOSITORIES = {
+    "onesa-company-portal": "onesa-company-portal",
+    "onesa-ai-platform": "onesa-ai-platform",
+    "onesa-robot": "onesa-ai-robot",
+}
 REQUIRED_CHECKS = {
     "staging": {
         "source_build_image_identity",
@@ -364,7 +371,10 @@ class GitHub:
             if name == workflow:
                 require(
                     {
-                        "runtime-" + repo.split("/")[1] + "-" + x
+                        "runtime-"
+                        + RUNTIME_ARTIFACT_REPOSITORIES[repo.split("/")[1]]
+                        + "-"
+                        + x
                         for x in ["backend", "frontend"]
                     }
                     <= {a["name"] for a in manifests},
