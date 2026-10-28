@@ -15,6 +15,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import oracle_owner as o
+import yaml
 
 SCHEMA = """CREATE TABLE records(sequence INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,kind TEXT NOT NULL,scope TEXT NOT NULL,envelope TEXT NOT NULL,parent TEXT REFERENCES records(id),created TEXT NOT NULL,revoked INTEGER NOT NULL DEFAULT 0); CREATE TABLE contexts(id TEXT PRIMARY KEY REFERENCES records(id),state TEXT NOT NULL); CREATE TABLE deployments(id TEXT PRIMARY KEY REFERENCES records(id),authorization TEXT NOT NULL UNIQUE REFERENCES records(id),qualification TEXT NOT NULL UNIQUE REFERENCES records(id),state TEXT NOT NULL);"""
 
@@ -498,6 +499,7 @@ class GitHubEvidenceTests(unittest.TestCase):
     def api(self, path):
         sha = self.binding["candidate_commit"]
         repo = self.binding["repository"]
+        native_workflow = o.POLICIES[repo.split("/")[1]][0]
         leaf = path.removeprefix("repos/" + repo + "/")
         if leaf == "branches/main":
             return {"commit": {"sha": self.bad.get("main", sha)}}
@@ -519,7 +521,7 @@ class GitHubEvidenceTests(unittest.TestCase):
                 if self.bad.get("missing_run")
                 else [
                     {
-                        "id": 1 if "verify.yml" in leaf else 2,
+                        "id": 1 if native_workflow in leaf else 2,
                         "event": "push",
                         "head_branch": "main",
                     }
@@ -534,7 +536,9 @@ class GitHubEvidenceTests(unittest.TestCase):
                 "head_branch": "main",
                 "event": "push",
                 "path": ".github/workflows/"
-                + ("verify.yml" if leaf.endswith("/1") else "repository-hygiene.yml"),
+                + (
+                    native_workflow if leaf.endswith("/1") else "repository-hygiene.yml"
+                ),
                 "run_attempt": 1,
                 "status": "completed",
                 "conclusion": "success",
@@ -571,7 +575,10 @@ class GitHubEvidenceTests(unittest.TestCase):
             artifacts = [
                 {
                     "id": i + 10,
-                    "name": "runtime-onesa-company-portal-" + n,
+                    "name": self.bad.get(
+                        "artifact_prefix", "runtime-onesa-company-portal-"
+                    )
+                    + n,
                     "digest": "sha256:" + "f" * 64,
                     "expired": self.bad.get("expired_artifact", False),
                 }
@@ -584,6 +591,51 @@ class GitHubEvidenceTests(unittest.TestCase):
         refs = self.github.qualify(self.binding)
         self.assertEqual([r["run_id"] for r in refs], [1, 2])
         self.assertEqual(refs[0]["artifacts"][0]["id"], 10)
+
+    def test_canonical_robot_identity_keeps_real_component_artifact_names(self):
+        self.binding["repository"] = "DruHustle/onesa-robot"
+        self.bad = {"artifact_prefix": "runtime-onesa-ai-robot-"}
+        refs = self.github.qualify(self.binding)
+        self.assertEqual(refs[0]["workflow"], "scaffold.yml")
+        self.assertEqual(
+            {a["name"] for a in refs[0]["artifacts"]},
+            {
+                "runtime-onesa-ai-robot-backend",
+                "runtime-onesa-ai-robot-frontend",
+            },
+        )
+        workflow = yaml.safe_load(
+            (
+                Path(__file__).resolve().parents[2] / ".github/workflows/scaffold.yml"
+            ).read_text()
+        )
+        uploaded = [
+            step["with"]["name"]
+            for step in workflow["jobs"]["containers"]["steps"]
+            if step.get("uses", "").startswith("actions/upload-artifact@")
+        ]
+        self.assertEqual(len(uploaded), 1)
+        self.assertEqual(
+            {
+                uploaded[0].replace("${{ matrix.application }}", component)
+                for component in ["backend", "frontend"]
+            },
+            {a["name"] for a in refs[0]["artifacts"]},
+        )
+        for prefix in ["runtime-onesa-robot-", "runtime-onesa-company-portal-"]:
+            self.bad = {"artifact_prefix": prefix}
+            with self.subTest(prefix=prefix), self.assertRaises(o.Rejected):
+                self.github.qualify(self.binding)
+
+    def test_component_artifact_names_never_authorize_a_foreign_run_repository(self):
+        self.binding["repository"] = "DruHustle/onesa-robot"
+        for field in ["repository", "head_repository"]:
+            self.bad = {
+                "artifact_prefix": "runtime-onesa-ai-robot-",
+                "run": {field: {"full_name": "DruHustle/onesa-ai-robot"}},
+            }
+            with self.subTest(field=field), self.assertRaises(o.Rejected):
+                self.github.qualify(self.binding)
 
     def test_source_review_and_failed_skipped_missing_CI_fail_closed(self):
         cases = [
