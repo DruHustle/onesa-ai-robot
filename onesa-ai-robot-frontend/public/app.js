@@ -113,12 +113,12 @@ byId('login-form').addEventListener('submit',event=>{
   // Capture this deliberate submission before readiness or restoration settles.
   // Its generation supersedes the anonymous bootstrap read, not another account.
   const credentials={name:byId('name').value,password:byId('password').value},current=++generation;
-  byId('password').value='';
   run(async()=>{
     await waitForSimulator();
     if(suspended||current!==generation)return;
     const session=await client.login(credentials);
     if(suspended||current!==generation)return;
+    byId('password').value='';
     csrf=session.csrf;client.csrf=csrf;setAdministrator(session);byId('login-form').hidden=true;byId('operator').hidden=false;sessionPresentation(true);inspector.authenticate();timer=setInterval(()=>refresh(false),500);
   },'Signed in.',event.currentTarget,current);
 });
