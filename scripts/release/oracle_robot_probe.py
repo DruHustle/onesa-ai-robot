@@ -255,6 +255,31 @@ def readonly_api(request):
         api.logout()
 
 
+def verify_browser_authorization(value, request):
+    expected = {
+        (engine, phase)
+        for engine in ["chromium", "firefox", "webkit"]
+        for phase in ["before_sign_in", "after_logout"]
+    }
+    path = (
+        "/api/v1/tasks"
+        if request["environment"] == "production"
+        and request["binding"]["component"] == "api"
+        else "/api/v1/missions"
+    )
+    rows = value.get("authorization_checks", [])
+    r.require(
+        isinstance(rows, list)
+        and len(rows) == len(expected)
+        and all(isinstance(row, dict) for row in rows)
+        and {(row.get("engine"), row.get("phase")) for row in rows} == expected
+        and all(
+            row.get("path") == path and row.get("http_status") == 401 for row in rows
+        ),
+        "COMPONENT_BROWSER_AUTHORIZATION_BOUNDARY_REQUIRED",
+    )
+
+
 def browser(request):
     """The immutable probe image contains commissioned tooling, not candidate code."""
     output = Path(request["output"])
@@ -320,6 +345,7 @@ def browser(request):
         private.unlink(missing_ok=True)
     r.require(result.returncode == 0, "HOSTED_BROWSER_FAILED_INSPECT_PRIVATE_EVIDENCE")
     value = r.read(output / "browser-receipt.json")
+    verify_browser_authorization(value, request)
     r.require(
         value["status"] == "PASS"
         and value["engines"] == ["chromium", "firefox", "webkit"]
