@@ -649,7 +649,15 @@ def runner(phase, binding, context):
         value["checks"] = {k: "PASS" for k in r.CHECKS["staging"]}
         value["deployment_id"] = receipt["deployment_id"]
     elif phase == "operations":
-        value = r.operational_observations(binding, plan, folder, context_id)
+        value = r.operational_observations(
+            binding,
+            plan,
+            folder,
+            context_id,
+            qualification=next(
+                (item for item in chain if item["kind"] == "qualification"), None
+            ),
+        )
     elif phase == "deploy":
         receipt, _path = create(
             binding, "production", context["operation_id"], folder, plan

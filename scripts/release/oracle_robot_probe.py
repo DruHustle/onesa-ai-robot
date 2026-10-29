@@ -148,7 +148,8 @@ def validate_request(request):
     )
     r.require(
         request["physical_hardware_authorized"] is False
-        and request["read_only"] == (env == "production"),
+        and type(request["read_only"]) is bool
+        and (env == "staging" or request["read_only"] is True),
         "HOSTED_PROBE_PROCESSING_SCOPE",
     )
     expected = (
@@ -364,6 +365,7 @@ def staging_legacy(request):
     # deliberately minimal installed Python module set.
     env = validate_request(request)
     r.require(env == "staging", "NO_LEGACY_MUTATIONS_IN_PRODUCTION")
+    r.require(request["read_only"] is False, "NO_LEGACY_MUTATIONS_IN_READ_ONLY_PROBE")
     credential = request["credentials"]
     values = r.runtime_values(r.ENV["staging"])
     r.require(
@@ -432,11 +434,12 @@ def staging_legacy(request):
 def execute(request):
     env = validate_request(request)
     results = {"read_only_api": readonly_api(request)}
-    if env == "staging":
+    if env == "staging" and not request["read_only"]:
         results["existing_simulator_and_edge"] = staging_legacy(request)
     results["browser"] = browser(request)
     return {
         "status": "PASS",
+        "read_only": request["read_only"],
         "binding": request["binding"],
         "environment": env,
         "operation_id": request["operation_id"],
