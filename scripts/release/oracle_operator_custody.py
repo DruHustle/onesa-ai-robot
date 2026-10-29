@@ -75,11 +75,14 @@ def clear_expired(candidate):
 
 
 def _collect(plan, candidate, prompt):
+    component = plan.get("release_component", "api")
+    r.require(component in {"api", "frontend"}, "EXPLICIT_EXISTING_COMPONENT_MODE")
+    binding = plan["bindings"][component]
     r.require(
-        plan["bindings"]["api"]["candidate_commit"] == candidate,
+        binding["candidate_commit"] == candidate,
         "CREDENTIAL_SOURCE_SCOPE",
     )
-    r.verify_toolchain(plan, plan["bindings"]["api"])
+    r.verify_toolchain(plan, binding)
     r.require(
         not r.CUSTODY.exists() and not r.CUSTODY.is_symlink(),
         "EXISTING_CUSTODY_PRESERVED_INSPECT_EXPIRY_FIRST",

@@ -401,7 +401,7 @@ def verify_invocation(binding, context, phase, plan, *, dependency=False):
     records = []
     visited = set()
 
-    def record(identifier, kind=None, historical=False):
+    def record(identifier, kind=None, historical=False, *, parent_checked=False):
         require(
             identifier not in visited and len(visited) < 12,
             "SIGNED_RECORD_CHAIN_CYCLE_OR_BOUND",
@@ -478,8 +478,22 @@ def verify_invocation(binding, context, phase, plan, *, dependency=False):
             "SIGNED_RECORD_EXPIRED",
         )
         records.append(r)
-        if r["parent"]:
+        if r["parent"] and not parent_checked:
             record(r["parent"], historical=historical)
+        if dependency and r["kind"] == "authorization":
+            # The decision and authorization share the already verified Q parent.
+            # Validate the decision itself without revisiting that ancestor; keep
+            # the existing cycle/size guard and require the identical signed Q.
+            attempt = record(
+                r["details"]["attempt_id"],
+                "authorization-attempt",
+                historical,
+                parent_checked=True,
+            )
+            require(
+                attempt["parent"] == r["parent"],
+                "AUTHORIZATION_DECISION_QUALIFICATION_MISMATCH",
+            )
         return r
 
     try:
@@ -650,7 +664,7 @@ CHECKS = {
 }
 
 
-def verify_toolchain(plan, binding):
+def verify_toolchain(plan, binding, *, observer=None):
     require(
         binding["repository"] == "DruHustle/onesa-robot"
         and binding["component"] in ["api", "frontend"]
@@ -692,6 +706,19 @@ def verify_toolchain(plan, binding):
         ),
         "MANDATORY_CHECKS_REMOVED",
     )
+    if observer is not None:
+        # The original issuer/source chain remains pinned above. A separately
+        # commissioned, read-only observer supplies its own reviewed tool policy.
+        policy = observer.current_policy()
+        profile = policy["components"][binding["repository"] + ":api"]
+        require(
+            profile["qualification_attempt_limit"] == 1
+            and all(
+                set(CHECKS[phase]) <= set(profile["required_checks"][phase])
+                for phase in CHECKS
+            ),
+            "OBSERVER_CANNOT_REMOVE_MANDATORY_CHECKS",
+        )
     installation = read(VERIFIER.parent / "installation.json")
     require(
         installation["state"] == "INSTALLED_NOT_COMMISSIONED"
@@ -855,11 +882,13 @@ def frontend_configuration_value(plan, env):
     }
 
 
-def validate_plan(binding):
-    plan = read(PLAN)
+def validate_plan(binding, *, observer=None):
+    plan = read(PLAN) if observer is None else observer.original_plan()
     require(
         plan["schema_version"] == 1
-        and plan["bindings"].get(binding["component"]) == binding,
+        and plan["bindings"].get(binding["component"]) == binding
+        and plan.get("release_component", binding["component"]) == binding["component"]
+        and ("independent_api" not in plan or binding["component"] == "frontend"),
         "OWNER_PLAN_BINDING",
     )
     require(
@@ -870,7 +899,9 @@ def validate_plan(binding):
         },
         "CANONICAL_ROBOT_API_ORIGINS_REQUIRED",
     )
-    verify_toolchain(plan, binding)
+    tool = verify_toolchain(
+        plan, binding, **({"observer": observer} if observer is not None else {})
+    )
     folder = component_folder(binding)
     require(
         sha(private(folder / "source.tar")) == binding["source_sha256"],
@@ -879,21 +910,32 @@ def validate_plan(binding):
     source_inventory(folder / "source.tar", binding)
     require(sha(private(COMPOSE)) == plan["compose_sha256"], "COMPOSE_CHANGED")
     for env, runtime_path in ENV.items():
+        dependency_binding = (
+            plan["independent_api"][env + "_binding"]
+            if binding["component"] == "frontend" and "independent_api" in plan
+            else plan["bindings"]["api"]
+        )
         prepared = private(candidate_environment(binding, env))
         current = runtime_values(runtime_path)
         values = runtime_values(prepared)
         require(
-            sha(prepared) == plan["bindings"]["api"]["configuration_sha256"][env]
-            and sha(runtime_path)
-            in [
-                plan["baseline_runtime_sha256"][env],
-                plan["bindings"]["api"]["configuration_sha256"][env],
-            ],
+            sha(prepared) == dependency_binding["configuration_sha256"][env]
+            and (
+                observer is not None
+                and env == "staging"
+                or sha(runtime_path)
+                in [
+                    plan["baseline_runtime_sha256"][env],
+                    dependency_binding["configuration_sha256"][env],
+                ]
+            ),
             "RUNTIME_CONFIGURATION_CHANGED",
         )
         allowed = {"ROBOT_PUBLIC_ORIGIN"} if env == "staging" else set()
         require(
-            {k: v for k, v in values.items() if k not in allowed}
+            observer is not None
+            and env == "staging"
+            or {k: v for k, v in values.items() if k not in allowed}
             == {k: v for k, v in current.items() if k not in allowed},
             "UNRELATED_CONFIGURATION_OR_CREDENTIAL_CHANGE",
         )
@@ -932,7 +974,14 @@ def validate_plan(binding):
             sha(private(folder / "image.tar.gz")) == binding["build_sha256"],
             "BUILD_ARCHIVE_DIGEST",
         )
-        image_security(read(folder / "scan.json"), binding["artifact_digest"])
+        image_security(
+            read(
+                folder / "scan.json"
+                if observer is None
+                else observer.security_path("api")
+            ),
+            binding["artifact_digest"],
+        )
         verify_application_bytes(folder, binding)
     else:
         for env in ENV:
@@ -943,8 +992,16 @@ def validate_plan(binding):
                 "FRONTEND_TARGET_CONFIGURATION_CHANGED",
             )
         validate_frontend_builds(folder, binding, plan)
-    verify_probe_bytes(folder, binding, plan)
-    credentials(plan, binding)
+    verify_probe_bytes(
+        folder,
+        binding,
+        plan,
+        **({"observer": observer, "tool": tool} if observer is not None else {}),
+    )
+    if observer is None:
+        credentials(plan, binding)
+    else:
+        observer.production_credentials()
     return folder, plan
 
 
@@ -1082,8 +1139,8 @@ def probe_source_files(files):
     return {name: files[name] for name in names}
 
 
-def verify_probe_bytes(folder, binding, plan):
-    tool = trusted_toolchain(plan)
+def verify_probe_bytes(folder, binding, plan, *, observer=None, tool=None):
+    tool = trusted_toolchain(plan) if tool is None else tool
     expected = tool["probe_files"]
     require(
         {
@@ -1118,7 +1175,13 @@ def verify_probe_bytes(folder, binding, plan):
     require(actual == expected, "PROBE_BYTES_DIFFER_FROM_COMMISSIONED_TOOL_SOURCE")
     for kind in ["probe", "cli", "builder"]:
         image_security(
-            read(private(folder / (kind + "-scan.json"))),
+            read(
+                private(
+                    folder / (kind + "-scan.json")
+                    if observer is None
+                    else observer.security_path(kind)
+                )
+            ),
             tool[kind + "_image"],
             "amd64" if kind == "builder" else "arm64",
         )
@@ -1252,13 +1315,22 @@ def preserved(before, after):
 
 def local_identity(binding, env, plan):
     row = inventory()[TARGET[env]]
+    dependency = (
+        plan["independent_api"][env + "_binding"]
+        if binding["component"] == "frontend" and "independent_api" in plan
+        else None
+    )
     expected = (
-        binding["artifact_digest"]
+        dependency["artifact_digest"]
+        if dependency is not None
+        else binding["artifact_digest"]
         if binding["component"] == "api"
         else plan["retained_api"]["image"]
     )
     source = (
-        binding["candidate_commit"]
+        dependency["candidate_commit"]
+        if dependency is not None
+        else binding["candidate_commit"]
         if binding["component"] == "api"
         else plan["retained_api"]["source"]
     )
@@ -1268,6 +1340,11 @@ def local_identity(binding, env, plan):
         and row["Config"]["Labels"].get("org.onesa.source-commit") == source,
         "ACTUAL_RUNNING_SOURCE_OR_IMAGE_MISMATCH",
     )
+    if dependency is not None:
+        require(
+            summary(row) == plan["independent_api"]["runtimes"][env],
+            "INDEPENDENT_API_RUNTIME_CHANGED",
+        )
     values = dict(x.split("=", 1) for x in row["Config"]["Env"])
     prepared = runtime_values(candidate_environment(binding, env))
     require(
@@ -1349,7 +1426,11 @@ def preflight(binding):
         frontend_runner.accepted_api(plan)
     for env in ENV:
         if frontend:
-            local_identity(plan["bindings"]["api"], env, plan)
+            local_identity(
+                binding if "independent_api" in plan else plan["bindings"]["api"],
+                env,
+                plan,
+            )
         else:
             require(
                 summary(before[TARGET[env]]) == plan["baseline"][env]
@@ -1765,9 +1846,13 @@ def operational_observations(binding, plan, folder, context_id, *, qualification
     }
 
 
-def probe(binding, env, operation, folder, plan, *, read_only=False):
+def probe(binding, env, operation, folder, plan, *, read_only=False, observer=None):
     from importlib.util import module_from_spec, spec_from_file_location
 
+    require(
+        observer is None or (env == "production" and read_only is True),
+        "CORRECTED_OBSERVER_IS_READ_ONLY_PRODUCTION_ONLY",
+    )
     output = folder / "observations" / operation
     output.mkdir(mode=0o700, exist_ok=False)
     observed = local_identity(binding, env, plan)
@@ -1777,7 +1862,9 @@ def probe(binding, env, operation, folder, plan, *, read_only=False):
         "operation_id": operation,
         "origin": plan["origins"][env],
         "api_origin": plan["api_origins"][env],
-        "credentials": credentials(plan, binding)[env],
+        "credentials": credentials(plan, binding)[env]
+        if observer is None
+        else observer.production_credentials(),
         "read_only": read_only,
         "physical_hardware_authorized": False,
         "probe_image": plan["probe_image"],
@@ -1891,8 +1978,18 @@ def provider_receipt(binding, operation, folder, plan):
     return receipt
 
 
-def runner(phase, binding, context):
-    folder, plan = validate_plan(binding)
+def runner(phase, binding, context, *, observer=None):
+    if observer is not None:
+        from oracle_robot_recovery import Observer
+
+        require(
+            isinstance(observer, Observer) and phase == "production",
+            "READ_ONLY_COMMISSIONED_OBSERVER_ONLY",
+        )
+        observer.validate_invocation(binding, context)
+    folder, plan = validate_plan(
+        binding, **({"observer": observer} if observer is not None else {})
+    )
     chain = verify_invocation(binding, context, phase, plan)
     context_id = next(x["id"] for x in chain if x["kind"] == "context")
     before = inventory()
@@ -1936,7 +2033,15 @@ def runner(phase, binding, context):
         # Repeated inspection has a distinct observation directory and no provider
         # request. Never reuse or remove a failed observation to permit a retry.
         inspection = operation + "-" + str(time.time_ns())
-        value = probe(binding, "production", inspection, folder, plan, read_only=True)
+        value = probe(
+            binding,
+            "production",
+            inspection,
+            folder,
+            plan,
+            read_only=True,
+            **({"observer": observer} if observer is not None else {}),
+        )
         value["operation_id"] = operation
         value["deployment_id"] = receipt["deployment_id"]
         require(
