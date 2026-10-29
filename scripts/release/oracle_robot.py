@@ -1562,21 +1562,54 @@ def schema_recovery(binding, folder):
     return value
 
 
+def post_staging_monitor(stage):
+    """Wait for actual monitor recovery; never reuse a pre-staging sample."""
+    staged_at = dt.datetime.fromisoformat(stage["observed_at"])
+    require(
+        staged_at.tzinfo is not None
+        and dt.timedelta(0) <= now() - staged_at < dt.timedelta(minutes=5),
+        "FRESH_STAGING_RECEIPT_REQUIRED",
+    )
+    deadline = time.monotonic() + 240
+    while True:
+        require(
+            dt.timedelta(0) <= now() - staged_at < dt.timedelta(minutes=5),
+            "FRESH_STAGING_RECEIPT_REQUIRED",
+        )
+        metrics = read(Path("/var/lib/onesa/operations/metrics.json"))
+        checked_at = dt.datetime.fromisoformat(metrics["checked_at"])
+        require(
+            metrics["simulation"] is False
+            and checked_at.tzinfo is not None
+            and checked_at <= now(),
+            "GENUINE_MONITOR_SAMPLE_REQUIRED",
+        )
+        if (
+            checked_at >= staged_at
+            and now() - checked_at < dt.timedelta(minutes=5)
+            and not metrics["alerts"]
+            and not metrics.get("notification_pending")
+            and not metrics.get("notification_reconciliation_required")
+            and metrics.get("incident_open") is False
+            and type(metrics.get("healthy_samples")) is int
+            and metrics["healthy_samples"] >= 2
+        ):
+            return metrics
+        remaining = deadline - time.monotonic()
+        require(remaining > 0, "POST_STAGING_MONITOR_NOT_RECOVERED")
+        time.sleep(min(5, remaining))
+
+
 def operational_observations(binding, plan, folder, context_id):
-    metrics = read(Path("/var/lib/onesa/operations/metrics.json"))
+    stage = read(folder / "observations" / context_id / "receipt.json")
     require(
-        metrics["simulation"] is False
-        and not metrics["alerts"]
-        and not metrics.get("notification_pending")
-        and not metrics.get("notification_reconciliation_required"),
-        "UNRESOLVED_OPERATIONS_ALERT",
+        stage["binding"] == binding
+        and stage["status"] == "PASS"
+        and stage["schema_compatibility"] == "PASS"
+        and stage["existing_records_preserved"] is True,
+        "STAGING_PRESERVATION_OR_RESTORE_NOT_PROVEN",
     )
-    require(
-        dt.timedelta(0)
-        <= now() - dt.datetime.fromisoformat(metrics["checked_at"])
-        < dt.timedelta(minutes=5),
-        "OPERATIONS_SAMPLE_STALE",
-    )
+    metrics = post_staging_monitor(stage)
     m = metrics["metrics"]
     require(
         m["database_available"]
@@ -1599,14 +1632,6 @@ def operational_observations(binding, plan, folder, context_id):
         "ROBOT_BACKUP_STALE",
     )
     readback = inspect_database_backup(backup, plan)
-    stage = read(folder / "observations" / context_id / "receipt.json")
-    require(
-        stage["binding"] == binding
-        and stage["status"] == "PASS"
-        and stage["schema_compatibility"] == "PASS"
-        and stage["existing_records_preserved"] is True,
-        "STAGING_PRESERVATION_OR_RESTORE_NOT_PROVEN",
-    )
     rollback = plan["rollback"]
     require(
         json.loads(docker("image", "inspect", rollback["image"]))[0]["Id"]
@@ -1628,6 +1653,13 @@ def operational_observations(binding, plan, folder, context_id):
     )
     return {
         "checks": {k: "PASS" for k in CHECKS["operations"]},
+        "post_staging_monitor": {
+            "checked_at": metrics["checked_at"],
+            "healthy_samples": metrics["healthy_samples"],
+            "observed_metrics_sha256": hashlib.sha256(canonical(metrics)).hexdigest(),
+            "unresolved_alerts": 0,
+            "unresolved_notifications": 0,
+        },
         "backup_readback": readback,
         "backup_verified_at": backup["verified_at"],
         "staging_receipt_sha256": sha(
