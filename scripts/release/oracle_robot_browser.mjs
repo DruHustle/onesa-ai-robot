@@ -22,6 +22,20 @@ export async function observeSimulationAcknowledgement(page,path,action){
  assert.equal(body.physical_actuation,false,'Physical actuation must remain disabled');
  return {path,http_status:200,status:body.status,physical_actuation:false,elapsed_ms:Math.round(performance.now()-started)};
 }
+export function observeSignInTransport(page,origin){
+ assert.equal(new URL(origin).origin,origin);
+ const responses=[];let omitted=0;
+ const allowed=new Set(['/api/v1/ready','/api/v1/auth/me','/api/v1/auth/login']);
+ const observe=response=>{
+  const url=new URL(response.url()),method=response.request().method();
+  if(url.origin!==origin||!allowed.has(url.pathname)||!['GET','POST'].includes(method))return;
+  if(responses.length>=50){omitted++;return;}
+  // Never read bodies, headers, cookies, query strings or submitted credentials.
+  responses.push({path:url.pathname,method,http_status:response.status()});
+ };
+ page.on('response',observe);
+ return ()=>{page.off('response',observe);return {state:'SIGN_IN_HTTP_DIAGNOSTIC_NOT_QUALIFICATION',responses,omitted};};
+}
 export async function checkUI(request,directory,engines={chromium,firefox,webkit}){
 let errors=0,replayRequests=0,violations=0;
 const results=[];
@@ -40,13 +54,16 @@ for(const [engine,type] of Object.entries(engines)){
   assert.equal(await page.locator('script').count(),0);
   assert.equal(publicResponses.length,0);
   await page.screenshot({path:directory+'/'+engine+'-public.png',fullPage:true});
-  await page.goto(request.origin+'/console');
-  await expect(page.locator('#login-form')).toBeVisible();
-  const anon=await page.request.get(request.origin+'/api/v1/missions');assert.equal(anon.status(),401);
-  await page.locator('#name').fill(request.credentials.operator);
-  await page.locator('#password').fill(request.credentials.password);
-  await page.getByRole('button',{name:'Sign in',exact:true}).click();
-  await expect(page.locator('#operator')).toBeVisible({timeout:25000});
+  const signInTransport=observeSignInTransport(page,request.origin);
+  try{
+   await page.goto(request.origin+'/console');
+   await expect(page.locator('#login-form')).toBeVisible();
+   const anon=await page.request.get(request.origin+'/api/v1/missions');assert.equal(anon.status(),401);
+   await page.locator('#name').fill(request.credentials.operator);
+   await page.locator('#password').fill(request.credentials.password);
+   await page.getByRole('button',{name:'Sign in',exact:true}).click();
+   await expect(page.locator('#operator')).toBeVisible({timeout:25000});
+  }finally{write(engine+'-sign-in-transport.json',signInTransport());}
   if(request.read_only && request.binding.component==='frontend'){
    await expect(page.locator('#mission-form')).toBeVisible();
    await expect(page.locator('#mission-scenario option')).toHaveCount(7);

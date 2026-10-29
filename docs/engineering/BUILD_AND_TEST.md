@@ -1,5 +1,14 @@
 # Independent software builds and tests
 
+Installer fixtures also place disposable custody under the private home directory
+when executed as root. The explicit writable-parent regression still requires the
+production verifier to reject shared writable ancestors; no custody guard changes.
+
+Release-unit fixtures pin a disposable commissioning registry and keep its keys,
+policy and database inside their temporary directory. Root test execution uses a
+private home-directory parent and never reads the host's production trust registry.
+Production trust checks and release authority are unchanged.
+
 Oracle CI selection keeps an existing push authoritative, including failed,
 pending, skipped or cancelled evidence. Only an absent push permits the existing
 owner-dispatched full workflow; both owner identities, a complete run listing,
@@ -80,6 +89,12 @@ model endpoints, actual sensor/actuator behavior, emergency-stop hardware and re
 edge-network latency remain NOT TESTED or BLOCKED until their targets exist.
 Automated accessibility checks do not certify complete WCAG 2.2 AA compliance.
 
+The owned inspection process-restart test ignores inherited HTTP/SOCKS proxy
+configuration for its loopback readiness and authenticated requests. It exercises
+that boundary with deliberately unusable proxy settings and cleans up its direct
+child if startup fails. Its synthetic credentials never require an external proxy;
+normal application/provider TLS and proxy policy are unchanged.
+
 ## Bounded sign-in acceptance
 
 After submitting Sign in, browser scenarios use `waitForOperatorSignIn`: the same
@@ -127,8 +142,9 @@ root isolation, live preference changes with drafts/simulation and accessibility
 screenshots; never set it to public assets or include private test credentials.
 The shared foundation digest is verified by the frontend build.
 
-The source browser matrix is 150 cases: 50 each in Chromium, Firefox and WebKit,
-with no skipped/flaky cases or automatic retries. The pending-form interaction
+Enumerate the current browser matrix with `npm run test:e2e -- --list` in the
+frontend. Chromium, Firefox and WebKit remain required, with no skipped/flaky
+cases or automatic retries. The pending-form interaction
 fixture uses test-owned HTTP responses and no backend mutation; it requires Stop
 and Sign out to remain usable while an unrelated form response is pending. Existing
 operator, authorization, appearance and accessibility cases remain required. Offline
@@ -364,3 +380,9 @@ hold later polls and verify that completed metadata enables only the latest vali
 observation. Late metadata cannot restore controls after Stop or a failed read.
 These controlled fixtures are local regression evidence; genuine hosted workflow
 qualification remains required.
+
+## Sign-in restoration and unavailable JavaScript
+
+`tests/browser/sign-in-restoration.spec.mjs` delays the initial anonymous session response until a submitted sign-in is waiting for simulator readiness. The pending restoration must not erase or replace that explicit submission. It also blocks the application module and checks that native form behavior cannot place a password in a navigation URL. The controlled restoration case fails on the prior source in Chromium, Firefox and WebKit.
+
+The sign-in handler captures the submission immediately and binds it to its own session generation. The disabled native submit control becomes available only after its handler is installed; the form uses POST even without JavaScript. Owner browser diagnostics retain only bounded same-origin route/method/status counts, never credentials, response bodies, cookies or query values. These regression checks do not establish the cause of a historical hosted failure or qualify a release; exact-source hosted verification remains required.

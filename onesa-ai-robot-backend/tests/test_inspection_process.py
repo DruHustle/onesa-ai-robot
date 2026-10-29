@@ -14,7 +14,12 @@ import httpx
 from robot_api.security import password_hash
 
 
-def test_abrupt_process_restart_revokes_session_and_preserves_partial_run(tmp_path):
+def test_abrupt_process_restart_revokes_session_and_preserves_partial_run(tmp_path, monkeypatch):
+    # Owned loopback fixtures must never send synthetic operator credentials to
+    # inherited workstation proxies, including unsupported SOCKS transports.
+    for name in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY"):
+        monkeypatch.setenv(name, "socks5h://127.0.0.1:1")
+    monkeypatch.setenv("NO_PROXY", "")
     password = secrets.token_urlsafe(24)
     operator = "fixture-" + uuid4().hex[:12]
     backend = Path(__file__).resolve().parents[1]
@@ -54,22 +59,33 @@ def test_abrupt_process_restart_revokes_session_and_preserves_partial_run(tmp_pa
                     stdout=log,
                     stderr=log,
                 )
-                deadline = time.monotonic() + 10
-                while time.monotonic() < deadline:
-                    assert child.poll() is None, "Owned fixture process exited before readiness"
-                    try:
-                        if httpx.get(origin + "/api/v1/ready", timeout=0.3).status_code == 200:
-                            return child
-                    except httpx.HTTPError:
-                        pass
-                    time.sleep(0.05)
-                child.terminate()
-                child.wait(timeout=5)
-                raise AssertionError("Owned fixture readiness deadline exceeded")
+                try:
+                    deadline = time.monotonic() + 10
+                    while time.monotonic() < deadline:
+                        assert child.poll() is None, "Owned fixture process exited before readiness"
+                        try:
+                            if (
+                                httpx.get(
+                                    origin + "/api/v1/ready", timeout=0.3, trust_env=False
+                                ).status_code
+                                == 200
+                            ):
+                                return child
+                        except httpx.HTTPError:
+                            pass
+                        time.sleep(0.05)
+                    raise AssertionError("Owned fixture readiness deadline exceeded")
+                except BaseException:
+                    if child.poll() is None:
+                        child.terminate()
+                        child.wait(timeout=5)
+                    raise
 
             try:
                 process = start()
-                with httpx.Client(base_url=origin, headers={"Origin": origin}, timeout=3) as api:
+                with httpx.Client(
+                    base_url=origin, headers={"Origin": origin}, timeout=3, trust_env=False
+                ) as api:
 
                     def login():
                         response = api.post(
