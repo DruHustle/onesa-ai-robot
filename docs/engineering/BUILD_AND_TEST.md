@@ -165,6 +165,14 @@ and no mutation. Robot header text resolves the existing system tokens directly,
 avoiding the reproduced WebKit stale inherited foreground after a media change.
 No shared foundation pin, appearance override, credential or release gate changes.
 
+The idle-administrator regression in `administration.spec.mjs` switches dark,
+light and dark at 1440 pixels and checks every permission/controller status leaf
+against the current system foreground. It retains password input and focus,
+requires blocked physical permission, performs no additional write and runs the
+accessibility audit after each switch. These leaves resolve the existing system
+token directly to avoid the observed WebKit stale inherited color; authentication,
+controller readiness and physical-operation guards are unchanged.
+
 The build backend and development lock pin setuptools 84.1.0 for
 [GHSA-xmj3-9gf7-h52w](https://github.com/advisories/GHSA-xmj3-9gf7-h52w), and the
 development lock pins filelock 4.2.1 for its six reported advisories. Official PyPI
