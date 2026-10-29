@@ -43,3 +43,22 @@ test('administrator can allow and block permission without claiming physical act
 test('ordinary operator sees no administrator controls or permission reads',async({page})=>{
  const {reads}=await fixture(page,'operator');await expect(page.locator('#administrator')).toBeHidden();await expect(page.getByRole('button',{name:'Allow physical operation',exact:true})).toBeHidden();expect(reads.filter(path=>path.includes('/admin/'))).toEqual([]);
 });
+
+test('idle administrator statuses follow repeated system appearance changes without writes',async({page})=>{
+ await page.setViewportSize({width:1440,height:900});
+ const {mutations}=await fixture(page);
+ const password=page.getByLabel('Confirm administrator password to allow physical operation');
+ await password.fill('synthetic-confirmation');await password.focus();
+ const before=[...mutations];
+ for(const [colorScheme,foreground] of [['dark','rgb(229, 237, 246)'],['light','rgb(16, 38, 62)'],['dark','rgb(229, 237, 246)']]){
+  await page.emulateMedia({colorScheme});
+  await expect.poll(()=>page.evaluate(()=>getComputedStyle(document.body).color)).toBe(foreground);
+  // A stale inherited leaf can remain unreadable after the canvas has changed.
+  for(const id of ['physical-permission-state','physical-controller-state','physical-operation-state','physical-permission-expiry'])
+   expect(await page.locator('#'+id).evaluate(element=>getComputedStyle(element).color)).toBe(foreground);
+  await expect(password).toBeFocused();await expect(password).toHaveValue('synthetic-confirmation');
+  await expect(page.locator('#physical-permission-state')).toHaveText('Blocked by administrator');
+  expect(mutations).toEqual(before);
+  expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa','wcag22aa']).analyze()).violations).toEqual([]);
+ }
+});
