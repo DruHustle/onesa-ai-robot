@@ -1,5 +1,14 @@
 # Robot simulator deployment and recovery
 
+An existing API deployment with a failed observer may be completed by the separate
+owner-commissioned read-only observer in `oracle_robot_recovery.py`. It preserves the
+original signed source, qualification, authorization, provider receipt and plan;
+reviewed tool source must prove backend, edge and ROS bytes remain unchanged.
+Fresh immutable image checks and complete production observations remain mandatory.
+No replacement API deployment or transferred approval follows from a frontend or
+observer correction. Commissioning and use belong in the protected guide.
+
+
 <!-- onesa-protected-source: robot-deployment -->
 
 Frontend staging explicitly selects Preview before dispatch. Provider source,

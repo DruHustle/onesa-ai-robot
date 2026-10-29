@@ -1,5 +1,15 @@
 # Independent software builds and tests
 
+The existing-API observer recovery has disposable signed-ledger regressions for
+historical source preservation, revoked ancestors and owner commissions, failed or
+incomplete checks, wrong source/artifact/provider identity, expiry, immutable plans,
+production password hash confirmation, disabled actuation, concurrent observation
+and interruption. Recovery issues one production verification only after the actual
+read-only checks; it never creates a deployment or renews an approval. Its reviewed
+observer and production password stay outside Actions. Local fixtures establish no
+hosted acceptance.
+
+
 The owner frontend fixture injects a conflicting production default and verifies
 explicit Preview selection before staging dispatch. A wrong provider target retains
 the one-create intent and refuses acceptance. Actual pinned CLI protocol fixtures
