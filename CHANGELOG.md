@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Source correction: select Preview explicitly for owner-run frontend staging,
+  independent of the CLI default. Synthetic fault injection and the real pinned
+  CLI protocol fixtures cover the target and one-create boundary; deployment
+  still requires exact-source qualification and commissioning.
+
 - Source correction: preserve pending inspection form locks during background
   refresh. Approval remains disabled until its response settles while Stop stays
   independently available; the browser regression covers another status response.
