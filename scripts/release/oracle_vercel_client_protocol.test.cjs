@@ -75,7 +75,7 @@ async function fullCliFixture(mode){
  try{
   const origin='http://127.0.0.1:'+server.address().port,preload=path.join(directory,'preload.cjs');fs.writeFileSync(preload,'require("/tests/oracle_vercel_transport_guard.cjs").install('+JSON.stringify(transport)+','+JSON.stringify(origin)+');',{mode:0o600});
   const bootstrap=fs.readFileSync(path.join(__dirname,'oracle_robot_frontend.py'),'utf8').match(/CLI_BOOTSTRAP = r"""([\s\S]*?)"""/)[1];
-  const args=['-e',bootstrap,'--','--require',preload,cli,'deploy','--prebuilt','--yes','--no-wait','--json','--global-config','/tmp/onesa-vercel-cli','--project',project.projectId,'--env','ROBOT_API_URL='+ (environment==='production'?'https://robot-api.onesa.eu':'https://robot-api-staging.onesa.eu'),'--api',origin,'--meta','githubCommitSha='+'a'.repeat(40),'--meta','onesaOracleOperation='+operation,...(environment==='production'?['--prod']:[])];
+  const args=['-e',bootstrap,'--','--require',preload,cli,'deploy','--prebuilt','--yes','--no-wait','--json','--global-config','/tmp/onesa-vercel-cli','--project',project.projectId,'--env','ROBOT_API_URL='+ (environment==='production'?'https://robot-api.onesa.eu':'https://robot-api-staging.onesa.eu'),'--api',origin,'--meta','githubCommitSha='+'a'.repeat(40),'--meta','onesaOracleOperation='+operation,...(environment==='production'?['--prod']:['--target=preview'])];
   const result=await new Promise(resolve=>{
    const child=spawn(process.execPath,args,{cwd:workspace,env:{PATH:process.env.PATH,HOME:'/tmp'},stdio:['ignore','pipe','pipe']});let stdout='',stderr='';child.stdout.on('data',b=>stdout+=b);child.stderr.on('data',b=>stderr+=b);
    const timer=setTimeout(()=>child.kill('SIGTERM'),25000);child.once('error',e=>{clearTimeout(timer);resolve({code:null,stderr:e.message,stdout});});child.once('exit',code=>{clearTimeout(timer);resolve({code,stdout,stderr});});
@@ -107,7 +107,7 @@ else{
   fs.writeFileSync(path.join(transport,'scope.json'),JSON.stringify({request_budget:1,operation_id:crypto.randomUUID(),repository:'DruHustle/onesa-robot',component:'frontend',environment}),{mode:0o600});
   assert.equal(fs.existsSync('/tmp/onesa-vercel-cli'),false);
   try {
-   const args=['-e',bootstrap,'--','--require','/private/guard.cjs','/opt/onesa-vercel-tool/node_modules/vercel/dist/index.js','deploy','--prebuilt','--yes','--no-wait','--json','--global-config','/tmp/onesa-vercel-cli','--project','prj_fixture','--meta','githubCommitRef='+ (environment==='production'?'main':'staging'),...(environment==='production'?['--prod']:[]),'--help'];
+   const args=['-e',bootstrap,'--','--require','/private/guard.cjs','/opt/onesa-vercel-tool/node_modules/vercel/dist/index.js','deploy','--prebuilt','--yes','--no-wait','--json','--global-config','/tmp/onesa-vercel-cli','--project','prj_fixture','--meta','githubCommitRef='+ (environment==='production'?'main':'staging'),...(environment==='production'?['--prod']:['--target=preview']),'--help'];
    const result=await new Promise((resolve,reject)=>execFile(process.execPath,args,{timeout:25000,env:{PATH:process.env.PATH,HOME:'/tmp',ONESA_ORACLE_VERIFIER_PRELOAD:'1'}},(error,stdout,stderr)=>error?reject(Error(stderr||error.message)):resolve({stdout,stderr})));
    assert.match(result.stdout+result.stderr,/Deploy your project to Vercel/);
    assert.doesNotMatch(result.stdout+result.stderr,/EROFS|EACCES|unexpected error/i);

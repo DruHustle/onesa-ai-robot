@@ -469,7 +469,7 @@ def create(binding, env, operation, folder, plan):
         "githubCommitSha=" + binding["candidate_commit"],
         "--meta",
         "onesaOracleOperation=" + operation,
-        *(["--prod"] if env == "production" else []),
+        *(["--prod"] if env == "production" else ["--target=preview"]),
     ]
     with (op / "cli.stdout").open("xb") as out, (op / "cli.stderr").open("xb") as err:
         os.chmod(out.name, 0o600)
