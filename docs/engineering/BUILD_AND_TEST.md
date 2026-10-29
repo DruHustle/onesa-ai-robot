@@ -386,3 +386,20 @@ qualification remains required.
 `tests/browser/sign-in-restoration.spec.mjs` delays the initial anonymous session response until a submitted sign-in is waiting for simulator readiness. The pending restoration must not erase or replace that explicit submission. It also blocks the application module and checks that native form behavior cannot place a password in a navigation URL. The controlled restoration case fails on the prior source in Chromium, Firefox and WebKit.
 
 The sign-in handler captures the submission immediately and binds it to its own session generation. The disabled native submit control becomes available only after its handler is installed; the form uses POST even without JavaScript. Owner browser diagnostics retain only bounded same-origin route/method/status counts, never credentials, response bodies, cookies or query values. These regression checks do not establish the cause of a historical hosted failure or qualify a release; exact-source hosted verification remains required.
+
+## Independent API and frontend production boundaries
+
+The API-only production browser observation checks the retained frontend's existing
+task proxy for anonymous denial. The actual new API separately checks anonymous
+mission/catalog denial, authenticated catalog/history, stopped-idle state and
+physical-operation denial. Every staging browser and the independently promoted
+frontend still checks the new mission proxy. A missing route, redirect or other
+non-401 response never becomes a fallback success.
+
+`tests/owner-component-boundaries.test.mjs` uses actual local HTTP responses to
+exercise this split and prove single-request failure without fallback. Release
+tests require distinct before-sign-in/after-logout receipts for all three engines;
+missing, duplicated, mismatched or failed observations are refused. These changes
+need fresh source-bound qualification and authorization. Previously failed
+production observations and provider intents remain immutable and must not be
+resubmitted or relabelled.
