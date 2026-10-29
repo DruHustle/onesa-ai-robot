@@ -6,6 +6,10 @@ Frontend staging explicitly selects Preview before dispatch. Provider source,
 project and target readback and the single durable create budget remain mandatory.
 Source changes require fresh reviewed installation and qualification.
 
+Operational qualification waits a bounded time for a genuine post-staging monitor
+sample and confirmed recovery. Unresolved alerts or notifications still block it;
+earlier failures and one-use qualification reservations remain preserved.
+
 Runtime preservation snapshots wait a bounded time for temporary Docker clients
 to finish. Every persistent and unknown workload remains in the snapshot; actual
 identity changes, missing services and incomplete observations still block release.
