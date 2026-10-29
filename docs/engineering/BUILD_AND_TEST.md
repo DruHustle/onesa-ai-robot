@@ -1,5 +1,24 @@
 # Independent software builds and tests
 
+Independent frontend dependency tests retain separate staging and production API
+sources, verify the original accepted signed chain including its authorization
+decision, and require exact backend/edge/ROS bytes and modes, current image scans
+and unchanged complete runtime identities. Frontend custody binds the selected
+frontend source; it cannot authorize or redeploy its retained API. Disposable tests
+cover revoked decisions, wrong scopes/stores/artifacts, missing acceptance and
+runtime drift. Genuine hosted frontend qualification remains mandatory.
+
+
+The existing-API observer recovery has disposable signed-ledger regressions for
+historical source preservation, revoked ancestors and owner commissions, failed or
+incomplete checks, wrong source/artifact/provider identity, expiry, immutable plans,
+production password hash confirmation, disabled actuation, concurrent observation
+and interruption. Recovery issues one production verification only after the actual
+read-only checks; it never creates a deployment or renews an approval. Its reviewed
+observer and production password stay outside Actions. Local fixtures establish no
+hosted acceptance.
+
+
 The owner frontend fixture injects a conflicting production default and verifies
 explicit Preview selection before staging dispatch. A wrong provider target retains
 the one-create intent and refuses acceptance. Actual pinned CLI protocol fixtures
