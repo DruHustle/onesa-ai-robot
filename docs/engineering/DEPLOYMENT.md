@@ -10,6 +10,12 @@ Operational qualification waits a bounded time for a genuine post-staging monito
 sample and confirmed recovery. Unresolved alerts or notifications still block it;
 earlier failures and one-use qualification reservations remain preserved.
 
+Later owner authorization and deployment checks can re-observe existing staging
+read-only when its operational observation has aged. The original signed full
+qualification remains immutable and must still be current and unrevoked; no
+context is renewed, Preview created, runtime replaced or simulator mission replayed.
+Fresh observations retain their own identity and unchanged monitor freshness gates.
+
 Runtime preservation snapshots wait a bounded time for temporary Docker clients
 to finish. Every persistent and unknown workload remains in the snapshot; actual
 identity changes, missing services and incomplete observations still block release.

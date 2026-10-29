@@ -40,7 +40,8 @@ export async function verifyAnonymousBoundary(page,request){
  assert.equal(request.binding.repository,'DruHustle/onesa-robot');
  assert.ok(['api','frontend'].includes(request.binding.component));
  assert.ok(['staging','production'].includes(request.environment));
- assert.equal(request.read_only,request.environment==='production');
+ assert.equal(typeof request.read_only,'boolean');
+ assert.ok(request.environment==='staging'||request.read_only===true);
  // API production retains an independently deployed frontend. Its established
  // task proxy must deny anonymous access; new mission routes are checked on the
  // actual API directly, and on every candidate/staged or new frontend below.
@@ -142,7 +143,8 @@ write('browser-receipt.json',receipt);return receipt;
 if(process.argv[1] && import.meta.url===new URL('file:'+process.argv[1]).href){
 const request=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
 assert.equal(request.binding.repository,'DruHustle/onesa-robot');
-assert.equal(request.read_only,request.environment==='production');
+assert.equal(typeof request.read_only,'boolean');
+assert.ok(request.environment==='staging'||request.read_only===true);
 assert.match(request.origin,request.environment==='production'?/^https:\/\/robot\.onesa\.eu$/:/^https:\/\/onesa-ai-robot-git-staging-[a-z0-9-]+\.vercel\.app$/);
 await checkUI(request,'/private/output');
 }

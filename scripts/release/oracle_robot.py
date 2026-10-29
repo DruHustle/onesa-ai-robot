@@ -1600,7 +1600,79 @@ def post_staging_monitor(stage):
         time.sleep(min(5, remaining))
 
 
-def operational_observations(binding, plan, folder, context_id):
+def qualified_staging_observation(binding, plan, folder, context_id, qualification):
+    """Re-observe existing staging read-only; preserve signed qualification bytes."""
+    original = folder / "observations" / context_id / "receipt.json"
+    require(
+        qualification["kind"] == "qualification"
+        and qualification["binding"] == binding
+        and qualification["parent"] == context_id
+        and qualification["details"]["operations"]["observations"][
+            "staging_receipt_sha256"
+        ]
+        == sha(original),
+        "SIGNED_STAGING_RECEIPT_CHANGED",
+    )
+    # The runner verifies expiry, revocation and all parent signatures first.
+    issued = dt.datetime.fromisoformat(qualification["issued_at"])
+    expiry = dt.datetime.fromisoformat(qualification["expires_at"])
+    require(
+        issued.tzinfo is not None
+        and expiry.tzinfo is not None
+        and issued <= now() < expiry,
+        "CURRENT_SIGNED_QUALIFICATION_REQUIRED",
+    )
+    import oracle_robot_frontend as frontend
+
+    frontend_binding = plan["bindings"]["frontend"]
+    preview = (
+        component_folder(frontend_binding)
+        / "operations"
+        / context_id
+        / "provider-receipt.json"
+    )
+    receipt = read(preview)
+    require(
+        receipt["binding"] == frontend_binding
+        and receipt["environment"] == "staging"
+        and receipt["operation_id"] == context_id
+        and receipt["artifact_sha256"] == plan["builds"]["staging"]["archive_sha256"],
+        "EXISTING_SOURCE_BOUND_STAGING_PREVIEW_REQUIRED",
+    )
+    # Only existing receipt inspection and GET requests; no create/activate call.
+    observed_plan = {**plan, "preview_receipt_path": str(preview)}
+    operation = context_id + "-recheck-" + str(time.time_ns())
+    frontend.verify_static(
+        frontend_binding,
+        "staging",
+        component_folder(frontend_binding),
+        observed_plan,
+        operation,
+    )
+    observed = probe(
+        binding, "staging", operation, folder, observed_plan, read_only=True
+    )
+    require(
+        observed["binding"] == binding
+        and observed["environment"] == "staging"
+        and observed["operation_id"] == operation
+        and observed["status"] == "PASS"
+        and observed["read_only"] is True
+        and observed["schema_compatibility"] == "PASS"
+        and observed["existing_records_preserved"] is True,
+        "READ_ONLY_STAGING_RECHECK_FAILED",
+    )
+    require(
+        sha(original)
+        == qualification["details"]["operations"]["observations"][
+            "staging_receipt_sha256"
+        ],
+        "SIGNED_STAGING_RECEIPT_CHANGED",
+    )
+    return observed, operation
+
+
+def operational_observations(binding, plan, folder, context_id, *, qualification=None):
     stage = read(folder / "observations" / context_id / "receipt.json")
     require(
         stage["binding"] == binding
@@ -1609,6 +1681,17 @@ def operational_observations(binding, plan, folder, context_id):
         and stage["existing_records_preserved"] is True,
         "STAGING_PRESERVATION_OR_RESTORE_NOT_PROVEN",
     )
+    original_stage = stage
+    recheck = None
+    staged_at = dt.datetime.fromisoformat(stage["observed_at"])
+    require(
+        staged_at.tzinfo is not None and staged_at <= now(),
+        "FRESH_STAGING_RECEIPT_REQUIRED",
+    )
+    if now() - staged_at >= dt.timedelta(minutes=5) and qualification is not None:
+        stage, recheck = qualified_staging_observation(
+            binding, plan, folder, context_id, qualification
+        )
     metrics = post_staging_monitor(stage)
     m = metrics["metrics"]
     require(
@@ -1664,6 +1747,18 @@ def operational_observations(binding, plan, folder, context_id):
         "backup_verified_at": backup["verified_at"],
         "staging_receipt_sha256": sha(
             folder / "observations" / context_id / "receipt.json"
+        ),
+        "qualified_staging_observed_at": original_stage["observed_at"],
+        "read_only_staging_recheck": (
+            {
+                "operation_id": recheck,
+                "observed_at": stage["observed_at"],
+                "receipt_sha256": sha(
+                    folder / "observations" / recheck / "receipt.json"
+                ),
+            }
+            if recheck
+            else None
         ),
         "privacy_status": "DEFERRED_BY_OWNER_UNTIL_LAUNCH",
         "physical_hardware_authorized": False,
@@ -1819,7 +1914,15 @@ def runner(phase, binding, context):
         value["checks"] = {k: "PASS" for k in CHECKS["staging"]}
         value["deployment_id"] = receipt["deployment_id"]
     elif phase == "operations":
-        value = operational_observations(binding, plan, folder, context_id)
+        value = operational_observations(
+            binding,
+            plan,
+            folder,
+            context_id,
+            qualification=next(
+                (item for item in chain if item["kind"] == "qualification"), None
+            ),
+        )
     elif phase == "deploy":
         receipt = activate(binding, "production", context["operation_id"], folder, plan)
         value = {**receipt, "checks": {k: "PASS" for k in CHECKS["deploy"]}}
