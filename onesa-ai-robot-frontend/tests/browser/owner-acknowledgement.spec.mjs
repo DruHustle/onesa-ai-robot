@@ -5,14 +5,15 @@ import {dirname,join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {pathToFileURL} from 'node:url';
 
-let directory,observe;
+let directory,observe,observeSignIn;
 test.beforeAll(async()=>{
  directory=await mkdtemp(join(tmpdir(),'onesa-owner-acknowledgement-'));
  const require=createRequire(import.meta.url);
  const modules=dirname(dirname(dirname(require.resolve('@playwright/test/package.json'))));
  await symlink(modules,join(directory,'node_modules'),'dir');
  await copyFile(new URL('../../../scripts/release/oracle_robot_browser.mjs',import.meta.url),join(directory,'browser.mjs'));
- observe=(await import(pathToFileURL(join(directory,'browser.mjs')).href)).observeSimulationAcknowledgement;
+ const module=await import(pathToFileURL(join(directory,'browser.mjs')).href);
+ observe=module.observeSimulationAcknowledgement;observeSignIn=module.observeSignInTransport;
 });
 test.afterAll(async()=>{if(directory)await rm(directory,{recursive:true});});
 
@@ -57,4 +58,19 @@ test('unknown operations are refused before a click',async({page})=>{
  let actions=0;
  await expect(observe(page,'/api/v1/missions',()=>{actions++;})).rejects.toThrow('Unsupported simulation acknowledgement');
  expect(actions).toBe(0);
+});
+
+test('sign-in diagnostics retain only fixed route, method and HTTP status',async({page})=>{
+ const handlers=new Set(),fake={on(event,handler){expect(event).toBe('response');handlers.add(handler);},off(event,handler){expect(event).toBe('response');handlers.delete(handler);}};
+ const stop=observeSignIn(fake,'https://synthetic.test');
+ const response=(url,status=503)=>({url:()=>url,status:()=>status,request:()=>({method:()=> 'POST',postData(){throw Error('Credentials must not be read');}}),json(){throw Error('Private response must not be read');},headers(){throw Error('Cookies must not be read');}});
+ for(const handler of handlers){
+  handler(response('https://unrelated.test/api/v1/auth/login'));
+  handler(response('https://synthetic.test/api/v1/missions'));
+  handler(response('https://synthetic.test/api/v1/auth/login?private=synthetic-private-sentinel'));
+ }
+ const value=stop();expect(handlers.size).toBe(0);
+ expect(value.responses).toEqual([{path:'/api/v1/auth/login',method:'POST',http_status:503}]);
+ expect(JSON.stringify(value)).not.toContain('synthetic-private-sentinel');
+ expect(value.state).toBe('SIGN_IN_HTTP_DIAGNOSTIC_NOT_QUALIFICATION');
 });
