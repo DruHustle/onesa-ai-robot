@@ -141,6 +141,8 @@ def protection(plan):
 def validate(binding):
     folder, plan = r.validate_plan(binding)
     r.require(binding["component"] == "frontend", "FRONTEND_COMPONENT_SCOPE")
+    if "independent_api" in plan:
+        independent_api(plan, binding)
     protection(plan)
     return folder, plan
 
@@ -602,7 +604,122 @@ def verify_static(binding, env, folder, plan, operation):
     return observation
 
 
+def independent_api(plan, frontend_binding):
+    """Inspect the original accepted API, never transfer its approval to a frontend.
+
+    Staging is a separately identified dependency with exact equivalent backend
+    source and fresh image checks. The frontend's own hosted qualification must
+    exercise it; an old or revoked staging qualification is never used as authority.
+    """
+    import oracle_robot_recovery as recovery
+
+    proof = plan["independent_api"]
+    r.require(
+        plan.get("release_component") == "frontend"
+        and frontend_binding == plan["bindings"]["frontend"]
+        and set(proof)
+        == {
+            "verifier_store",
+            "operation_id",
+            "staging_binding",
+            "production_binding",
+            "runtimes",
+        }
+        and set(proof["runtimes"]) == {"staging", "production"}
+        and re.fullmatch(
+            r"/var/lib/onesa/release-verification/robot-owner-[a-f0-9]{40}",
+            proof["verifier_store"],
+        )
+        and proof["verifier_store"] != plan["verifier_store"]
+        and str(UUID(proof["operation_id"])) == proof["operation_id"]
+        and proof["production_binding"] == plan["bindings"]["api"],
+        "DIRECT_INDEPENDENT_API_REFERENCE_REQUIRED",
+    )
+    binding = proof["production_binding"]
+    records = r.verify_invocation(
+        binding,
+        {"operation_id": proof["operation_id"], "read_only": True},
+        "production",
+        {"verifier_store": proof["verifier_store"]},
+        dependency=True,
+    )
+    r.require(
+        any(
+            x["kind"] == "production-verification"
+            and x["parent"] == proof["operation_id"]
+            for x in records
+        )
+        and binding["component"] == "api"
+        and binding["repository"] == "DruHustle/onesa-robot"
+        and binding["target_environment"] == "production",
+        "ORIGINAL_ACCEPTED_API_REQUIRED_NO_RETAINED_PROOF_CHAIN",
+    )
+    tool = r.trusted_toolchain(plan)
+    source = {
+        "repository": frontend_binding["repository"],
+        **{
+            k: frontend_binding[k]
+            for k in ["candidate_commit", "source_tree", "source_sha256"]
+        },
+    }
+    r.require(
+        all(
+            source[key] == tool[other]
+            for key, other in [
+                ("candidate_commit", "source_commit"),
+                ("source_tree", "source_tree"),
+                ("source_sha256", "source_sha256"),
+            ]
+        ),
+        "FRONTEND_DIFFERS_FROM_COMMISSIONED_MAIN",
+    )
+    for env in ["staging", "production"]:
+        selected = proof[env + "_binding"]
+        r.require(
+            selected["repository"] == binding["repository"]
+            and selected["component"] == "api"
+            and selected["target_environment"] == "production",
+            "EXACT_SIMULATION_API_DEPENDENCY_REQUIRED",
+        )
+        runtime = proof["runtimes"][env]
+        r.require(
+            set(runtime)
+            == {
+                "container_id",
+                "source",
+                "image",
+                "started_at",
+                "restart_count",
+                "environment_sha256",
+            }
+            and runtime["source"] == selected["candidate_commit"]
+            and runtime["image"] == selected["artifact_digest"],
+            "BOUND_INDEPENDENT_API_SOURCE_IMAGE_REQUIRED",
+        )
+        recovery.unchanged_components(selected, r.VERIFIER.parent, source)
+        folder = r.component_folder(selected)
+        r.require(
+            r.sha(r.private(folder / "image.tar.gz")) == selected["build_sha256"],
+            "INDEPENDENT_API_ARCHIVE_CHANGED",
+        )
+        r.image_security(r.read(folder / "scan.json"), selected["artifact_digest"])
+        r.verify_application_bytes(folder, selected)
+        observed = r.local_identity(frontend_binding, env, plan)
+        r.require(
+            observed == proof["runtimes"][env], "INDEPENDENT_API_DEPENDENCY_CHANGED"
+        )
+    actual = proof["runtimes"]["production"]
+    r.require(
+        plan["retained_api"]
+        == {k: actual[k] for k in ["image", "source", "container_id"]},
+        "EXACT_RETAINED_PRODUCTION_API_REQUIRED",
+    )
+    return proof["operation_id"]
+
+
 def accepted_api(plan):
+    if "independent_api" in plan:
+        return independent_api(plan, plan["bindings"]["frontend"])
     binding = plan["bindings"]["api"]
     store = r.private(Path(plan["verifier_store"]), directory=True)
     db = sqlite3.connect("file:" + str(store / "records.sqlite") + "?mode=ro", uri=True)

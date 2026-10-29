@@ -401,7 +401,7 @@ def verify_invocation(binding, context, phase, plan, *, dependency=False):
     records = []
     visited = set()
 
-    def record(identifier, kind=None, historical=False):
+    def record(identifier, kind=None, historical=False, *, parent_checked=False):
         require(
             identifier not in visited and len(visited) < 12,
             "SIGNED_RECORD_CHAIN_CYCLE_OR_BOUND",
@@ -478,8 +478,22 @@ def verify_invocation(binding, context, phase, plan, *, dependency=False):
             "SIGNED_RECORD_EXPIRED",
         )
         records.append(r)
-        if r["parent"]:
+        if r["parent"] and not parent_checked:
             record(r["parent"], historical=historical)
+        if dependency and r["kind"] == "authorization":
+            # The decision and authorization share the already verified Q parent.
+            # Validate the decision itself without revisiting that ancestor; keep
+            # the existing cycle/size guard and require the identical signed Q.
+            attempt = record(
+                r["details"]["attempt_id"],
+                "authorization-attempt",
+                historical,
+                parent_checked=True,
+            )
+            require(
+                attempt["parent"] == r["parent"],
+                "AUTHORIZATION_DECISION_QUALIFICATION_MISMATCH",
+            )
         return r
 
     try:
@@ -872,7 +886,9 @@ def validate_plan(binding, *, observer=None):
     plan = read(PLAN) if observer is None else observer.original_plan()
     require(
         plan["schema_version"] == 1
-        and plan["bindings"].get(binding["component"]) == binding,
+        and plan["bindings"].get(binding["component"]) == binding
+        and plan.get("release_component", binding["component"]) == binding["component"]
+        and ("independent_api" not in plan or binding["component"] == "frontend"),
         "OWNER_PLAN_BINDING",
     )
     require(
@@ -894,18 +910,23 @@ def validate_plan(binding, *, observer=None):
     source_inventory(folder / "source.tar", binding)
     require(sha(private(COMPOSE)) == plan["compose_sha256"], "COMPOSE_CHANGED")
     for env, runtime_path in ENV.items():
+        dependency_binding = (
+            plan["independent_api"][env + "_binding"]
+            if binding["component"] == "frontend" and "independent_api" in plan
+            else plan["bindings"]["api"]
+        )
         prepared = private(candidate_environment(binding, env))
         current = runtime_values(runtime_path)
         values = runtime_values(prepared)
         require(
-            sha(prepared) == plan["bindings"]["api"]["configuration_sha256"][env]
+            sha(prepared) == dependency_binding["configuration_sha256"][env]
             and (
                 observer is not None
                 and env == "staging"
                 or sha(runtime_path)
                 in [
                     plan["baseline_runtime_sha256"][env],
-                    plan["bindings"]["api"]["configuration_sha256"][env],
+                    dependency_binding["configuration_sha256"][env],
                 ]
             ),
             "RUNTIME_CONFIGURATION_CHANGED",
@@ -1294,13 +1315,22 @@ def preserved(before, after):
 
 def local_identity(binding, env, plan):
     row = inventory()[TARGET[env]]
+    dependency = (
+        plan["independent_api"][env + "_binding"]
+        if binding["component"] == "frontend" and "independent_api" in plan
+        else None
+    )
     expected = (
-        binding["artifact_digest"]
+        dependency["artifact_digest"]
+        if dependency is not None
+        else binding["artifact_digest"]
         if binding["component"] == "api"
         else plan["retained_api"]["image"]
     )
     source = (
-        binding["candidate_commit"]
+        dependency["candidate_commit"]
+        if dependency is not None
+        else binding["candidate_commit"]
         if binding["component"] == "api"
         else plan["retained_api"]["source"]
     )
@@ -1310,6 +1340,11 @@ def local_identity(binding, env, plan):
         and row["Config"]["Labels"].get("org.onesa.source-commit") == source,
         "ACTUAL_RUNNING_SOURCE_OR_IMAGE_MISMATCH",
     )
+    if dependency is not None:
+        require(
+            summary(row) == plan["independent_api"]["runtimes"][env],
+            "INDEPENDENT_API_RUNTIME_CHANGED",
+        )
     values = dict(x.split("=", 1) for x in row["Config"]["Env"])
     prepared = runtime_values(candidate_environment(binding, env))
     require(
@@ -1391,7 +1426,11 @@ def preflight(binding):
         frontend_runner.accepted_api(plan)
     for env in ENV:
         if frontend:
-            local_identity(plan["bindings"]["api"], env, plan)
+            local_identity(
+                binding if "independent_api" in plan else plan["bindings"]["api"],
+                env,
+                plan,
+            )
         else:
             require(
                 summary(before[TARGET[env]]) == plan["baseline"][env]

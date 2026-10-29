@@ -62,6 +62,25 @@ class CustodyTests(unittest.TestCase):
         mock.start()
         self.addCleanup(mock.stop)
 
+    def test_frontend_mode_custody_uses_current_frontend_not_original_api_source(self):
+        self.plan["release_component"] = "frontend"
+        self.plan["bindings"]["frontend"] = {"candidate_commit": self.candidate}
+        self.plan["bindings"]["api"] = {"candidate_commit": "c" * 40}
+        result = custody.collect(
+            self.plan, self.candidate, prompt=lambda _: self.password
+        )
+        self.assertEqual(result["candidate_commit"], self.candidate)
+        self.verifier.assert_called_once_with(
+            self.plan, self.plan["bindings"]["frontend"]
+        )
+        self.assertFalse(result["release_authority"])
+
+    def test_unknown_component_mode_cannot_collect_credentials(self):
+        self.plan["release_component"] = "other"
+        with self.assertRaises(r.Refused):
+            custody.collect(self.plan, self.candidate, prompt=lambda _: self.password)
+        self.assertFalse(self.path.exists())
+
     def test_matches_real_existing_scrypt_without_changing_account(self):
         self.assertTrue(custody.matches_password(self.password, self.encoded))
         self.assertFalse(custody.matches_password("wrong", self.encoded))

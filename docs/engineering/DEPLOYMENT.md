@@ -1,5 +1,13 @@
 # Robot simulator deployment and recovery
 
+A frontend-only owner plan may reference the original independently accepted API
+store and explicitly bind each actual API environment. Backend, edge and ROS bytes
+must match the reviewed frontend source; current image checks and exact runtime
+readback remain mandatory. The frontend receives its own fresh source-bound
+qualification and authorization. Referencing an API acceptance record does not
+renew it, relabel its source, or permit another API deployment.
+
+
 An existing API deployment with a failed observer may be completed by the separate
 owner-commissioned read-only observer in `oracle_robot_recovery.py`. It preserves the
 original signed source, qualification, authorization, provider receipt and plan;
