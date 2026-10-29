@@ -36,9 +36,22 @@ export function observeSignInTransport(page,origin){
  page.on('response',observe);
  return ()=>{page.off('response',observe);return {state:'SIGN_IN_HTTP_DIAGNOSTIC_NOT_QUALIFICATION',responses,omitted};};
 }
+export async function verifyAnonymousBoundary(page,request){
+ assert.equal(request.binding.repository,'DruHustle/onesa-robot');
+ assert.ok(['api','frontend'].includes(request.binding.component));
+ assert.ok(['staging','production'].includes(request.environment));
+ assert.equal(request.read_only,request.environment==='production');
+ // API production retains an independently deployed frontend. Its established
+ // task proxy must deny anonymous access; new mission routes are checked on the
+ // actual API directly, and on every candidate/staged or new frontend below.
+ const path=request.environment==='production'&&request.binding.component==='api'?'/api/v1/tasks':'/api/v1/missions';
+ const response=await page.request.get(request.origin+path,{maxRedirects:0});
+ assert.equal(response.status(),401,'Anonymous boundary must deny access');
+ return {path,http_status:401};
+}
 export async function checkUI(request,directory,engines={chromium,firefox,webkit}){
 let errors=0,replayRequests=0,violations=0;
-const results=[];
+const results=[],authorizationChecks=[];
 const outcomes={normal:'Completed · normal readings',threshold:'Completed · findings to review',discrepancy:'Completed · findings to review',missing:'Completed · findings to review',stale:'Completed · findings to review',units:'Completed · findings to review',interrupted:'Interrupted · not completed'};
 const write=(name,value)=>fs.writeFileSync(directory+'/'+name,JSON.stringify(value),{flag:'wx',mode:0o600});
 for(const [engine,type] of Object.entries(engines)){
@@ -58,7 +71,7 @@ for(const [engine,type] of Object.entries(engines)){
   try{
    await page.goto(request.origin+'/console');
    await expect(page.locator('#login-form')).toBeVisible();
-   const anon=await page.request.get(request.origin+'/api/v1/missions');assert.equal(anon.status(),401);
+   authorizationChecks.push({engine,phase:'before_sign_in',...await verifyAnonymousBoundary(page,request)});
    await page.locator('#name').fill(request.credentials.operator);
    await page.locator('#password').fill(request.credentials.password);
    await page.getByRole('button',{name:'Sign in',exact:true}).click();
@@ -117,12 +130,12 @@ for(const [engine,type] of Object.entries(engines)){
   await observeSimulationAcknowledgement(page,'/api/v1/auth/logout',()=>page.locator('#logout').click());
   await expect(page.locator('#login-form')).toBeVisible();
   if(request.environment==='staging'||request.binding.component==='frontend')await expect(page.locator('#mission-readings')).toBeEmpty();
-  assert.equal((await page.request.get(request.origin+'/api/v1/missions')).status(),401);
+  authorizationChecks.push({engine,phase:'after_logout',...await verifyAnonymousBoundary(page,request)});
   await context.close();
  }finally{await browser.close();}
 }
 assert.equal(errors,0);assert.equal(replayRequests,0);assert.equal(violations,0);
-const receipt={status:'PASS',binding:request.binding,environment:request.environment,engines:Object.keys(engines),results,replay_operational_requests:replayRequests,javascript_errors:errors,accessibility_violations:violations,production_operational_mutations:0,observed_at:new Date().toISOString()};
+const receipt={status:'PASS',binding:request.binding,environment:request.environment,engines:Object.keys(engines),results,authorization_checks:authorizationChecks,replay_operational_requests:replayRequests,javascript_errors:errors,accessibility_violations:violations,production_operational_mutations:0,observed_at:new Date().toISOString()};
 write('browser-receipt.json',receipt);return receipt;
 }
 
