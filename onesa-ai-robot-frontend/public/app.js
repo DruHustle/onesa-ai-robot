@@ -18,7 +18,7 @@ function sessionPresentation(authenticated){
  if(heading)heading.textContent=authenticated?'Industrial inspection':'Operator Console';
  if(description)description.textContent=authenticated?'Plan, supervise and review a synthetic pump inspection. No physical device is connected.':'Use your approved operator account to access development simulation.';
 }
-function signedOut() {inspector.reset();fastPoll=false;lastIdlePoll=0;sessionPresentation(false);setObservationReady(false);generation++; clearInterval(timer);csrf='';client.csrf='';proposalId='';administrator=false;permissionRevision=null;permissionRead=null;lastPermissionRead=0;byId('administrator').hidden=true;byId('physical-permission-state').textContent='Unavailable';byId('physical-operation-state').textContent='Unavailable';byId('operator').hidden=true;byId('login-form').hidden=false;byId('approval-form').hidden=true;byId('history').replaceChildren();for(const field of document.querySelectorAll('input[type="password"]'))field.value=''; }
+function signedOut({preserveInitialSignIn=false}={}) {inspector.reset();fastPoll=false;lastIdlePoll=0;sessionPresentation(false);setObservationReady(false);generation++; clearInterval(timer);csrf='';client.csrf='';proposalId='';administrator=false;permissionRevision=null;permissionRead=null;lastPermissionRead=0;byId('administrator').hidden=true;byId('physical-permission-state').textContent='Unavailable';byId('physical-operation-state').textContent='Unavailable';byId('operator').hidden=true;byId('login-form').hidden=false;byId('approval-form').hidden=true;byId('history').replaceChildren();for(const field of document.querySelectorAll('input[type="password"]'))if(!preserveInitialSignIn||field.id!=='password')field.value=''; }
 function renderPhysicalPermission(value){
  if(!['allowed','blocked'].includes(value?.permission)||!Number.isSafeInteger(value.revision)||value.revision<0||value.controller_connection!=='not_connected'||value.controller_readiness!=='not_ready'||value.physical_operation!=='inactive'||value.physical_actuation!==false)throw new Error('Physical-operation state could not be verified.');
  if(permissionRevision!==null&&value.revision<permissionRevision)return;
@@ -132,13 +132,15 @@ byId('stop').addEventListener('click',()=>run(()=>client.stop(),'Simulation stop
 byId('logout').addEventListener('click',()=>run(async()=>{await client.logout();signedOut();},'Signed out; this session cannot authorize further tasks.'));
 // No localStorage/sessionStorage, token URLs or persistence of operator credentials.
 
-function restoreSession(){const current=++generation;return client.me().then(session=>{if(current!==generation)return;csrf=session.csrf;client.csrf=csrf;setAdministrator(session);byId('login-form').hidden=true;byId('operator').hidden=false;sessionPresentation(true);inspector.authenticate();timer=setInterval(()=>refresh(false),500);return refresh();}).catch(error=>{if(current!==generation)return;if(error.status===401)signedOut();else if(error.name!=='AbortError')notice(error.message);});}
+function restoreSession({initial=false}={}){const current=++generation;return client.me().then(session=>{if(current!==generation)return;csrf=session.csrf;client.csrf=csrf;setAdministrator(session);byId('login-form').hidden=true;byId('operator').hidden=false;sessionPresentation(true);inspector.authenticate();timer=setInterval(()=>refresh(false),500);return refresh();}).catch(error=>{if(current!==generation)return;if(error.status===401)signedOut({preserveInitialSignIn:initial});else if(error.name!=='AbortError')notice(error.message);});}
 function suspendRequests(){inspector.stale();setObservationReady(false);suspended=true;generation++;clearInterval(timer);client.cancelPending();polling=null;}
 window.addEventListener('beforeunload',suspendRequests);
 window.addEventListener('pagehide',suspendRequests);
 window.addEventListener('pageshow',event=>{if(event.persisted){suspended=false;restoreSession();}});
 setObservationReady(false);
 byId('login-submit').disabled=false;
-restoreSession();
+// Keep deliberate masked entries while the initial anonymous lookup settles.
+// Logout, explicit rejection and later session expiry still clear all passwords.
+restoreSession({initial:true});
 
 document.addEventListener('visibilitychange',()=>{if(document.hidden)suspendRequests();else if(suspended){suspended=false;restoreSession();}});
