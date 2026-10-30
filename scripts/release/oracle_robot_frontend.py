@@ -290,12 +290,19 @@ def check_deployment(identifier, binding, env, plan):
     return row
 
 
-def observe_provider(binding, env, plan, operation):
+def observe_provider(binding, env, plan, operation, *, observer=None):
     # Provider custody remains in the pinned host process. The browser tool gets
     # only bounded metadata plus the existing Preview protection bypass, never
     # a provider API token or deployment credential.
     cfg = r.read(PROVIDER)
     project = protection(plan)
+    recovered_frontend = None
+    if observer is not None:
+        r.require(
+            env == "production" and binding["component"] == "api",
+            "READ_ONLY_API_FRONTEND_OBSERVER_SCOPE",
+        )
+        recovered_frontend = observer.frontend_dependency()
     if env == "staging":
         preview = r.read(Path(plan["preview_receipt_path"]))
         r.require(
@@ -318,6 +325,8 @@ def observe_provider(binding, env, plan, operation):
         identifier = (
             plan.get("current_frontend_deployment_id")
             if binding["component"] == "frontend"
+            else recovered_frontend["deployment_id"]
+            if recovered_frontend is not None
             else cfg["production_deployment_id"]
         )
         source = (
@@ -614,6 +623,9 @@ def independent_api(plan, frontend_binding):
     import oracle_robot_recovery as recovery
 
     proof = plan["independent_api"]
+    recovery_reference = (
+        {"recovery_commission"} if "recovery_commission" in proof else set()
+    )
     r.require(
         plan.get("release_component") == "frontend"
         and frontend_binding == plan["bindings"]["frontend"]
@@ -625,6 +637,7 @@ def independent_api(plan, frontend_binding):
             "production_binding",
             "runtimes",
         }
+        | recovery_reference
         and set(proof["runtimes"]) == {"staging", "production"}
         and re.fullmatch(
             r"/var/lib/onesa/release-verification/robot-owner-[a-f0-9]{40}",
@@ -636,24 +649,29 @@ def independent_api(plan, frontend_binding):
         "DIRECT_INDEPENDENT_API_REFERENCE_REQUIRED",
     )
     binding = proof["production_binding"]
-    records = r.verify_invocation(
-        binding,
-        {"operation_id": proof["operation_id"], "read_only": True},
-        "production",
-        {"verifier_store": proof["verifier_store"]},
-        dependency=True,
-    )
-    r.require(
-        any(
-            x["kind"] == "production-verification"
-            and x["parent"] == proof["operation_id"]
-            for x in records
+    if recovery_reference:
+        import oracle_frontend_repair_dependency as repair
+
+        repair.verify(plan, frontend_binding)
+    else:
+        records = r.verify_invocation(
+            binding,
+            {"operation_id": proof["operation_id"], "read_only": True},
+            "production",
+            {"verifier_store": proof["verifier_store"]},
+            dependency=True,
         )
-        and binding["component"] == "api"
-        and binding["repository"] == "DruHustle/onesa-robot"
-        and binding["target_environment"] == "production",
-        "ORIGINAL_ACCEPTED_API_REQUIRED_NO_RETAINED_PROOF_CHAIN",
-    )
+        r.require(
+            any(
+                x["kind"] == "production-verification"
+                and x["parent"] == proof["operation_id"]
+                for x in records
+            )
+            and binding["component"] == "api"
+            and binding["repository"] == "DruHustle/onesa-robot"
+            and binding["target_environment"] == "production",
+            "ORIGINAL_ACCEPTED_API_REQUIRED_NO_RETAINED_PROOF_CHAIN",
+        )
     tool = r.trusted_toolchain(plan)
     source = {
         "repository": frontend_binding["repository"],
@@ -702,7 +720,10 @@ def independent_api(plan, frontend_binding):
             r.sha(r.private(folder / "image.tar.gz")) == selected["build_sha256"],
             "INDEPENDENT_API_ARCHIVE_CHANGED",
         )
-        r.image_security(r.read(folder / "scan.json"), selected["artifact_digest"])
+        scan_path = folder / "scan.json"
+        if recovery_reference:
+            scan_path = repair.security_path(plan, frontend_binding, env)
+        r.image_security(r.read(scan_path), selected["artifact_digest"])
         r.verify_application_bytes(folder, selected)
         observed = r.local_identity(frontend_binding, env, plan)
         r.require(
