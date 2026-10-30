@@ -416,6 +416,16 @@ qualification remains required.
 
 ## Sign-in restoration and unavailable JavaScript
 
+`tests/browser/initial-sign-in-input.spec.mjs` settles a held anonymous lookup after
+typing and before clicking Sign in. The unchanged application loses the password
+in both controlled WebKit cases, preventing a login POST. The correction passes
+these cases, existing restoration/readiness cases, unit checks, types and build in
+Chromium, Firefox and WebKit: 15 browser cases with no skips or retries. No login
+happens before the deliberate click; valid credentials submit once, rejected
+credentials grant no session, and rejection/logout clear all password fields.
+The preservation option applies only to the initial lookup; later restoration
+retains normal expiry cleanup. Tests use intercepted synthetic loopback services.
+
 `tests/browser/sign-in-restoration.spec.mjs` delays the initial anonymous session response until a submitted sign-in is waiting for simulator readiness. The pending restoration must not erase or replace that explicit submission. It also blocks the application module and checks that native form behavior cannot place a password in a navigation URL. The controlled restoration case fails on the prior source in Chromium, Firefox and WebKit.
 
 The sign-in handler captures the submission immediately and binds it to its own session generation. The disabled native submit control becomes available only after its handler is installed; the form uses POST even without JavaScript. Owner browser diagnostics retain only bounded same-origin route/method/status counts, never credentials, response bodies, cookies or query values. These regression checks do not establish the cause of a historical hosted failure or qualify a release; exact-source hosted verification remains required.

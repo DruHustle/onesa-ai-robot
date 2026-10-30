@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Preserve a masked sign-in password typed while the initial anonymous session
+  lookup is pending. Its 401 no longer clears the field before the user submits;
+  native required-field validation can otherwise prevent the login POST entirely.
+  Explicit rejection, logout and later session expiry still clear passwords.
+  Controlled old-source WebKit failures and fixed three-engine regressions cover
+  the timing, one deliberate login and cleanup. Hosted acceptance remains required.
+
 - Source correction: select Preview explicitly for owner-run frontend staging,
   independent of the CLI default. Synthetic fault injection and the real pinned
   CLI protocol fixtures cover the target and one-create boundary; deployment
