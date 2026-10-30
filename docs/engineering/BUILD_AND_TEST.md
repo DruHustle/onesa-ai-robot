@@ -436,3 +436,13 @@ missing, duplicated, mismatched or failed observations are refused. These change
 need fresh source-bound qualification and authorization. Previously failed
 production observations and provider intents remain immutable and must not be
 resubmitted or relabelled.
+
+The release suite also covers a separately commissioned frontend repair prerequisite
+when a previously deployed API remains unverified solely because its retained
+frontend fails accessibility. This prerequisite is not API verification or release
+authorization. It binds the exact frontend source/build, original API chain and
+unchanged runtime, and preserves all fresh frontend qualification checks. Real-key
+fixtures cover expiry, revocation, tampering, source/artifact/scope changes, owner
+provenance, numeric run ID zero and concurrent issuance. An accepted frontend is
+required before the original API observer can inspect that repaired UI; the original
+API deployment request is never repeated.

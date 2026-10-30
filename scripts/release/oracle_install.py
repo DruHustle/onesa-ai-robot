@@ -23,6 +23,7 @@ ALLOWED = {
     "oracle_owner.py": "scripts/release/oracle_owner.py",
     "oracle_install.py": "scripts/release/oracle_install.py",
     "runners/oracle_robot.py": "scripts/release/oracle_robot.py",
+    "runners/oracle_frontend_repair_dependency.py": "scripts/release/oracle_frontend_repair_dependency.py",
     "runners/oracle_robot_recovery.py": "scripts/release/oracle_robot_recovery.py",
     "runners/oracle_operator_custody.py": "scripts/release/oracle_operator_custody.py",
     "runners/oracle_robot_probe.py": "scripts/release/oracle_robot_probe.py",

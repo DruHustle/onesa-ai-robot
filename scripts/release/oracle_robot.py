@@ -32,6 +32,7 @@ if __name__ == "__main__":
     sys.modules["oracle_robot"] = sys.modules[__name__]
 
 ROOT = Path("/var/lib/onesa/release-verification/robot")
+ANCHOR = Path("/etc/onesa/oracle-release-trust.json")
 PLAN = Path("/etc/onesa/oracle-robot-release.json")
 COMPOSE = Path("/opt/onesa/backends/robot.yaml")
 IMAGES = Path("/etc/onesa/backends/robot.images.env")
@@ -347,7 +348,18 @@ def image_security(scan, identity, architecture="arm64"):
     )
 
 
-def verify_invocation(binding, context, phase, plan, *, dependency=False):
+def verify_invocation(
+    binding, context, phase, plan, *, dependency=False, repair_dependency=None
+):
+    require(
+        repair_dependency is None
+        or phase == "production"
+        and binding["component"] == "api"
+        and not dependency
+        and str(UUID(repair_dependency)) == repair_dependency,
+        "EXACT_READONLY_REPAIR_DEPENDENCY_SCOPE_REQUIRED",
+    )
+    strict_ancestors = dependency or repair_dependency is not None
     if phase == "staging":
         require(set(context) == {"context_id"}, "STAGING_SIGNED_CONTEXT_ONLY")
     elif phase == "deploy":
@@ -376,7 +388,7 @@ def verify_invocation(binding, context, phase, plan, *, dependency=False):
     for name in ["trust.json", "public.pem", "policy.json", "records.sqlite"]:
         private(store / name)
     trust = read(store / "trust.json")
-    registry = read(Path("/etc/onesa/oracle-release-trust.json"))
+    registry = read(ANCHOR)
     anchor = registry["installations"].get(str(store))
     require(
         anchor
@@ -412,7 +424,7 @@ def verify_invocation(binding, context, phase, plan, *, dependency=False):
             "SELECT envelope,revoked,parent,kind FROM records WHERE id=?", (identifier,)
         ).fetchone()
         require(
-            row and ((historical and not dependency) or not row[1]),
+            row and ((historical and not strict_ancestors) or not row[1]),
             "SIGNED_LEDGER_RECORD_MISSING_OR_REVOKED",
         )
         envelope = json.loads(row[0])
@@ -449,6 +461,7 @@ def verify_invocation(binding, context, phase, plan, *, dependency=False):
             and r["parent"] == row[2]
             and (kind is None or r["kind"] == kind)
             and r["binding"] == binding
+            and type(r["workflow_run_id"]) is int
             and r["workflow_run_id"] == 0,
             "SIGNED_RECORD_SOURCE_OR_PROVENANCE_MISMATCH",
         )
@@ -466,7 +479,8 @@ def verify_invocation(binding, context, phase, plan, *, dependency=False):
             dt.datetime.fromisoformat(r["expires_at"]),
         )
         require(
-            r.get("schema_version") == 1
+            type(r.get("schema_version")) is int
+            and r.get("schema_version") == 1
             and r.get("execution_context")
             == (
                 "owner-operated-oracle-staging"
@@ -480,7 +494,7 @@ def verify_invocation(binding, context, phase, plan, *, dependency=False):
         records.append(r)
         if r["parent"] and not parent_checked:
             record(r["parent"], historical=historical)
-        if dependency and r["kind"] == "authorization":
+        if strict_ancestors and r["kind"] == "authorization":
             # The decision and authorization share the already verified Q parent.
             # Validate the decision itself without revisiting that ancestor; keep
             # the existing cycle/size guard and require the identical signed Q.
@@ -525,6 +539,35 @@ def verify_invocation(binding, context, phase, plan, *, dependency=False):
                 and op["details"]["automatic_retry"] is False,
                 "SINGLE_REQUEST_BUDGET_REQUIRED",
             )
+            if repair_dependency is not None:
+                require(
+                    row[0] == "deployed-unverified",
+                    "REPAIR_DEPENDENCY_API_MUST_REMAIN_UNVERIFIED",
+                )
+                prerequisite = record(
+                    repair_dependency,
+                    "frontend-repair-dependency-commission",
+                    False,
+                    parent_checked=True,
+                )
+                require(
+                    prerequisite["parent"] == op["id"],
+                    "REPAIR_PREREQUISITE_API_OPERATION_CHANGED",
+                )
+                identities = {
+                    prerequisite["details"]["observer_commission"],
+                    prerequisite["details"]["failure"]["observer_commission"],
+                }
+                for identity in identities:
+                    observed = record(
+                        identity,
+                        "production-observer-commission",
+                        True,
+                        parent_checked=True,
+                    )
+                    require(
+                        observed["parent"] == op["id"], "REPAIR_OBSERVER_PARENT_CHANGED"
+                    )
             if phase == "deploy":
                 require(
                     row[1] == context["authorization_id"] and op["parent"] == row[1],
@@ -673,9 +716,7 @@ def verify_toolchain(plan, binding, *, observer=None):
     )
     store = private(Path(plan["verifier_store"]), directory=True)
     trust = read(store / "trust.json")
-    anchor = read(Path("/etc/onesa/oracle-release-trust.json"))["installations"].get(
-        str(store)
-    )
+    anchor = read(ANCHOR)["installations"].get(str(store))
     require(
         anchor
         and anchor["active"] is True
@@ -1873,7 +1914,13 @@ def probe(binding, env, operation, folder, plan, *, read_only=False, observer=No
     }
     import oracle_robot_frontend as frontend
 
-    provider = frontend.observe_provider(binding, env, plan, operation)
+    provider = frontend.observe_provider(
+        binding,
+        env,
+        plan,
+        operation,
+        **({"observer": observer} if observer is not None else {}),
+    )
     request["provider"] = provider
     request["expected_frontend_source"] = (
         binding["candidate_commit"]

@@ -14,6 +14,7 @@ import datetime as dt
 import fcntl
 import json
 import os
+import re
 import sys
 import tarfile
 from contextlib import contextmanager
@@ -225,7 +226,82 @@ def observation_lock(store):
             fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
 
 
-def commission(store, operation, current, root, plan_path, security):
+def accepted_frontend(store, reference, api_binding):
+    owner.require(
+        isinstance(reference, dict)
+        and set(reference) == {"verifier_store", "operation_id", "verification_id"}
+        and re.fullmatch(
+            r"/var/lib/onesa/release-verification/robot-owner-[a-f0-9]{40}",
+            reference["verifier_store"],
+        )
+        and reference["verifier_store"] != str(store.root),
+        "DIRECT_ACCEPTED_FRONTEND_REFERENCE_REQUIRED",
+    )
+    current = owner.Store(Path(reference["verifier_store"]), store.github)
+    try:
+        record = signed_unrevoked(
+            current, reference["verification_id"], "production-verification"
+        )["record"]
+        binding = record["binding"]
+        owner.require(
+            binding["repository"] == api_binding["repository"]
+            and binding["component"] == "frontend"
+            and binding["target_environment"] == "production"
+            and record["parent"] == reference["operation_id"]
+            and binding["candidate_commit"]
+            == current.policy["toolchain"]["source_commit"],
+            "EXACT_ACCEPTED_FRONTEND_COMPONENT_REQUIRED",
+        )
+        state = current.db.execute(
+            "SELECT state FROM deployments WHERE id=?", (record["parent"],)
+        ).fetchone()
+        owner.require(
+            state and state[0] == "accepted",
+            "FRONTEND_PRODUCTION_VERIFICATION_NOT_ACCEPTED",
+        )
+        profile = owner.binding_valid(binding, current.policy)
+        observed = record["details"]["observations"]
+        runtime = observed["actual_runtime"]
+        owner.require(
+            observed["binding"] == binding
+            and observed["operation_id"] == record["parent"]
+            and observed["environment"] == "production"
+            and type(observed["workflow_run_id"]) is int
+            and observed["workflow_run_id"] == 0
+            and all(
+                observed["checks"].get(key) == "PASS"
+                for key in profile["required_checks"]["production"]
+            )
+            and runtime["source"] == api_binding["candidate_commit"]
+            and runtime["image"] == api_binding["artifact_digest"],
+            "COMPLETE_FRONTEND_ACCEPTANCE_ON_ORIGINAL_API_REQUIRED",
+        )
+        receipts = current.db.execute(
+            "SELECT id FROM records WHERE kind='deployment-receipt' AND parent=?",
+            (record["parent"],),
+        ).fetchall()
+        owner.require(
+            len(receipts) == 1, "EXACT_ACCEPTED_FRONTEND_PROVIDER_RECEIPT_REQUIRED"
+        )
+        receipt = signed_unrevoked(
+            current, receipts[0][0], "deployment-receipt", binding
+        )["record"]
+        owner.require(
+            receipt["details"]["observations"]["deployment_id"]
+            == observed["deployment_id"],
+            "ACCEPTED_FRONTEND_PROVIDER_ID_CHANGED",
+        )
+        return {
+            **reference,
+            "binding": binding,
+            "deployment_id": observed["deployment_id"],
+            "api_runtime": runtime,
+        }
+    finally:
+        current.db.close()
+
+
+def commission(store, operation, current, root, plan_path, security, *, frontend=None):
     owner.require(
         os.geteuid() == 0
         and os.getenv("SUDO_USER") == "ubuntu"
@@ -276,6 +352,13 @@ def commission(store, operation, current, root, plan_path, security):
             "amd64" if kind == "builder" else "arm64",
         )
     components = unchanged_components(intent["binding"], root, source)
+    frontend_proof = None
+    if frontend is not None:
+        frontend_proof = accepted_frontend(store, frontend, intent["binding"])
+        owner.require(
+            frontend_proof["binding"]["candidate_commit"] == source["candidate_commit"],
+            "RECOVERED_FRONTEND_MUST_MATCH_REVIEWED_OBSERVER_SOURCE",
+        )
     with store.transaction():
         original(store, operation)
         state = store.db.execute(
@@ -304,6 +387,11 @@ def commission(store, operation, current, root, plan_path, security):
                 "provider_requests": 0,
                 "qualification_reissued": False,
                 "authorization_reissued": False,
+                **(
+                    {"accepted_frontend": frontend_proof}
+                    if frontend_proof is not None
+                    else {}
+                ),
             },
             parent=operation,
         )
@@ -377,6 +465,20 @@ class Observer:
         finally:
             current.db.close()
 
+    def frontend_dependency(self):
+        reference = self.record()["details"].get("accepted_frontend")
+        if reference is None:
+            return None
+        keys = {
+            key: reference[key]
+            for key in ["verifier_store", "operation_id", "verification_id"]
+        }
+        current = accepted_frontend(self.store, keys, self.record()["binding"])
+        owner.require(
+            current == reference, "ACCEPTED_FRONTEND_OBSERVER_REFERENCE_CHANGED"
+        )
+        return current
+
     def original_plan(self):
         record = self.record()
         path = Path(record["details"]["original_plan"])
@@ -396,6 +498,12 @@ class Observer:
         # plan bytes, API/source/configuration and provider identity stay intact.
         for key in ["probe_image", "cli_image", "builder_image", "builder_sha256"]:
             plan[key] = tool[key]
+        frontend = self.frontend_dependency()
+        if frontend is not None:
+            plan["retained_frontend"] = {
+                **plan["retained_frontend"],
+                "source": frontend["binding"]["candidate_commit"],
+            }
         return plan
 
     def security_path(self, kind):
@@ -499,12 +607,25 @@ def main():
     parser.add_argument("--observer-store", type=Path)
     parser.add_argument("--original-plan", type=Path)
     parser.add_argument("--security", type=Path)
+    parser.add_argument("--frontend-store", type=Path)
+    parser.add_argument("--frontend-operation")
+    parser.add_argument("--frontend-verification")
     args = parser.parse_args()
     owner.require(
         os.geteuid() == 0
         and os.getenv("SUDO_USER") == "ubuntu"
         and not os.getenv("GITHUB_ACTIONS"),
         "EXTERNAL_ROBOT_OWNER_ONLY",
+    )
+    owner.require(
+        not any(
+            [args.frontend_store, args.frontend_operation, args.frontend_verification]
+        )
+        or args.action == "commission"
+        and all(
+            [args.frontend_store, args.frontend_operation, args.frontend_verification]
+        ),
+        "EXACT_OPTIONAL_ACCEPTED_FRONTEND_REFERENCE_REQUIRED",
     )
     raw = sys.stdin.buffer.read(131073)
     owner.require(0 < len(raw) <= 131072, "PRIVATE_OWNER_REQUEST_BOUND")
@@ -539,6 +660,21 @@ def main():
                     root,
                     args.original_plan,
                     json.loads(args.security.read_bytes()),
+                    frontend=(
+                        {
+                            "verifier_store": str(args.frontend_store),
+                            "operation_id": args.frontend_operation,
+                            "verification_id": args.frontend_verification,
+                        }
+                        if all(
+                            [
+                                args.frontend_store,
+                                args.frontend_operation,
+                                args.frontend_verification,
+                            ]
+                        )
+                        else None
+                    ),
                 )
             finally:
                 current.db.close()
