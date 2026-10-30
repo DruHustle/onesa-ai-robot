@@ -127,7 +127,9 @@ browser/OS; there is no appearance selector, stored override or clock schedule.
 Shared Onesa foundations are version-pinned while Robot retains its teal engineering
 identity and dedicated operational shell.
 Console sign-in performs bounded readiness checks before submitting credentials;
-temporary unavailability retains masked entries for an explicit retry. Versioned
+temporary unavailability retains masked entries for an explicit retry. The initial
+anonymous session lookup preserves a password entered before submission; explicit
+rejection, logout and later session expiry still clear passwords. Versioned
 Robot SVG/ICO/touch icons preserve approved Onesa artwork and distinct product identity.
 
 The permanent branches are **dev**, **staging** and **main**. Normal contributions
