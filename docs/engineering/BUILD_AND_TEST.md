@@ -1,5 +1,24 @@
 # Independent software builds and tests
 
+Legacy joint and inspection supervision now renews its heartbeat only after both
+status and owned history reads succeed and their simulation-only payloads validate.
+Failed, malformed, obsolete or interrupted reads cannot keep an unobserved task
+alive. The concurrency unit tests cover both read failures, invalid mode/actuation
+and task data, session replacement and post-action observation ownership. The
+three-engine `observation-supervision.spec.mjs` test starts a real synthetic task
+through the local gateway, fails each browser observation route in turn, and
+requires the actual backend watchdog to cancel it while heartbeat remains reachable.
+Stop and sign-out stay available. These source tests do not establish hosted
+acceptance or physical stopping performance.
+
+The contract toolchain independently packages a narrowly scoped callable adapter
+for `@redocly/openapi-core@1.34.20`, executing upstream `minimatch@11.0.1` to address
+[GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249).
+The exact archive, upstream integrity and license stay inside the frontend build
+context. Installed-consumer URL/header matching and contract generation are tested;
+the legacy matcher is absent and no broader tooling upgrade is included. Ordinary
+build, type, dependency-audit and source-bound release gates remain required.
+
 Independent frontend dependency tests retain separate staging and production API
 sources, verify the original accepted signed chain including its authorization
 decision, and require exact backend/edge/ROS bytes and modes, current image scans
@@ -122,11 +141,16 @@ normal application/provider TLS and proxy policy are unchanged.
 
 ## Bounded sign-in acceptance
 
-After submitting Sign in, browser scenarios use `waitForOperatorSignIn`: the same
-25-second acknowledgement bound already used by the main simulation journey.
-The application checks readiness for at most 15 seconds before its 10-second
-credential request. A default five-second assertion can expire before login starts.
-Ordinary layout, simulation, request and safety deadlines remain unchanged.
+After submitting Sign in, browser scenarios use `waitForOperatorSignIn` with a
+30-second acknowledgement bound matching the existing application budgets:
+20 seconds for readiness followed by a 10-second credential request. The former
+25-second observer still assumed an older 15-second readiness budget and could
+reject a valid delayed sign-in. A controlled three-engine fixture waits 19 seconds
+for readiness and 6.5 seconds for the one login response, requires successful
+sign-in with zero control mutations, and clears the masked password afterward.
+The owner observer uses the same 30-second sign-in observation budget without a
+retry or any new release authority. Ordinary layout, application, simulation,
+request and safety deadlines are unchanged.
 
 Reload and late-response regressions observe the existing session/logout HTTP
 acknowledgement within the client's existing 10-second request budget before
