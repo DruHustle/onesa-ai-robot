@@ -108,7 +108,9 @@ def test_http_status_is_numeric_and_response_is_not_logged(status):
     asyncio.run(scenario())
 
 
-@pytest.mark.parametrize("kind", ["json", "shape", "cell", "number", "width", "oversize"])
+@pytest.mark.parametrize(
+    "kind", ["json", "shape", "cell", "number", "width", "oversize", "nesting"]
+)
 def test_invalid_protocol_is_redacted_and_bounded(kind):
     async def scenario():
         calls = 0
@@ -120,6 +122,8 @@ def test_invalid_protocol_is_redacted_and_bounded(kind):
                 return httpx.Response(200, content=SENTINEL)
             if kind == "oversize":
                 return httpx.Response(200, content=b"x" * (MAX_RESPONSE_BYTES + 1))
+            if kind == "nesting":
+                return httpx.Response(200, content=b"[" * 2000 + b"0" + b"]" * 2000)
             body = payload()
             if kind == "shape":
                 body = {"results": [{"type": SENTINEL}]}

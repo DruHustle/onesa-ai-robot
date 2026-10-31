@@ -14,7 +14,7 @@ class Telemetry(BaseModel):
     model_config = ConfigDict(extra="forbid")
     version: Literal[1]
     device_id: str = Field(pattern=r"^synthetic-[a-z0-9-]{1,48}$")
-    boot_challenge: str = Field(min_length=43, max_length=43)
+    boot_challenge: str = Field(min_length=43, max_length=43, pattern=r"^[A-Za-z0-9_-]{43}$")
     sequence: int = Field(ge=0)
     observed_at: float
     mode: Literal["simulation"]

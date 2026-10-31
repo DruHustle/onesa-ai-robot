@@ -191,6 +191,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/humanoid/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Humanoid Heartbeat */
+        post: operations["humanoid_heartbeat_api_v1_humanoid_heartbeat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/humanoid/model": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Humanoid Model */
+        get: operations["humanoid_model_api_v1_humanoid_model_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/humanoid/model.urdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Humanoid Urdf */
+        get: operations["humanoid_urdf_api_v1_humanoid_model_urdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/humanoid/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Humanoid Propose */
+        post: operations["humanoid_propose_api_v1_humanoid_proposals_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/humanoid/proposals/{command_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Humanoid Approve */
+        post: operations["humanoid_approve_api_v1_humanoid_proposals__command_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/humanoid/state": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Humanoid State */
+        get: operations["humanoid_state_api_v1_humanoid_state_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/missions": {
         parameters: {
             query?: never;
@@ -430,7 +532,7 @@ export interface components {
             status: string;
         };
         /** Asset */
-        Asset: {
+        "Asset-Input": {
             /** Context Imported At */
             context_imported_at?: number | null;
             /**
@@ -451,7 +553,57 @@ export interface components {
              * Imported Telemetry
              * @default []
              */
-            imported_telemetry: components["schemas"]["Observation"][];
+            imported_telemetry: components["schemas"]["Observation-Input"][];
+            /** Measures */
+            measures: components["schemas"]["Measure"][];
+            /** Name */
+            name: string;
+            /** Operating Context */
+            operating_context: string;
+            /** Source */
+            source: string;
+            /**
+             * Source Asset Id
+             * @default
+             */
+            source_asset_id: string;
+            /**
+             * Source Asset Name
+             * @default
+             */
+            source_asset_name: string;
+            /** Source Asset Revision */
+            source_asset_revision?: number | null;
+            /** Source Model Id */
+            source_model_id?: string | null;
+            /** Source Observed At */
+            source_observed_at?: number | null;
+            /** Source Sha256 */
+            source_sha256?: string | null;
+        };
+        /** Asset */
+        "Asset-Output": {
+            /** Context Imported At */
+            context_imported_at?: number | null;
+            /**
+             * Context Kind
+             * @default synthetic
+             * @enum {string}
+             */
+            context_kind: "synthetic" | "reviewed_import";
+            /**
+             * Context Version
+             * @default 1.0.0
+             * @constant
+             */
+            context_version: "1.0.0";
+            /** Id */
+            id: string;
+            /**
+             * Imported Telemetry
+             * @default []
+             */
+            imported_telemetry: components["schemas"]["robot_api__inspection__Observation"][];
             /** Measures */
             measures: components["schemas"]["Measure"][];
             /** Name */
@@ -602,6 +754,54 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** Heartbeat */
+        Heartbeat: {
+            /**
+             * Command Id
+             * Format: uuid
+             */
+            command_id: string;
+        };
+        /** Joint */
+        Joint: {
+            /**
+             * Acceleration
+             * @default 0.6
+             */
+            acceleration: number;
+            /** Axis */
+            axis: [
+                number,
+                number,
+                number
+            ];
+            /**
+             * Effort
+             * @default 1
+             */
+            effort: number;
+            /** Group */
+            group: string;
+            /** Lower */
+            lower: number;
+            /** Name */
+            name: string;
+            /** Origin */
+            origin: [
+                number,
+                number,
+                number
+            ];
+            /** Parent */
+            parent: string;
+            /** Upper */
+            upper: number;
+            /**
+             * Velocity
+             * @default 0.4
+             */
+            velocity: number;
+        };
         /** Login */
         Login: {
             /** Name */
@@ -638,7 +838,7 @@ export interface components {
              */
             asset_context_import: "enabled" | "disabled_by_configuration";
             /** Assets */
-            assets: components["schemas"]["Asset"][];
+            assets: components["schemas"]["Asset-Output"][];
             /**
              * Mode
              * @constant
@@ -677,7 +877,7 @@ export interface components {
         MissionDetail: {
             /** Id */
             id: string;
-            record: components["schemas"]["Record"];
+            record: components["schemas"]["Record-Output"];
             /** Report */
             report: {
                 [key: string]: unknown;
@@ -716,8 +916,763 @@ export interface components {
              */
             seed: number;
         };
+        /** Model */
+        Model: {
+            /**
+             * Joint Count
+             * @default 33
+             */
+            joint_count: number;
+            /**
+             * Joints
+             * @default [
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           0,
+             *           1
+             *         ],
+             *         "effort": 1,
+             *         "group": "torso",
+             *         "lower": -0.8,
+             *         "name": "torso_yaw",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           0.15
+             *         ],
+             *         "parent": "pelvis",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           1,
+             *           0,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "torso",
+             *         "lower": -0.8,
+             *         "name": "torso_roll",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           0
+             *         ],
+             *         "parent": "torso_yaw",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           1,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "torso",
+             *         "lower": -0.8,
+             *         "name": "torso_pitch",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           0
+             *         ],
+             *         "parent": "torso_roll",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           0,
+             *           1
+             *         ],
+             *         "effort": 1,
+             *         "group": "head",
+             *         "lower": -0.8,
+             *         "name": "head_yaw",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           0.4
+             *         ],
+             *         "parent": "torso_pitch",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           1,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "head",
+             *         "lower": -0.8,
+             *         "name": "head_pitch",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           0
+             *         ],
+             *         "parent": "head_yaw",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           1,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "left_arm",
+             *         "lower": -0.8,
+             *         "name": "left_arm_shoulder_pitch",
+             *         "origin": [
+             *           0,
+             *           0.22,
+             *           0.3
+             *         ],
+             *         "parent": "torso_pitch",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           1,
+             *           0,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "left_arm",
+             *         "lower": -0.8,
+             *         "name": "left_arm_shoulder_roll",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           0
+             *         ],
+             *         "parent": "left_arm_shoulder_pitch",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           0,
+             *           1
+             *         ],
+             *         "effort": 1,
+             *         "group": "left_arm",
+             *         "lower": -0.8,
+             *         "name": "left_arm_shoulder_yaw",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           0
+             *         ],
+             *         "parent": "left_arm_shoulder_roll",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           1,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "left_arm",
+             *         "lower": 0,
+             *         "name": "left_arm_elbow",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           -0.28
+             *         ],
+             *         "parent": "left_arm_shoulder_yaw",
+             *         "upper": 1.2,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           0,
+             *           1
+             *         ],
+             *         "effort": 1,
+             *         "group": "left_arm",
+             *         "lower": -0.8,
+             *         "name": "left_arm_wrist_yaw",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           -0.25
+             *         ],
+             *         "parent": "left_arm_elbow",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           1,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "left_arm",
+             *         "lower": -0.8,
+             *         "name": "left_arm_wrist_pitch",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           0
+             *         ],
+             *         "parent": "left_arm_wrist_yaw",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           1,
+             *           0,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "left_arm",
+             *         "lower": -0.8,
+             *         "name": "left_arm_wrist_roll",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           0
+             *         ],
+             *         "parent": "left_arm_wrist_pitch",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           1,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "left_arm",
+             *         "lower": 0,
+             *         "name": "left_arm_grip",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           -0.08
+             *         ],
+             *         "parent": "left_arm_wrist_roll",
+             *         "upper": 1.2,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           0,
+             *           1
+             *         ],
+             *         "effort": 1,
+             *         "group": "left_leg",
+             *         "lower": -0.8,
+             *         "name": "left_leg_hip_yaw",
+             *         "origin": [
+             *           0,
+             *           0.1,
+             *           0
+             *         ],
+             *         "parent": "pelvis",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           1,
+             *           0,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "left_leg",
+             *         "lower": -0.8,
+             *         "name": "left_leg_hip_roll",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           0
+             *         ],
+             *         "parent": "left_leg_hip_yaw",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           1,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "left_leg",
+             *         "lower": -0.8,
+             *         "name": "left_leg_hip_pitch",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           0
+             *         ],
+             *         "parent": "left_leg_hip_roll",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           1,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "left_leg",
+             *         "lower": 0,
+             *         "name": "left_leg_knee",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           -0.38
+             *         ],
+             *         "parent": "left_leg_hip_pitch",
+             *         "upper": 1.2,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           1,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "left_leg",
+             *         "lower": -0.8,
+             *         "name": "left_leg_ankle_pitch",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           -0.36
+             *         ],
+             *         "parent": "left_leg_knee",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           1,
+             *           0,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "left_leg",
+             *         "lower": -0.8,
+             *         "name": "left_leg_ankle_roll",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           0
+             *         ],
+             *         "parent": "left_leg_ankle_pitch",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           1,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "right_arm",
+             *         "lower": -0.8,
+             *         "name": "right_arm_shoulder_pitch",
+             *         "origin": [
+             *           0,
+             *           -0.22,
+             *           0.3
+             *         ],
+             *         "parent": "torso_pitch",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           1,
+             *           0,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "right_arm",
+             *         "lower": -0.8,
+             *         "name": "right_arm_shoulder_roll",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           0
+             *         ],
+             *         "parent": "right_arm_shoulder_pitch",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           0,
+             *           1
+             *         ],
+             *         "effort": 1,
+             *         "group": "right_arm",
+             *         "lower": -0.8,
+             *         "name": "right_arm_shoulder_yaw",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           0
+             *         ],
+             *         "parent": "right_arm_shoulder_roll",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           1,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "right_arm",
+             *         "lower": 0,
+             *         "name": "right_arm_elbow",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           -0.28
+             *         ],
+             *         "parent": "right_arm_shoulder_yaw",
+             *         "upper": 1.2,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           0,
+             *           1
+             *         ],
+             *         "effort": 1,
+             *         "group": "right_arm",
+             *         "lower": -0.8,
+             *         "name": "right_arm_wrist_yaw",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           -0.25
+             *         ],
+             *         "parent": "right_arm_elbow",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           1,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "right_arm",
+             *         "lower": -0.8,
+             *         "name": "right_arm_wrist_pitch",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           0
+             *         ],
+             *         "parent": "right_arm_wrist_yaw",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           1,
+             *           0,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "right_arm",
+             *         "lower": -0.8,
+             *         "name": "right_arm_wrist_roll",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           0
+             *         ],
+             *         "parent": "right_arm_wrist_pitch",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           1,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "right_arm",
+             *         "lower": 0,
+             *         "name": "right_arm_grip",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           -0.08
+             *         ],
+             *         "parent": "right_arm_wrist_roll",
+             *         "upper": 1.2,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           0,
+             *           1
+             *         ],
+             *         "effort": 1,
+             *         "group": "right_leg",
+             *         "lower": -0.8,
+             *         "name": "right_leg_hip_yaw",
+             *         "origin": [
+             *           0,
+             *           -0.1,
+             *           0
+             *         ],
+             *         "parent": "pelvis",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           1,
+             *           0,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "right_leg",
+             *         "lower": -0.8,
+             *         "name": "right_leg_hip_roll",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           0
+             *         ],
+             *         "parent": "right_leg_hip_yaw",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           1,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "right_leg",
+             *         "lower": -0.8,
+             *         "name": "right_leg_hip_pitch",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           0
+             *         ],
+             *         "parent": "right_leg_hip_roll",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           1,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "right_leg",
+             *         "lower": 0,
+             *         "name": "right_leg_knee",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           -0.38
+             *         ],
+             *         "parent": "right_leg_hip_pitch",
+             *         "upper": 1.2,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           0,
+             *           1,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "right_leg",
+             *         "lower": -0.8,
+             *         "name": "right_leg_ankle_pitch",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           -0.36
+             *         ],
+             *         "parent": "right_leg_knee",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       },
+             *       {
+             *         "acceleration": 0.6,
+             *         "axis": [
+             *           1,
+             *           0,
+             *           0
+             *         ],
+             *         "effort": 1,
+             *         "group": "right_leg",
+             *         "lower": -0.8,
+             *         "name": "right_leg_ankle_roll",
+             *         "origin": [
+             *           0,
+             *           0,
+             *           0
+             *         ],
+             *         "parent": "right_leg_ankle_pitch",
+             *         "upper": 0.8,
+             *         "velocity": 0.4
+             *       }
+             *     ]
+             */
+            joints: components["schemas"]["Joint"][];
+            /**
+             * Limitations
+             * @default [
+             *       "Kinematics only: balance, contact dynamics and collision avoidance are not validated.",
+             *       "Each hand has one coupled grip axis, not independently actuated fingers.",
+             *       "Physical drives, motor ratings and emergency-stop hardware are not commissioned."
+             *     ]
+             */
+            limitations: string[];
+            /**
+             * Mode
+             * @default simulation
+             * @constant
+             */
+            mode: "simulation";
+            /**
+             * Model Id
+             * @default onesa-humanoid-33-v1
+             * @constant
+             */
+            model_id: "onesa-humanoid-33-v1";
+            /**
+             * Physical Actuation
+             * @default false
+             * @constant
+             */
+            physical_actuation: false;
+            /**
+             * Units
+             * @default radians, seconds, metres; synthetic effort
+             * @constant
+             */
+            units: "radians, seconds, metres; synthetic effort";
+        };
+        /** MotionPlan */
+        MotionPlan: {
+            /**
+             * Model Id
+             * @default onesa-humanoid-33-v1
+             */
+            model_id: string;
+            /** Plan Sha256 */
+            plan_sha256: string;
+            /**
+             * Reason
+             * @default review_required
+             */
+            reason: string;
+            request: components["schemas"]["MotionRequest"];
+            /** Revision */
+            revision: number;
+            /** Start */
+            start: {
+                [key: string]: number;
+            };
+            /**
+             * State
+             * @default proposed
+             * @enum {string}
+             */
+            state: "proposed" | "running" | "completed" | "cancelled";
+            /** Targets */
+            targets: {
+                [key: string]: number;
+            };
+        };
+        /** MotionRequest */
+        MotionRequest: {
+            /**
+             * Command Id
+             * Format: uuid
+             */
+            command_id: string;
+            /** Duration Seconds */
+            duration_seconds: number;
+            /** Issued At */
+            issued_at: number;
+            /** Targets */
+            targets: {
+                [key: string]: number;
+            };
+        };
         /** Observation */
-        Observation: {
+        "Observation-Input": {
             /**
              * Declared Connection
              * @default not_applicable
@@ -804,8 +1759,93 @@ export interface components {
             sampled_at: number;
         };
         /** Plan */
-        Plan: {
-            asset: components["schemas"]["Asset"];
+        "Plan-Input": {
+            asset: components["schemas"]["Asset-Input"];
+            /** Created At */
+            created_at: number;
+            /**
+             * Duration Seconds
+             * @default 6
+             */
+            duration_seconds: number;
+            /**
+             * Mission Id
+             * Format: uuid
+             */
+            mission_id: string;
+            /**
+             * Motion Duration Seconds
+             * @default 2
+             */
+            motion_duration_seconds: number;
+            /**
+             * Motion Starts At Seconds
+             * @default 1
+             */
+            motion_starts_at_seconds: number;
+            /**
+             * Observation Method
+             * @default deterministic_scenario/v1
+             * @constant
+             */
+            observation_method: "deterministic_scenario/v1";
+            /**
+             * Physical Actuation
+             * @default false
+             * @constant
+             */
+            physical_actuation: false;
+            profile: components["schemas"]["RobotProfile"];
+            /**
+             * Scenario
+             * @enum {string}
+             */
+            scenario: "normal" | "threshold" | "discrepancy" | "interrupted" | "missing" | "stale" | "units";
+            /**
+             * Scenario Version
+             * @default 1.0.0
+             * @constant
+             */
+            scenario_version: "1.0.0";
+            /** Seed */
+            seed: number;
+            /** Skills Sha256 */
+            skills_sha256: string;
+            /** Start Radians */
+            start_radians: number;
+            /** Steps */
+            steps: components["schemas"]["Step"][];
+            /**
+             * Target Radians
+             * @default 0.1
+             */
+            target_radians: number;
+            /**
+             * Task
+             * @default inspect_pump
+             * @constant
+             */
+            task: "inspect_pump";
+            /**
+             * Timeout Seconds
+             * @default 9
+             */
+            timeout_seconds: number;
+            /**
+             * Title
+             * @constant
+             */
+            title: "Inspect Pump P-101 and report abnormal readings";
+            /**
+             * Version
+             * @default 1.0.0
+             * @constant
+             */
+            version: "1.0.0";
+        };
+        /** Plan */
+        "Plan-Output": {
+            asset: components["schemas"]["Asset-Output"];
             /** Created At */
             created_at: number;
             /**
@@ -897,14 +1937,14 @@ export interface components {
             command_id: string;
             /** Duration Seconds */
             duration_seconds: number;
-            inspection?: components["schemas"]["Record"] | null;
+            inspection?: components["schemas"]["Record-Input"] | null;
             /** Issued At */
             issued_at: number;
             /** Target Radians */
             target_radians: number;
         };
         /** Record */
-        Record: {
+        "Record-Input": {
             /**
              * Elapsed Seconds
              * @default 0
@@ -924,14 +1964,14 @@ export interface components {
              * Observations
              * @default []
              */
-            observations: components["schemas"]["Observation"][];
+            observations: components["schemas"]["Observation-Input"][];
             /**
              * Outcome
              * @default awaiting_approval
              * @enum {string}
              */
             outcome: "awaiting_approval" | "running" | "completed_normal" | "completed_findings" | "interrupted" | "failed";
-            plan: components["schemas"]["Plan"];
+            plan: components["schemas"]["Plan-Input"];
             /** Plan Sha256 */
             plan_sha256: string;
             /**
@@ -946,7 +1986,52 @@ export interface components {
              * Telemetry
              * @default []
              */
-            telemetry: components["schemas"]["Observation"][];
+            telemetry: components["schemas"]["Observation-Input"][];
+        };
+        /** Record */
+        "Record-Output": {
+            /**
+             * Elapsed Seconds
+             * @default 0
+             */
+            elapsed_seconds: number;
+            /**
+             * Events
+             * @default []
+             */
+            events: components["schemas"]["Event"][];
+            /**
+             * Findings
+             * @default []
+             */
+            findings: components["schemas"]["Finding"][];
+            /**
+             * Observations
+             * @default []
+             */
+            observations: components["schemas"]["robot_api__inspection__Observation"][];
+            /**
+             * Outcome
+             * @default awaiting_approval
+             * @enum {string}
+             */
+            outcome: "awaiting_approval" | "running" | "completed_normal" | "completed_findings" | "interrupted" | "failed";
+            plan: components["schemas"]["Plan-Output"];
+            /** Plan Sha256 */
+            plan_sha256: string;
+            /**
+             * Schema Version
+             * @default onesa-robot-inspection/v1
+             * @constant
+             */
+            schema_version: "onesa-robot-inspection/v1";
+            /** Started At */
+            started_at?: number | null;
+            /**
+             * Telemetry
+             * @default []
+             */
+            telemetry: components["schemas"]["robot_api__inspection__Observation"][];
         };
         /** RobotProfile */
         RobotProfile: {
@@ -1130,6 +2215,101 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** Observation */
+        robot_api__humanoid__Observation: {
+            /** Active Command */
+            active_command: string | null;
+            /**
+             * Connection
+             * @default simulated_actuators
+             * @enum {string}
+             */
+            connection: "simulated_actuators" | "simulator_fault";
+            /** History */
+            history: components["schemas"]["MotionPlan"][];
+            /**
+             * Mode
+             * @default simulation
+             * @constant
+             */
+            mode: "simulation";
+            /**
+             * Model Id
+             * @default onesa-humanoid-33-v1
+             */
+            model_id: string;
+            /** Owns Active */
+            owns_active: boolean;
+            pending: components["schemas"]["MotionPlan"] | null;
+            /**
+             * Physical Actuation
+             * @default false
+             * @constant
+             */
+            physical_actuation: false;
+            /** Positions */
+            positions: {
+                [key: string]: number;
+            };
+            /**
+             * Retention
+             * @default bounded-process-memory; no restart replay
+             * @constant
+             */
+            retention: "bounded-process-memory; no restart replay";
+            /** Revision */
+            revision: number;
+            /** Sampled At */
+            sampled_at: number;
+            /** Stopped */
+            stopped: boolean;
+            /** Velocities */
+            velocities: {
+                [key: string]: number;
+            };
+        };
+        /** Observation */
+        robot_api__inspection__Observation: {
+            /**
+             * Declared Connection
+             * @default not_applicable
+             */
+            declared_connection: string;
+            /**
+             * Declared Freshness
+             * @default not_applicable
+             */
+            declared_freshness: string;
+            /**
+             * Metric
+             * @enum {string}
+             */
+            metric: "temperature" | "pressure" | "vibration";
+            /** Observed At */
+            observed_at: number;
+            /**
+             * Quality
+             * @default good
+             * @enum {string}
+             */
+            quality: "good" | "missing" | "unknown";
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "scenario_observation" | "synthetic_iot" | "reviewed_import";
+            /** Source Ref */
+            source_ref: string;
+            /**
+             * Source Unit
+             * @default
+             */
+            source_unit: string;
+            /** Unit */
+            unit: string;
+            /** Value */
+            value: number | null;
         };
     };
     responses: never;
@@ -1395,6 +2575,165 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ActionResponse"];
+                };
+            };
+        };
+    };
+    humanoid_heartbeat_api_v1_humanoid_heartbeat_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Heartbeat"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    humanoid_model_api_v1_humanoid_model_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Model"];
+                };
+            };
+        };
+    };
+    humanoid_urdf_api_v1_humanoid_model_urdf_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    humanoid_propose_api_v1_humanoid_proposals_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MotionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MotionPlan"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    humanoid_approve_api_v1_humanoid_proposals__command_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                command_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MissionConfirmation"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MotionPlan"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    humanoid_state_api_v1_humanoid_state_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["robot_api__humanoid__Observation"];
                 };
             };
         };

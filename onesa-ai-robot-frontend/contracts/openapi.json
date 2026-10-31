@@ -20,7 +20,7 @@
         "title": "ActionResponse",
         "type": "object"
       },
-      "Asset": {
+      "Asset-Input": {
         "additionalProperties": false,
         "properties": {
           "context_imported_at": {
@@ -60,7 +60,153 @@
           "imported_telemetry": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/Observation"
+              "$ref": "#/components/schemas/Observation-Input"
+            },
+            "maxItems": 3,
+            "title": "Imported Telemetry",
+            "type": "array"
+          },
+          "measures": {
+            "items": {
+              "$ref": "#/components/schemas/Measure"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "title": "Measures",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "operating_context": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Operating Context",
+            "type": "string"
+          },
+          "source": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Source",
+            "type": "string"
+          },
+          "source_asset_id": {
+            "default": "",
+            "maxLength": 128,
+            "title": "Source Asset Id",
+            "type": "string"
+          },
+          "source_asset_name": {
+            "default": "",
+            "maxLength": 160,
+            "title": "Source Asset Name",
+            "type": "string"
+          },
+          "source_asset_revision": {
+            "anyOf": [
+              {
+                "maximum": 1000000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Asset Revision"
+          },
+          "source_model_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Model Id"
+          },
+          "source_observed_at": {
+            "anyOf": [
+              {
+                "maximum": 4133980800.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Observed At"
+          },
+          "source_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Sha256"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "operating_context",
+          "source",
+          "measures"
+        ],
+        "title": "Asset",
+        "type": "object"
+      },
+      "Asset-Output": {
+        "additionalProperties": false,
+        "properties": {
+          "context_imported_at": {
+            "anyOf": [
+              {
+                "maximum": 4133980800.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Imported At"
+          },
+          "context_kind": {
+            "default": "synthetic",
+            "enum": [
+              "synthetic",
+              "reviewed_import"
+            ],
+            "title": "Context Kind",
+            "type": "string"
+          },
+          "context_version": {
+            "const": "1.0.0",
+            "default": "1.0.0",
+            "title": "Context Version",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "imported_telemetry": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/robot_api__inspection__Observation"
             },
             "maxItems": 3,
             "title": "Imported Telemetry",
@@ -426,6 +572,106 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "Heartbeat": {
+        "additionalProperties": false,
+        "properties": {
+          "command_id": {
+            "format": "uuid",
+            "title": "Command Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "command_id"
+        ],
+        "title": "Heartbeat",
+        "type": "object"
+      },
+      "Joint": {
+        "additionalProperties": false,
+        "properties": {
+          "acceleration": {
+            "default": 0.6,
+            "title": "Acceleration",
+            "type": "number"
+          },
+          "axis": {
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Axis",
+            "type": "array"
+          },
+          "effort": {
+            "default": 1.0,
+            "title": "Effort",
+            "type": "number"
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
+          },
+          "lower": {
+            "title": "Lower",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "origin": {
+            "maxItems": 3,
+            "minItems": 3,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Origin",
+            "type": "array"
+          },
+          "parent": {
+            "title": "Parent",
+            "type": "string"
+          },
+          "upper": {
+            "title": "Upper",
+            "type": "number"
+          },
+          "velocity": {
+            "default": 0.4,
+            "title": "Velocity",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "parent",
+          "group",
+          "axis",
+          "origin",
+          "lower",
+          "upper"
+        ],
+        "title": "Joint",
+        "type": "object"
+      },
       "Login": {
         "additionalProperties": false,
         "properties": {
@@ -514,7 +760,7 @@
           },
           "assets": {
             "items": {
-              "$ref": "#/components/schemas/Asset"
+              "$ref": "#/components/schemas/Asset-Output"
             },
             "title": "Assets",
             "type": "array"
@@ -604,7 +850,7 @@
             "type": "string"
           },
           "record": {
-            "$ref": "#/components/schemas/Record"
+            "$ref": "#/components/schemas/Record-Output"
           },
           "report": {
             "additionalProperties": true,
@@ -692,7 +938,821 @@
         "title": "MissionRequest",
         "type": "object"
       },
-      "Observation": {
+      "Model": {
+        "additionalProperties": false,
+        "properties": {
+          "joint_count": {
+            "default": 33,
+            "title": "Joint Count",
+            "type": "integer"
+          },
+          "joints": {
+            "default": [
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "effort": 1.0,
+                "group": "torso",
+                "lower": -0.8,
+                "name": "torso_yaw",
+                "origin": [
+                  0.0,
+                  0.0,
+                  0.15
+                ],
+                "parent": "pelvis",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "torso",
+                "lower": -0.8,
+                "name": "torso_roll",
+                "origin": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "parent": "torso_yaw",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "torso",
+                "lower": -0.8,
+                "name": "torso_pitch",
+                "origin": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "parent": "torso_roll",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "effort": 1.0,
+                "group": "head",
+                "lower": -0.8,
+                "name": "head_yaw",
+                "origin": [
+                  0.0,
+                  0.0,
+                  0.4
+                ],
+                "parent": "torso_pitch",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "head",
+                "lower": -0.8,
+                "name": "head_pitch",
+                "origin": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "parent": "head_yaw",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "left_arm",
+                "lower": -0.8,
+                "name": "left_arm_shoulder_pitch",
+                "origin": [
+                  0.0,
+                  0.22,
+                  0.3
+                ],
+                "parent": "torso_pitch",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "left_arm",
+                "lower": -0.8,
+                "name": "left_arm_shoulder_roll",
+                "origin": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "parent": "left_arm_shoulder_pitch",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "effort": 1.0,
+                "group": "left_arm",
+                "lower": -0.8,
+                "name": "left_arm_shoulder_yaw",
+                "origin": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "parent": "left_arm_shoulder_roll",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "left_arm",
+                "lower": 0.0,
+                "name": "left_arm_elbow",
+                "origin": [
+                  0.0,
+                  0.0,
+                  -0.28
+                ],
+                "parent": "left_arm_shoulder_yaw",
+                "upper": 1.2,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "effort": 1.0,
+                "group": "left_arm",
+                "lower": -0.8,
+                "name": "left_arm_wrist_yaw",
+                "origin": [
+                  0.0,
+                  0.0,
+                  -0.25
+                ],
+                "parent": "left_arm_elbow",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "left_arm",
+                "lower": -0.8,
+                "name": "left_arm_wrist_pitch",
+                "origin": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "parent": "left_arm_wrist_yaw",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "left_arm",
+                "lower": -0.8,
+                "name": "left_arm_wrist_roll",
+                "origin": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "parent": "left_arm_wrist_pitch",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "left_arm",
+                "lower": 0.0,
+                "name": "left_arm_grip",
+                "origin": [
+                  0.0,
+                  0.0,
+                  -0.08
+                ],
+                "parent": "left_arm_wrist_roll",
+                "upper": 1.2,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "effort": 1.0,
+                "group": "left_leg",
+                "lower": -0.8,
+                "name": "left_leg_hip_yaw",
+                "origin": [
+                  0.0,
+                  0.1,
+                  0.0
+                ],
+                "parent": "pelvis",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "left_leg",
+                "lower": -0.8,
+                "name": "left_leg_hip_roll",
+                "origin": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "parent": "left_leg_hip_yaw",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "left_leg",
+                "lower": -0.8,
+                "name": "left_leg_hip_pitch",
+                "origin": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "parent": "left_leg_hip_roll",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "left_leg",
+                "lower": 0.0,
+                "name": "left_leg_knee",
+                "origin": [
+                  0.0,
+                  0.0,
+                  -0.38
+                ],
+                "parent": "left_leg_hip_pitch",
+                "upper": 1.2,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "left_leg",
+                "lower": -0.8,
+                "name": "left_leg_ankle_pitch",
+                "origin": [
+                  0.0,
+                  0.0,
+                  -0.36
+                ],
+                "parent": "left_leg_knee",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "left_leg",
+                "lower": -0.8,
+                "name": "left_leg_ankle_roll",
+                "origin": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "parent": "left_leg_ankle_pitch",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "right_arm",
+                "lower": -0.8,
+                "name": "right_arm_shoulder_pitch",
+                "origin": [
+                  0.0,
+                  -0.22,
+                  0.3
+                ],
+                "parent": "torso_pitch",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "right_arm",
+                "lower": -0.8,
+                "name": "right_arm_shoulder_roll",
+                "origin": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "parent": "right_arm_shoulder_pitch",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "effort": 1.0,
+                "group": "right_arm",
+                "lower": -0.8,
+                "name": "right_arm_shoulder_yaw",
+                "origin": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "parent": "right_arm_shoulder_roll",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "right_arm",
+                "lower": 0.0,
+                "name": "right_arm_elbow",
+                "origin": [
+                  0.0,
+                  0.0,
+                  -0.28
+                ],
+                "parent": "right_arm_shoulder_yaw",
+                "upper": 1.2,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "effort": 1.0,
+                "group": "right_arm",
+                "lower": -0.8,
+                "name": "right_arm_wrist_yaw",
+                "origin": [
+                  0.0,
+                  0.0,
+                  -0.25
+                ],
+                "parent": "right_arm_elbow",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "right_arm",
+                "lower": -0.8,
+                "name": "right_arm_wrist_pitch",
+                "origin": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "parent": "right_arm_wrist_yaw",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "right_arm",
+                "lower": -0.8,
+                "name": "right_arm_wrist_roll",
+                "origin": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "parent": "right_arm_wrist_pitch",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "right_arm",
+                "lower": 0.0,
+                "name": "right_arm_grip",
+                "origin": [
+                  0.0,
+                  0.0,
+                  -0.08
+                ],
+                "parent": "right_arm_wrist_roll",
+                "upper": 1.2,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  0.0,
+                  1.0
+                ],
+                "effort": 1.0,
+                "group": "right_leg",
+                "lower": -0.8,
+                "name": "right_leg_hip_yaw",
+                "origin": [
+                  0.0,
+                  -0.1,
+                  0.0
+                ],
+                "parent": "pelvis",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "right_leg",
+                "lower": -0.8,
+                "name": "right_leg_hip_roll",
+                "origin": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "parent": "right_leg_hip_yaw",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "right_leg",
+                "lower": -0.8,
+                "name": "right_leg_hip_pitch",
+                "origin": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "parent": "right_leg_hip_roll",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "right_leg",
+                "lower": 0.0,
+                "name": "right_leg_knee",
+                "origin": [
+                  0.0,
+                  0.0,
+                  -0.38
+                ],
+                "parent": "right_leg_hip_pitch",
+                "upper": 1.2,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  0.0,
+                  1.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "right_leg",
+                "lower": -0.8,
+                "name": "right_leg_ankle_pitch",
+                "origin": [
+                  0.0,
+                  0.0,
+                  -0.36
+                ],
+                "parent": "right_leg_knee",
+                "upper": 0.8,
+                "velocity": 0.4
+              },
+              {
+                "acceleration": 0.6,
+                "axis": [
+                  1.0,
+                  0.0,
+                  0.0
+                ],
+                "effort": 1.0,
+                "group": "right_leg",
+                "lower": -0.8,
+                "name": "right_leg_ankle_roll",
+                "origin": [
+                  0.0,
+                  0.0,
+                  0.0
+                ],
+                "parent": "right_leg_ankle_pitch",
+                "upper": 0.8,
+                "velocity": 0.4
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Joint"
+            },
+            "title": "Joints",
+            "type": "array"
+          },
+          "limitations": {
+            "default": [
+              "Kinematics only: balance, contact dynamics and collision avoidance are not validated.",
+              "Each hand has one coupled grip axis, not independently actuated fingers.",
+              "Physical drives, motor ratings and emergency-stop hardware are not commissioned."
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "mode": {
+            "const": "simulation",
+            "default": "simulation",
+            "title": "Mode",
+            "type": "string"
+          },
+          "model_id": {
+            "const": "onesa-humanoid-33-v1",
+            "default": "onesa-humanoid-33-v1",
+            "title": "Model Id",
+            "type": "string"
+          },
+          "physical_actuation": {
+            "const": false,
+            "default": false,
+            "title": "Physical Actuation",
+            "type": "boolean"
+          },
+          "units": {
+            "const": "radians, seconds, metres; synthetic effort",
+            "default": "radians, seconds, metres; synthetic effort",
+            "title": "Units",
+            "type": "string"
+          }
+        },
+        "title": "Model",
+        "type": "object"
+      },
+      "MotionPlan": {
+        "additionalProperties": false,
+        "properties": {
+          "model_id": {
+            "default": "onesa-humanoid-33-v1",
+            "title": "Model Id",
+            "type": "string"
+          },
+          "plan_sha256": {
+            "title": "Plan Sha256",
+            "type": "string"
+          },
+          "reason": {
+            "default": "review_required",
+            "title": "Reason",
+            "type": "string"
+          },
+          "request": {
+            "$ref": "#/components/schemas/MotionRequest"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "start": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Start",
+            "type": "object"
+          },
+          "state": {
+            "default": "proposed",
+            "enum": [
+              "proposed",
+              "running",
+              "completed",
+              "cancelled"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "targets": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Targets",
+            "type": "object"
+          }
+        },
+        "required": [
+          "request",
+          "revision",
+          "start",
+          "targets",
+          "plan_sha256"
+        ],
+        "title": "MotionPlan",
+        "type": "object"
+      },
+      "MotionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "command_id": {
+            "format": "uuid",
+            "title": "Command Id",
+            "type": "string"
+          },
+          "duration_seconds": {
+            "maximum": 30.0,
+            "minimum": 2.0,
+            "title": "Duration Seconds",
+            "type": "number"
+          },
+          "issued_at": {
+            "title": "Issued At",
+            "type": "number"
+          },
+          "targets": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "maxProperties": 33,
+            "minProperties": 1,
+            "title": "Targets",
+            "type": "object"
+          }
+        },
+        "required": [
+          "command_id",
+          "issued_at",
+          "duration_seconds",
+          "targets"
+        ],
+        "title": "MotionRequest",
+        "type": "object"
+      },
+      "Observation-Input": {
         "additionalProperties": false,
         "properties": {
           "declared_connection": {
@@ -869,11 +1929,156 @@
         "title": "PhysicalPermissionResponse",
         "type": "object"
       },
-      "Plan": {
+      "Plan-Input": {
         "additionalProperties": false,
         "properties": {
           "asset": {
-            "$ref": "#/components/schemas/Asset"
+            "$ref": "#/components/schemas/Asset-Input"
+          },
+          "created_at": {
+            "maximum": 4133980800.0,
+            "minimum": 0.0,
+            "title": "Created At",
+            "type": "number"
+          },
+          "duration_seconds": {
+            "default": 6.0,
+            "maximum": 6.0,
+            "minimum": 6.0,
+            "title": "Duration Seconds",
+            "type": "number"
+          },
+          "mission_id": {
+            "format": "uuid",
+            "title": "Mission Id",
+            "type": "string"
+          },
+          "motion_duration_seconds": {
+            "default": 2.0,
+            "maximum": 2.0,
+            "minimum": 2.0,
+            "title": "Motion Duration Seconds",
+            "type": "number"
+          },
+          "motion_starts_at_seconds": {
+            "default": 1.0,
+            "maximum": 1.0,
+            "minimum": 1.0,
+            "title": "Motion Starts At Seconds",
+            "type": "number"
+          },
+          "observation_method": {
+            "const": "deterministic_scenario/v1",
+            "default": "deterministic_scenario/v1",
+            "title": "Observation Method",
+            "type": "string"
+          },
+          "physical_actuation": {
+            "const": false,
+            "default": false,
+            "title": "Physical Actuation",
+            "type": "boolean"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/RobotProfile"
+          },
+          "scenario": {
+            "enum": [
+              "normal",
+              "threshold",
+              "discrepancy",
+              "interrupted",
+              "missing",
+              "stale",
+              "units"
+            ],
+            "title": "Scenario",
+            "type": "string"
+          },
+          "scenario_version": {
+            "const": "1.0.0",
+            "default": "1.0.0",
+            "title": "Scenario Version",
+            "type": "string"
+          },
+          "seed": {
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
+            "title": "Seed",
+            "type": "integer"
+          },
+          "skills_sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Skills Sha256",
+            "type": "string"
+          },
+          "start_radians": {
+            "maximum": 1000000.0,
+            "minimum": -1000000.0,
+            "title": "Start Radians",
+            "type": "number"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/Step"
+            },
+            "maxItems": 5,
+            "minItems": 5,
+            "title": "Steps",
+            "type": "array"
+          },
+          "target_radians": {
+            "default": 0.1,
+            "maximum": 0.1,
+            "minimum": 0.1,
+            "title": "Target Radians",
+            "type": "number"
+          },
+          "task": {
+            "const": "inspect_pump",
+            "default": "inspect_pump",
+            "title": "Task",
+            "type": "string"
+          },
+          "timeout_seconds": {
+            "default": 9.0,
+            "maximum": 9.0,
+            "minimum": 9.0,
+            "title": "Timeout Seconds",
+            "type": "number"
+          },
+          "title": {
+            "const": "Inspect Pump P-101 and report abnormal readings",
+            "title": "Title",
+            "type": "string"
+          },
+          "version": {
+            "const": "1.0.0",
+            "default": "1.0.0",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mission_id",
+          "title",
+          "created_at",
+          "scenario",
+          "seed",
+          "asset",
+          "profile",
+          "skills_sha256",
+          "start_radians",
+          "steps"
+        ],
+        "title": "Plan",
+        "type": "object"
+      },
+      "Plan-Output": {
+        "additionalProperties": false,
+        "properties": {
+          "asset": {
+            "$ref": "#/components/schemas/Asset-Output"
           },
           "created_at": {
             "maximum": 4133980800.0,
@@ -1031,7 +2236,7 @@
           "inspection": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/Record"
+                "$ref": "#/components/schemas/Record-Input"
               },
               {
                 "type": "null"
@@ -1058,7 +2263,7 @@
         "title": "Proposal",
         "type": "object"
       },
-      "Record": {
+      "Record-Input": {
         "additionalProperties": false,
         "properties": {
           "elapsed_seconds": {
@@ -1089,7 +2294,7 @@
           "observations": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/Observation"
+              "$ref": "#/components/schemas/Observation-Input"
             },
             "maxItems": 3,
             "title": "Observations",
@@ -1109,7 +2314,7 @@
             "type": "string"
           },
           "plan": {
-            "$ref": "#/components/schemas/Plan"
+            "$ref": "#/components/schemas/Plan-Input"
           },
           "plan_sha256": {
             "pattern": "^[a-f0-9]{64}$",
@@ -1138,7 +2343,101 @@
           "telemetry": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/Observation"
+              "$ref": "#/components/schemas/Observation-Input"
+            },
+            "maxItems": 3,
+            "title": "Telemetry",
+            "type": "array"
+          }
+        },
+        "required": [
+          "plan",
+          "plan_sha256"
+        ],
+        "title": "Record",
+        "type": "object"
+      },
+      "Record-Output": {
+        "additionalProperties": false,
+        "properties": {
+          "elapsed_seconds": {
+            "default": 0.0,
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Elapsed Seconds",
+            "type": "number"
+          },
+          "events": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Event"
+            },
+            "maxItems": 16,
+            "title": "Events",
+            "type": "array"
+          },
+          "findings": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Finding"
+            },
+            "maxItems": 9,
+            "title": "Findings",
+            "type": "array"
+          },
+          "observations": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/robot_api__inspection__Observation"
+            },
+            "maxItems": 3,
+            "title": "Observations",
+            "type": "array"
+          },
+          "outcome": {
+            "default": "awaiting_approval",
+            "enum": [
+              "awaiting_approval",
+              "running",
+              "completed_normal",
+              "completed_findings",
+              "interrupted",
+              "failed"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/Plan-Output"
+          },
+          "plan_sha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "title": "Plan Sha256",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": "onesa-robot-inspection/v1",
+            "default": "onesa-robot-inspection/v1",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "maximum": 4133980800.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "telemetry": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/robot_api__inspection__Observation"
             },
             "maxItems": 3,
             "title": "Telemetry",
@@ -1495,6 +2794,7 @@
           "boot_challenge": {
             "maxLength": 43,
             "minLength": 43,
+            "pattern": "^[A-Za-z0-9_-]{43}$",
             "title": "Boot Challenge",
             "type": "string"
           },
@@ -1591,6 +2891,206 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "robot_api__humanoid__Observation": {
+        "additionalProperties": false,
+        "properties": {
+          "active_command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Command"
+          },
+          "connection": {
+            "default": "simulated_actuators",
+            "enum": [
+              "simulated_actuators",
+              "simulator_fault"
+            ],
+            "title": "Connection",
+            "type": "string"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/MotionPlan"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "mode": {
+            "const": "simulation",
+            "default": "simulation",
+            "title": "Mode",
+            "type": "string"
+          },
+          "model_id": {
+            "default": "onesa-humanoid-33-v1",
+            "title": "Model Id",
+            "type": "string"
+          },
+          "owns_active": {
+            "title": "Owns Active",
+            "type": "boolean"
+          },
+          "pending": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MotionPlan"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "physical_actuation": {
+            "const": false,
+            "default": false,
+            "title": "Physical Actuation",
+            "type": "boolean"
+          },
+          "positions": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Positions",
+            "type": "object"
+          },
+          "retention": {
+            "const": "bounded-process-memory; no restart replay",
+            "default": "bounded-process-memory; no restart replay",
+            "title": "Retention",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "sampled_at": {
+            "title": "Sampled At",
+            "type": "number"
+          },
+          "stopped": {
+            "title": "Stopped",
+            "type": "boolean"
+          },
+          "velocities": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Velocities",
+            "type": "object"
+          }
+        },
+        "required": [
+          "stopped",
+          "revision",
+          "positions",
+          "velocities",
+          "active_command",
+          "owns_active",
+          "pending",
+          "history",
+          "sampled_at"
+        ],
+        "title": "Observation",
+        "type": "object"
+      },
+      "robot_api__inspection__Observation": {
+        "additionalProperties": false,
+        "properties": {
+          "declared_connection": {
+            "default": "not_applicable",
+            "maxLength": 24,
+            "title": "Declared Connection",
+            "type": "string"
+          },
+          "declared_freshness": {
+            "default": "not_applicable",
+            "maxLength": 24,
+            "title": "Declared Freshness",
+            "type": "string"
+          },
+          "metric": {
+            "enum": [
+              "temperature",
+              "pressure",
+              "vibration"
+            ],
+            "title": "Metric",
+            "type": "string"
+          },
+          "observed_at": {
+            "maximum": 4133980800.0,
+            "minimum": 0.0,
+            "title": "Observed At",
+            "type": "number"
+          },
+          "quality": {
+            "default": "good",
+            "enum": [
+              "good",
+              "missing",
+              "unknown"
+            ],
+            "title": "Quality",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "scenario_observation",
+              "synthetic_iot",
+              "reviewed_import"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "source_ref": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Source Ref",
+            "type": "string"
+          },
+          "source_unit": {
+            "default": "",
+            "maxLength": 16,
+            "title": "Source Unit",
+            "type": "string"
+          },
+          "unit": {
+            "maxLength": 16,
+            "minLength": 1,
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "maximum": 1000000.0,
+                "minimum": -1000000.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "metric",
+          "value",
+          "unit",
+          "observed_at",
+          "source",
+          "source_ref"
+        ],
+        "title": "Observation",
         "type": "object"
       }
     },
@@ -1865,6 +3365,179 @@
           }
         },
         "summary": "Heartbeat"
+      }
+    },
+    "/api/v1/humanoid/heartbeat": {
+      "post": {
+        "operationId": "humanoid_heartbeat_api_v1_humanoid_heartbeat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Heartbeat"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Humanoid Heartbeat"
+      }
+    },
+    "/api/v1/humanoid/model": {
+      "get": {
+        "operationId": "humanoid_model_api_v1_humanoid_model_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Model"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Humanoid Model"
+      }
+    },
+    "/api/v1/humanoid/model.urdf": {
+      "get": {
+        "operationId": "humanoid_urdf_api_v1_humanoid_model_urdf_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Humanoid Urdf"
+      }
+    },
+    "/api/v1/humanoid/proposals": {
+      "post": {
+        "operationId": "humanoid_propose_api_v1_humanoid_proposals_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MotionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MotionPlan"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Humanoid Propose"
+      }
+    },
+    "/api/v1/humanoid/proposals/{command_id}/approve": {
+      "post": {
+        "operationId": "humanoid_approve_api_v1_humanoid_proposals__command_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "command_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Command Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MissionConfirmation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MotionPlan"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Humanoid Approve"
+      }
+    },
+    "/api/v1/humanoid/state": {
+      "get": {
+        "operationId": "humanoid_state_api_v1_humanoid_state_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/robot_api__humanoid__Observation"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Humanoid State"
       }
     },
     "/api/v1/missions": {

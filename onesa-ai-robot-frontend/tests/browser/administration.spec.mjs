@@ -30,7 +30,7 @@ test('administrator can allow and block permission without claiming physical act
  await expect(page.getByRole('heading',{name:'Robot administration'})).toBeVisible();
  await expect(page.locator('#physical-permission-state')).toHaveText('Blocked by administrator');
  const password=page.getByLabel('Confirm administrator password to allow physical operation');await password.fill('synthetic-confirmation');await password.focus();
- const before=[...mutations];await page.emulateMedia({colorScheme:'dark'});await expect(password).toBeFocused();await expect(password).toHaveValue('synthetic-confirmation');expect(mutations).toEqual(before);
+ const actions=()=>mutations.filter(path=>path!=='/api/v1/heartbeat');const before=actions();await page.emulateMedia({colorScheme:'dark'});await expect(password).toBeFocused();await expect(password).toHaveValue('synthetic-confirmation');expect(actions()).toEqual(before);
  await page.getByRole('button',{name:'Allow physical operation',exact:true}).click();await expect(page.locator('#physical-permission-state')).toHaveText('Allowed for this administrator session');await expect(password).toHaveValue('');
  await expect(page.locator('#physical-operation-state')).toHaveText('Inactive · controller not connected');
  await page.getByRole('button',{name:'Block physical operation',exact:true}).click();await expect(page.locator('#physical-permission-state')).toHaveText('Blocked by administrator');
@@ -44,12 +44,14 @@ test('ordinary operator sees no administrator controls or permission reads',asyn
  const {reads}=await fixture(page,'operator');await expect(page.locator('#administrator')).toBeHidden();await expect(page.getByRole('button',{name:'Allow physical operation',exact:true})).toBeHidden();expect(reads.filter(path=>path.includes('/admin/'))).toEqual([]);
 });
 
-test('idle administrator statuses follow repeated system appearance changes without writes',async({page})=>{
+test('idle administrator statuses follow repeated system appearance changes without operator actions',async({page})=>{
  await page.setViewportSize({width:1440,height:900});
  const {mutations}=await fixture(page);
  const password=page.getByLabel('Confirm administrator password to allow physical operation');
  await password.fill('synthetic-confirmation');await password.focus();
- const before=[...mutations];
+ // Ordinary supervision continues during accessibility scans; compare every
+ // operator action, without mistaking the scheduled heartbeat for a theme write.
+ const actions=()=>mutations.filter(path=>path!=='/api/v1/heartbeat');const before=actions();
  for(const [colorScheme,foreground] of [['dark','rgb(229, 237, 246)'],['light','rgb(16, 38, 62)'],['dark','rgb(229, 237, 246)']]){
   await page.emulateMedia({colorScheme});
   await expect.poll(()=>page.evaluate(()=>getComputedStyle(document.body).color)).toBe(foreground);
@@ -58,7 +60,7 @@ test('idle administrator statuses follow repeated system appearance changes with
    expect(await page.locator('#'+id).evaluate(element=>getComputedStyle(element).color)).toBe(foreground);
   await expect(password).toBeFocused();await expect(password).toHaveValue('synthetic-confirmation');
   await expect(page.locator('#physical-permission-state')).toHaveText('Blocked by administrator');
-  expect(mutations).toEqual(before);
+  expect(actions()).toEqual(before);
   expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa','wcag22aa']).analyze()).violations).toEqual([]);
  }
 });

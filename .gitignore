@@ -98,3 +98,8 @@ credentials*.json
 
 /onesa-ai-robot-frontend/public/client.js
 /onesa-ai-robot-frontend/dist-types/
+
+# Generated working tools are private or host-specific; keep reusable source in scripts/.
+local-tools/
+working-tools/
+.venv*/

@@ -35,6 +35,13 @@ operator approval, inspect task history, cancel or stop, and test safe failure b
 Physical actuators, connected ROS nodes, cameras and real STT/VLM/TTS/VLA models are
 not implemented. Simulation results do not certify physical robot safety.
 
+The current source also includes a protected 33-axis full-body humanoid reference
+with simulated actuators, exact-plan operator confirmation, coordinated limit checks,
+dedicated supervision and URDF export. Its bounded history is process-local; no
+physical driver or balance/contact model is present. See the
+[simulation architecture](docs/engineering/SIMULATION_ARCHITECTURE.md#full-body-humanoid-reference--source-development)
+for the development scope and authority boundary. Hosted acceptance is separate.
+
 **Under development.** Protected operator access supports authorized development
 and testing. Essential sign-in sessions, operator-linked synthetic task history and
 security diagnostics support that purpose. The owner has deferred the corresponding

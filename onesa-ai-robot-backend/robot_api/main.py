@@ -18,7 +18,7 @@ from fastapi.security import HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from robot_api import inspection
+from robot_api import humanoid, inspection
 from robot_api.edge import EdgeMonitor, Telemetry
 from robot_api.safety import Proposal, SafetyGate, SafetyViolation
 from robot_api.security import PasswordVerifier, VerificationBusy, token_hash
@@ -235,6 +235,7 @@ class ActionResponse(BaseModel):
 
 class State:
     def __init__(self, settings: Settings):
+        self.humanoid = humanoid.Humanoid()
         self.journal = (
             TursoJournal(settings.turso_database_url, settings.turso_auth_token)
             if settings.storage_mode == "turso"
@@ -338,6 +339,8 @@ class State:
             self.journal is not None
             and self.journal_initialized
             and self.active is None
+            and self.humanoid.active is None
+            and self.humanoid.pending is None
             and self.stopped
             and not self.journal_dirty
             and not self.settings.actuation_enabled
@@ -399,6 +402,8 @@ class State:
                 or not self.journal_recovery_allowed
                 or self.journal_recovery_attempts >= len(JOURNAL_IDLE_RECOVERY_DELAYS)
                 or self.active is not None
+                or self.humanoid.active is not None
+                or self.humanoid.pending is not None
                 or not self.stopped
                 or self.journal_dirty
                 or self.settings.actuation_enabled
@@ -438,6 +443,8 @@ class State:
                     if (
                         self.journal is not previous
                         or self.active is not None
+                        or self.humanoid.active is not None
+                        or self.humanoid.pending is not None
                         or self.journal_dirty
                         or not self.stopped
                         or self.settings.actuation_enabled
@@ -621,6 +628,7 @@ class State:
                 self.active = None
 
     def cancel(self, reason: str, stop: bool = False) -> None:
+        self.humanoid.stop(reason)
         self.interrupt_inspections(reason)
         self.active = None
         for row in self.db.execute("SELECT id FROM tasks WHERE state IN ('running','proposed')"):
@@ -637,6 +645,28 @@ class State:
         self.active = None
 
     def tick(self) -> None:
+        whole = self.humanoid
+        owner = whole.active.owner if whole.active else whole.pending[0] if whole.pending else None
+        if owner:
+            authority = self.db.execute(
+                "SELECT expires FROM sessions WHERE token=? AND expires>?", (owner, time.time())
+            ).fetchone()
+            if (
+                self.stopped
+                or authority is None
+                or (
+                    whole.active
+                    and time.monotonic() - whole.active.heartbeat > self.settings.heartbeat_seconds
+                )
+            ):
+                self.cancel("operator_connection_lost", stop=True)
+            elif whole.pending and time.time() - whole.pending[1].request.issued_at > 15:
+                whole.stop("proposal_expired")
+            else:
+                try:
+                    whole.tick(time.monotonic())
+                except ValueError:
+                    self.cancel("actuator_failure", stop=True)
         if self.physical_permission_owner is not None:
             permitted = self.db.execute(
                 "SELECT expires FROM sessions WHERE token=? AND expires>?",
@@ -818,6 +848,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 if request.url.path in (
                     "/api/v1/stop",
                     "/api/v1/heartbeat",
+                    "/api/v1/humanoid/heartbeat",
                     "/api/v1/auth/logout",
                     "/api/v1/admin/physical-operation/block",
                 ) or request.url.path.endswith("/cancel"):
@@ -847,7 +878,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if request.app.state.watch.done():
             if sim.physical_permission_owner:
                 sim.block_physical_permission()
-            if sim.active:
+            if sim.active or sim.humanoid.active or sim.humanoid.pending:
                 sim.cancel("watchdog_failure", stop=True)
             if require_watchdog:
                 raise HTTPException(503, "Safety watchdog unavailable")
@@ -925,6 +956,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if (
             not sim.stopped
             or sim.active
+            or sim.humanoid.active
+            or sim.humanoid.pending
             or sim.db.execute(
                 "SELECT count(*) FROM tasks WHERE state IN ('proposed','running')"
             ).fetchone()[0]
@@ -1048,6 +1081,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             sim.block_physical_permission()
         if sim.active and sim.active["session"] == operator["token"]:
             sim.cancel("session_revoked", stop=True)
+        if (sim.humanoid.active and sim.humanoid.active.owner == operator["token"]) or (
+            sim.humanoid.pending and sim.humanoid.pending[0] == operator["token"]
+        ):
+            sim.cancel("session_revoked", stop=True)
         sim.db.execute("DELETE FROM sessions WHERE token=?", (operator["token"],))
         sim.db.commit()
         response.delete_cookie("robot_session", path="/api/v1")
@@ -1097,6 +1134,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(503, "Remote simulation journal requires recovery")
         if sim.stopped:
             raise HTTPException(409, "Reset the simulation stop state first")
+        if sim.humanoid.active or sim.humanoid.pending:
+            raise HTTPException(409, "Complete or cancel the humanoid motion first")
         try:
             sim.gate.validate(value, sim.position)
         except SafetyViolation as exc:
@@ -1135,7 +1174,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # Confirmation yields to the watchdog/logout; recheck authority afterwards.
         sim = state(request, require_watchdog=True)
         operator = await session(request)
-        if sim.stopped or sim.active:
+        if sim.stopped or sim.active or sim.humanoid.active or sim.humanoid.pending:
             raise HTTPException(409, "Stopped or already running")
         row = sim.db.execute(
             "SELECT * FROM tasks WHERE id=? AND owner=?", (task_id, operator["name"])
@@ -1176,7 +1215,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             sim.cancel("approval_authority_lost", stop=True)
             await sim.flush_journal()
             raise
-        if sim.stopped or sim.active:
+        if sim.stopped or sim.active or sim.humanoid.active or sim.humanoid.pending:
             sim.cancel("approval_authority_lost", stop=True)
             await sim.flush_journal()
             raise HTTPException(409, "Stopped or already running")
@@ -1391,6 +1430,81 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             sim.active["heartbeat"] = time.monotonic()
         return {"status": "received"}
 
+    @app.post("/api/v1/humanoid/heartbeat", response_model=ActionResponse)
+    async def humanoid_heartbeat(value: humanoid.Heartbeat, request: Request, operator: Operator):
+        # A background legacy-console poll is not supervision of whole-body motion.
+        sim = state(request, require_watchdog=True)
+        active = sim.humanoid.active
+        if (
+            active is None
+            or active.owner != operator["token"]
+            or active.plan.request.command_id != value.command_id
+        ):
+            raise HTTPException(409, "Humanoid command is not running in this session")
+        active.heartbeat = time.monotonic()
+        return {"status": "received"}
+
+    @app.get("/api/v1/humanoid/model", response_model=humanoid.Model)
+    async def humanoid_model(operator: Operator):
+        return humanoid.Model()
+
+    @app.get("/api/v1/humanoid/model.urdf", response_class=Response)
+    async def humanoid_urdf(operator: Operator):
+        return Response(
+            humanoid.urdf(),
+            media_type="application/xml",
+            headers={"Content-Disposition": 'attachment; filename="onesa-humanoid-reference.urdf"'},
+        )
+
+    @app.get("/api/v1/humanoid/state", response_model=humanoid.Observation)
+    async def humanoid_state(request: Request, operator: Operator):
+        sim = state(request)
+        return sim.humanoid.observe(operator["token"], time.time(), sim.stopped)
+
+    def humanoid_ready(request: Request) -> State:
+        sim = state(request, require_watchdog=True)
+        if sim.journal_failed:
+            raise HTTPException(503, "Remote simulation journal requires recovery")
+        if (
+            sim.stopped
+            or sim.active
+            or sim.db.execute(
+                "SELECT count(*) FROM tasks WHERE state IN ('proposed','running')"
+            ).fetchone()[0]
+        ):
+            raise HTTPException(409, "Reset Stop and complete or cancel legacy tasks first")
+        return sim
+
+    @app.post("/api/v1/humanoid/proposals", status_code=201, response_model=humanoid.MotionPlan)
+    async def humanoid_propose(value: humanoid.MotionRequest, request: Request, operator: Operator):
+        sim = humanoid_ready(request)
+        try:
+            return sim.humanoid.propose(value, operator["token"], time.time())
+        except ValueError as error:
+            raise HTTPException(422, str(error)) from None
+
+    @app.post("/api/v1/humanoid/proposals/{command_id}/approve", response_model=humanoid.MotionPlan)
+    async def humanoid_approve(
+        command_id: UUID, value: MissionConfirmation, request: Request, operator: Operator
+    ):
+        sim = humanoid_ready(request)
+        epoch = sim.stop_epoch
+        await confirm(sim, request, value.password)
+        operator = await session(request)
+        sim = humanoid_ready(request)
+        if sim.stop_epoch != epoch:
+            raise HTTPException(409, "Stop changed during confirmation")
+        try:
+            return sim.humanoid.approve(
+                command_id,
+                operator["token"],
+                value.expected_plan_sha256,
+                time.time(),
+                time.monotonic(),
+            )
+        except ValueError as error:
+            raise HTTPException(409, str(error)) from None
+
     @app.post("/api/v1/tasks/{task_id}/cancel", response_model=ActionResponse)
     async def cancel(task_id: str, request: Request, operator: Operator):
         sim = state(request)
@@ -1429,7 +1543,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(503, "Remote simulation journal requires recovery")
         if sim.stop_epoch != stop_epoch:
             raise HTTPException(409, "Stop changed during reset confirmation")
-        if sim.active:
+        if sim.active or sim.humanoid.active or sim.humanoid.pending:
             raise HTTPException(409, "Cancel the current task first")
         sim.db.execute("UPDATE safety SET stopped=0 WHERE id=1")
         sim.db.commit()
