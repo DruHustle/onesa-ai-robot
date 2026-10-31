@@ -456,3 +456,27 @@ fixtures cover expiry, revocation, tampering, source/artifact/scope changes, own
 provenance, numeric run ID zero and concurrent issuance. An accepted frontend is
 required before the original API observer can inspect that repaired UI; the original
 API deployment request is never repeated.
+
+## Full-body humanoid source checks
+
+`onesa-ai-robot-backend/tests/test_humanoid.py` exercises the connected 33-axis tree,
+URDF limits, coordinated whole-frame motion, peak trajectory bounds, exact-plan
+integrity, command replay retention, session ownership, dedicated heartbeat expiry,
+Stop/adapter failure and asynchronous Stop/reset/logout/session-expiry confirmation
+races. `test_humanoid_journal.py` holds the existing mutation lock with a real fenced
+journal behind the synthetic HTTP boundary and verifies that supervision and Stop
+finish before that lock is released.
+
+The frontend proxy tests check every exact humanoid route and reject unknown
+subpaths, malformed command paths and query injection. `humanoid.spec.mjs` covers
+immutable review values, appearance/focus, mobile accessibility, stale observations,
+unresolved proposal/approval acknowledgements, page departure and session loss.
+`humanoid-live.spec.mjs` crosses the real gateway and API for sign-in, reset, all-axis
+review, confirmation, observation, Stop and authenticated URDF export. Run these
+with the existing complete Chromium/Firefox/WebKit suite and disposable synthetic
+services. None of these checks supplies physical commissioning or hosted acceptance.
+
+Administrator appearance checks compare every operator-action request while allowing
+the existing scheduled legacy heartbeat during accessibility scans. A scan crossing
+the normal poll interval must not mistake routine supervision for a theme-triggered
+permission or motion command.

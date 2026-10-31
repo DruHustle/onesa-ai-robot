@@ -83,6 +83,22 @@ def test_disconnected_telemetry_cannot_appear_online(device):
         assert device.app.state.edge.status() == "not_connected"
 
 
+@pytest.mark.parametrize("challenge", ["é" * 43, "🤖" * 43, "=" * 43, "\n" * 43])
+def test_malformed_boot_challenge_is_rejected_without_changing_edge_state(device, challenge):
+    value = telemetry(device)
+    assert (
+        device.post(
+            "/api/v1/edge/telemetry", json={**value, "boot_challenge": challenge}
+        ).status_code
+        == 422
+    )
+    assert device.app.state.edge.sequence == -1
+    assert device.app.state.edge.status() == "not_connected"
+    assert not device.app.state.edge.audit
+    assert device.portal.call(lambda: device.app.state.sim.stopped)
+    assert device.post("/api/v1/edge/telemetry", json=value).status_code == 200
+
+
 def test_restart_rejects_old_boot_and_never_resumes(settings):
     with TestClient(create_app(settings)) as first:
         first.headers["Authorization"] = "Bearer " + TOKEN

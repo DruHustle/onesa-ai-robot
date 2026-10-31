@@ -266,6 +266,7 @@ class TursoJournal:
             KeyError,
             TypeError,
             OverflowError,
+            RecursionError,
         ) as error:
             # Never include a provider response, token, SQL arguments or URL in errors.
             category, status = "protocol", 0

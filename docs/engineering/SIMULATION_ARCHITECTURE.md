@@ -1,5 +1,55 @@
 # Software simulation architecture
 
+## Full-body humanoid reference — source development
+
+The protected console also exposes `onesa-humanoid-33-v1`: a connected pelvis-rooted
+kinematic tree with 3 torso axes, 2 head axes, 8 axes in each arm (including one
+coupled grip axis), and 6 axes in each leg. Its 34 links and 33 revolute joints are
+available as authenticated URDF. The SVG joint tree uses the same origins, axes and
+current simulated positions. This is reference geometry: no masses, inertias,
+collision shapes, contact model, balancing controller or walking capability is claimed.
+
+`robot_api/humanoid.py` defines a whole-frame actuator interface and its in-memory
+simulated implementation. A complete frame must satisfy every reference position
+limit before any joint changes. Coordinated quintic trajectories share a duration
+and are checked against peak velocity and acceleration before proposal. Limits and
+effort values are synthetic; a bank reporting physical actuation is rejected. No
+serial, CAN, DDS, ROS driver, device discovery or physical transport is opened.
+
+The authenticated `/api/v1/humanoid` routes provide `model`, `model.urdf`, `state`,
+`proposals`, `proposals/{command_id}/approve` and a command-bound `heartbeat`.
+Mutations retain the existing session, exact Origin and CSRF checks. Approval binds
+the proposing session, command UUID, model, start frame, revision, full target frame
+and SHA-256 review digest, requires the operator password, and rechecks session,
+freshness and Stop epoch after confirmation. The proposal expires after 15 seconds.
+Inspection, legacy joint and humanoid work exclude each other's pending/running
+motion; an operator must finish or Stop the current work before switching modes.
+
+Only a successfully observed running command can receive the panel's dedicated
+heartbeat. Legacy console polls do not renew it. The server refuses another
+session's heartbeat or a late heartbeat after expiry. Heartbeat loss, logout,
+session expiry, Stop, watchdog failure, storage failure and shutdown revoke the
+whole-body command. Stop remains independent of queued journal mutations and
+password verification; adapter Stop failure still revokes authority and latches a
+simulator fault. Reset never resumes previous work or clears an actuator fault.
+
+The panel presents a separate, read-only table of the exact proposed start and
+target values; draft inputs and neutral/duration controls lock during review and
+execution. Stop requests use an independent client, including during an unresolved
+proposal or approval acknowledgement. Closing, hiding or leaving the panel requests
+Stop and pauses its heartbeat. An unacknowledged Stop is reported as uncertain;
+users must verify the stopped state before resetting. Session loss clears protected
+controls, proposals, passwords and the rendered model. System appearance changes
+preserve the current draft and focus.
+
+Humanoid frames and the most recent 64 terminal plans live only in process memory;
+they do not enter the inspection task journal and do not survive restart. Compact
+UUID replay protection is retained for up to 10,000 accepted proposals per process;
+at capacity new proposals are refused rather than forgotten. Restart restores no
+humanoid proposal or execution authority. This source capability requires ordinary
+CI and hosted acceptance before a release; it does not change accepted production
+identities or commission physical hardware.
+
 ## Administrator permission and future physical controllers
 
 The owner identifies the product as pre-launch and under development; hardware
@@ -74,6 +124,10 @@ age, fifteen-second readiness and a one-second resolution margin. An uncertain
 write is never replayed. Failure still stops and requires controlled recovery;
 this preparation is not evidence that it is deployed or that hardware is ready.
 
+Invalid remote-journal JSON, including nesting beyond the decoder's capacity,
+becomes a redacted protocol failure under the same stop/recovery path. Byte limits
+and deadlines remain enforced, and parsing failures never replay a statement.
+
 ## Prepared idle-only transport recovery
 
 This correction is source-tested and remains unreleased until the normal exact-source
@@ -108,6 +162,10 @@ requests/second are enforced. Telemetry is explicitly synthetic and stopped, and
 cannot create/approve/reset tasks or change the safety gate. Stale/disconnected
 telemetry becomes `not_connected`. Bounded telemetry audit is in process memory;
 it is not durable compliance logging. Task history remains in private SQLite.
+
+Boot challenges accept only the server-issued 43-character URL-safe ASCII format.
+Malformed challenges fail schema validation before identity comparison and do not
+advance device sequence, connection freshness or audit state.
 
 No inbound edge listener, DDS exposure, Robot control tunnel, router change or automatic retry
 is introduced. A failed agent stops and requires operator restart. There is no

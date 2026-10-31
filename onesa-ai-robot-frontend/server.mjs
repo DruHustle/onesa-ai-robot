@@ -9,7 +9,7 @@ const port = Number(process.env.PORT || 3431);
 const upstream = new URL(process.env.ROBOT_API_URL || 'http://127.0.0.1:8431');
 if (!['http:', 'https:'].includes(upstream.protocol) || upstream.username || upstream.password || upstream.pathname !== '/' || upstream.search || upstream.hash) throw new Error('ROBOT_API_URL must be a credential-free HTTP(S) origin');
 if (upstream.protocol === 'http:' && !['127.0.0.1', 'localhost', 'backend'].includes(upstream.hostname)) throw new Error('Remote gateway requires TLS');
-const routes = /^\/api\/v1\/(edge\/audit|health|ready|auth\/(login|logout|me)|admin\/physical-operation(?:\/(allow|block))?|missions(?:\/(?:catalog|context|[a-f0-9-]{36}(?:\/(?:approve|export))?))?|status|tasks(?:\/[a-f0-9-]{36}\/(approve|cancel))?|heartbeat|stop|reset)$/;
+const routes = /^\/api\/v1\/(edge\/audit|health|ready|auth\/(login|logout|me)|admin\/physical-operation(?:\/(allow|block))?|missions(?:\/(?:catalog|context|[a-f0-9-]{36}(?:\/(?:approve|export))?))?|humanoid\/(?:model(?:\.urdf)?|state|heartbeat|proposals(?:\/[a-f0-9-]{36}\/approve)?)|status|tasks(?:\/[a-f0-9-]{36}\/(approve|cancel))?|heartbeat|stop|reset)$/;
 const security = {
   'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
   'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer',
@@ -38,11 +38,12 @@ export async function handler(req, res) {
       const cookies=response.headers.getSetCookie().filter(x=>/^robot_session=/.test(x));
       if(cookies.length) res.setHeader('Set-Cookie',cookies);
       res.setHeader('Content-Type',response.headers.get('content-type') || 'application/json');
+      if(url.pathname==='/api/v1/humanoid/model.urdf'&&response.ok)res.setHeader('Content-Disposition','attachment; filename="onesa-humanoid-reference.urdf"');
       res.writeHead(response.status).end(body);
       return;
     }
     if (!['GET','HEAD'].includes(req.method)) {res.writeHead(405).end();return;}
-    const files = new Map([['/','index.html'],['/index.html','index.html'],['/console','console.html'],['/console/','console.html'],['/console.html','console.html'],['/privacy','privacy.html'],['/privacy/','privacy.html'],['/privacy.html','privacy.html'],['/onesa-foundation.css','onesa-foundation.css'],['/theme.css','theme.css'],['/app.js','app.js'],['/inspection.js','inspection.js'],['/images/pump-inspection.svg','images/pump-inspection.svg'],['/client.js','client.js'],['/brand/onesa-orbit.png','brand/onesa-orbit.png'],['/robots.txt','robots.txt']]);
+    const files = new Map([['/','index.html'],['/index.html','index.html'],['/console','console.html'],['/console/','console.html'],['/console.html','console.html'],['/privacy','privacy.html'],['/privacy/','privacy.html'],['/privacy.html','privacy.html'],['/onesa-foundation.css','onesa-foundation.css'],['/theme.css','theme.css'],['/app.js','app.js'],['/inspection.js','inspection.js'],['/humanoid.js','humanoid.js'],['/images/pump-inspection.svg','images/pump-inspection.svg'],['/client.js','client.js'],['/brand/onesa-orbit.png','brand/onesa-orbit.png'],['/robots.txt','robots.txt']]);
     files.set('/favicon.ico','favicon.ico');
     for(const width of [640,1280])files.set('/images/robot-concept-'+width+'.webp','images/robot-concept-'+width+'.webp');
     for(const mode of ['light','dark'])files.set('/images/robot-workspace-example-'+mode+'.png','images/robot-workspace-example-'+mode+'.png');
