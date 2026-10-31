@@ -19,6 +19,10 @@
     "@axe-core/playwright": "4.13.0",
     "typescript": "5.9.3",
     "@types/node": "22.20.5",
-    "openapi-typescript": "7.13.0"
+    "openapi-typescript": "7.13.0",
+    "minimatch": "file:vendor/onesa-robot-minimatch-callable-1.0.0.tgz"
+  },
+  "overrides": {
+    "@redocly/openapi-core@1.34.20": {"minimatch": "$minimatch"}
   }
 }
