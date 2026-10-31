@@ -11,6 +11,13 @@ test('authenticated whole-body workflow crosses the real gateway and exports ref
  await page.getByLabel('Password',{exact:true}).fill(process.env.ROBOT_TEST_PASSWORD||'browser-test-operator-only');
  await page.getByRole('button',{name:'Sign in',exact:true}).click();
  await expect(page.getByRole('button',{name:'Sign out',exact:true})).toBeVisible({timeout:25000});
+ // Establish this case's own stopped baseline even after a completed earlier run.
+ const stopAcknowledgement=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/v1/stop'&&response.request().method()==='POST');
+ await page.getByRole('button',{name:'Stop simulation',exact:true}).click();
+ const stopResponse=await stopAcknowledgement;
+ expect(stopResponse.status()).toBe(200);
+ expect(await stopResponse.json()).toMatchObject({status:'stopped',physical_actuation:false});
+ await expect(page.locator('#reset-form')).toBeVisible();
  await page.getByLabel('Confirm password to reset').fill(process.env.ROBOT_TEST_PASSWORD||'browser-test-operator-only');
  await page.getByRole('button',{name:'Reset simulation stop'}).click();
  await waitForSimulationReset(page);
