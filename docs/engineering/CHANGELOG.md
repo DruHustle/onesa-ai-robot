@@ -1,5 +1,32 @@
 # Engineering changelog
 
+## 2026-10-31 — Full-body humanoid reference — unreleased
+
+Recover the 33-axis reference model, whole-frame simulated actuator interface,
+coordinated bounded motion, authenticated URDF and operator console. Bind approval
+to the exact reviewed plan and session; use a separate command-specific heartbeat
+so unrelated console polling cannot sustain unobserved whole-body motion. Stop and
+authority loss revoke all axes, including during asynchronous confirmation, stale
+telemetry, panel closure and unresolved responses. Preserve fail-closed adapter
+errors and replay protection beyond the detailed history window.
+
+Expose only the exact humanoid API routes through the existing gateway and add
+real-proxy and real-API browser coverage alongside controlled response-race cases.
+The UI locks draft controls while showing a read-only start/target review table.
+Physical actuation remains disabled, and no dynamics, balance, independent fingers
+or commissioned motor limits are claimed. This is source development, not hosted
+acceptance or a production release.
+
+## 2026-10-31 — Input validation review — unreleased
+
+Reject malformed edge boot challenges at the schema boundary before constant-time
+identity comparison; invalid telemetry leaves sequence, connection and audit state
+unchanged. Treat excessively nested remote-journal JSON as a redacted protocol
+failure under the existing stop/recovery rules, without retrying the request.
+Regression tests reproduce both prior exceptions and verify controlled rejection.
+The generated API contract records the existing server-issued challenge format.
+These source fixes do not establish hosted acceptance or physical readiness.
+
 ## 2026-10-28 — Repository renamed to onesa-robot
 
 Update canonical GitHub references, workflow owner/repository guards and local

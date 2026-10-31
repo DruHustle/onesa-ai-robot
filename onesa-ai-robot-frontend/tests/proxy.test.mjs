@@ -25,6 +25,17 @@ test('proxy preserves auth boundaries, strips unrelated secrets and rejects open
     if(suffix){assert.equal(received.origin,'https://synthetic-owner.invalid');assert.equal(received['x-csrf-token'],'synthetic-csrf');assert.equal(received.cookie,'robot_session=fixture');}
   }
   for(const path of ['/api/v1/admin','/api/v1/admin/physical-operation/enable','/api/v1/admin/physical-operation/allow?role=administrator'])assert.equal((await fetch('http://127.0.0.1:3439'+path)).status,404);
+  for(const suffix of ['model','model.urdf','state','heartbeat','proposals','proposals/00000000-0000-0000-0000-000000000000/approve']){
+    const path='/api/v1/humanoid/'+suffix;
+    const mutation=suffix==='heartbeat'||suffix.startsWith('proposals');
+    const response=await fetch('http://127.0.0.1:3439'+path+'?__onesa_route='+encodeURIComponent(path.slice('/api/v1/'.length)),{headers:{Origin:'https://synthetic-owner.invalid','X-CSRF-Token':'synthetic-csrf',Cookie:'robot_session=fixture'},...(mutation?{method:'POST',body:'{}'}:{})});
+    assert.equal(response.status,200,path);
+    assert.equal(received.cookie,'robot_session=fixture');
+    assert.equal(received['x-csrf-token'],'synthetic-csrf');
+    if(suffix==='model.urdf')assert.equal(response.headers.get('content-disposition'),'attachment; filename="onesa-humanoid-reference.urdf"');
+  }
+  for(const path of ['/api/v1/humanoid','/api/v1/humanoid/actuate','/api/v1/humanoid/model.xml','/api/v1/humanoid/proposals/not-a-uuid/approve','/api/v1/humanoid/model?download=private'])assert.equal((await fetch('http://127.0.0.1:3439'+path)).status,404);
+  assert.equal((await fetch('http://127.0.0.1:3439/humanoid.js')).status,200);
   const approval='/api/v1/tasks/00000000-0000-0000-0000-000000000000/approve';
   assert.equal((await fetch('http://127.0.0.1:3439'+approval+'?__onesa_route='+encodeURIComponent(approval.slice('/api/v1/'.length)),{method:'POST',body:'{}'})).status,200);
   for (const route of [
